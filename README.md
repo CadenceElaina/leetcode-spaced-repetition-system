@@ -1,4 +1,4 @@
-# LeetRepeat
+# LeetcodeSRS (System Repetition System)
 
 **A free, open-source spaced repetition tracker for LeetCode interview prep.**
 

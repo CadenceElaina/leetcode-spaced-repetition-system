@@ -18,7 +18,7 @@ export function Nav() {
     <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background px-6">
       <div className="flex items-center gap-8">
         <Link href="/dashboard" className="text-lg font-semibold text-foreground">
-          LeetRepeat
+          LeetcodeSRS
         </Link>
         <nav className="hidden items-center gap-1 sm:flex">
           {navLinks.map(({ href, label }) => (

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { DifficultyBadge } from "@/components/difficulty-badge";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Review — LeetRepeat" };
+export const metadata = { title: "Review — LeetcodeSRS" };
 
 export default async function ReviewPage() {
   const session = await auth();
@@ -30,6 +30,7 @@ export default async function ReviewPage() {
       stability: userProblemStates.stability,
       totalAttempts: userProblemStates.totalAttempts,
       bestQuality: userProblemStates.bestSolutionQuality,
+      notes: userProblemStates.notes,
       title: problems.title,
       leetcodeNumber: problems.leetcodeNumber,
       difficulty: problems.difficulty,
@@ -38,7 +39,7 @@ export default async function ReviewPage() {
     .from(userProblemStates)
     .innerJoin(problems, eq(userProblemStates.problemId, problems.id))
     .where(
-      sql`${userProblemStates.userId} = ${session.user.id} AND ${userProblemStates.nextReviewAt} <= ${now}`,
+      sql`${userProblemStates.userId} = ${session.user.id} AND ${userProblemStates.nextReviewAt} <= ${now.toISOString()}`,
     )
     .orderBy(asc(userProblemStates.nextReviewAt));
 
@@ -64,27 +65,35 @@ export default async function ReviewPage() {
           {queue.map((item) => (
             <div
               key={item.stateId}
-              className="flex items-center justify-between rounded-lg border border-border bg-muted p-4 transition-colors duration-150 hover:border-accent/50"
+              className="rounded-lg border border-border bg-muted p-4 transition-colors duration-150 hover:border-accent/50"
             >
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-muted-foreground w-10">{item.leetcodeNumber}</span>
-                <div>
-                  <Link href={`/problems/${item.problemId}`} className="text-sm font-medium text-foreground hover:text-accent">
-                    {item.title}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-muted-foreground w-10">{item.leetcodeNumber}</span>
+                  <div>
+                    <Link href={`/problems/${item.problemId}`} className="text-sm font-medium text-foreground hover:text-accent">
+                      {item.title}
+                    </Link>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{item.category}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <DifficultyBadge difficulty={item.difficulty} />
+                  <span className="text-xs text-muted-foreground">{item.totalAttempts} attempt{item.totalAttempts !== 1 ? "s" : ""}</span>
+                  <Link
+                    href={`/problems/${item.problemId}/attempt`}
+                    className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm text-accent-foreground transition-colors duration-150 hover:opacity-90"
+                  >
+                    Review
                   </Link>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{item.category}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <DifficultyBadge difficulty={item.difficulty} />
-                <span className="text-xs text-muted-foreground">{item.totalAttempts} attempt{item.totalAttempts !== 1 ? "s" : ""}</span>
-                <Link
-                  href={`/problems/${item.problemId}/attempt`}
-                  className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm text-accent-foreground transition-colors duration-150 hover:opacity-90"
-                >
-                  Review
-                </Link>
-              </div>
+              {item.notes && (
+                <div className="mt-3 rounded-md border border-border bg-background p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Your Notes</p>
+                  <p className="whitespace-pre-wrap text-sm text-foreground">{item.notes}</p>
+                </div>
+              )}
             </div>
           ))}
         </div>

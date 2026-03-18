@@ -6,7 +6,7 @@ import Link from "next/link";
 import { DifficultyBadge } from "@/components/difficulty-badge";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Dashboard — LeetRepeat" };
+export const metadata = { title: "Dashboard — LeetcodeSRS" };
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -58,7 +58,7 @@ export default async function DashboardPage() {
     .from(userProblemStates)
     .innerJoin(problems, eq(userProblemStates.problemId, problems.id))
     .where(
-      sql`${userProblemStates.userId} = ${userId} AND ${userProblemStates.nextReviewAt} <= ${now}`,
+      sql`${userProblemStates.userId} = ${userId} AND ${userProblemStates.nextReviewAt} <= ${now.toISOString()}`,
     )
     .orderBy(asc(userProblemStates.nextReviewAt))
     .limit(20);
