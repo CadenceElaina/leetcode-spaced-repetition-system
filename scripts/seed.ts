@@ -6,7 +6,8 @@
  *
  * Requires DATABASE_URL in .env
  */
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local" });
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import postgres from "postgres";
@@ -36,7 +37,7 @@ async function main() {
 
   console.log(`Seeding ${items.length} problems...`);
 
-  const client = postgres(process.env.DATABASE_URL!);
+  const client = postgres(process.env.DATABASE_URL!, { prepare: false });
   const db = drizzle(client);
 
   // Upsert: insert or update on conflict

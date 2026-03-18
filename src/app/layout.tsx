@@ -4,7 +4,7 @@ import { ThemeProvider } from "@/components/theme";
 import { Nav } from "@/components/nav";
 
 export const metadata: Metadata = {
-  title: "LeetRepeat",
+  title: "LeetcodeSRS",
   description: "Spaced repetition tracker for LeetCode interview prep",
 };
 

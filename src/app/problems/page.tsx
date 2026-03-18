@@ -4,7 +4,7 @@ import { asc } from "drizzle-orm";
 import { ProblemsTable } from "./problems-table";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Problems — LeetRepeat" };
+export const metadata = { title: "Problems — LeetcodeSRS" };
 
 export default async function ProblemsPage() {
   const allProblems = await db

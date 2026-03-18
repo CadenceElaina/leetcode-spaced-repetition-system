@@ -1,16 +1,19 @@
 import { db } from "@/db";
-import { problems } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { problems, userProblemStates } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { DifficultyBadge } from "@/components/difficulty-badge";
-import { ExternalLink, Play } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { VideoEmbed } from "@/components/video-embed";
+import { ProblemNotes } from "@/components/problem-notes";
+import { auth } from "@/auth";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const problem = await db.select().from(problems).where(eq(problems.id, Number(id))).limit(1);
-  if (!problem[0]) return { title: "Not Found — LeetRepeat" };
-  return { title: `${problem[0].title} — LeetRepeat` };
+  if (!problem[0]) return { title: "Not Found — LeetcodeSRS" };
+  return { title: `${problem[0].title} — LeetcodeSRS` };
 }
 
 export default async function ProblemDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,6 +21,22 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
   const rows = await db.select().from(problems).where(eq(problems.id, Number(id))).limit(1);
   const problem = rows[0];
   if (!problem) notFound();
+
+  const session = await auth();
+  let initialNotes = "";
+  if (session?.user?.id) {
+    const stateRows = await db
+      .select({ notes: userProblemStates.notes })
+      .from(userProblemStates)
+      .where(
+        and(
+          eq(userProblemStates.userId, session.user.id),
+          eq(userProblemStates.problemId, problem.id),
+        ),
+      )
+      .limit(1);
+    initialNotes = stateRows[0]?.notes ?? "";
+  }
 
   return (
     <div className="space-y-8">
@@ -60,17 +79,11 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
           </a>
         )}
         {problem.videoId && (
-          <a
-            href={`https://www.youtube.com/watch?v=${encodeURIComponent(problem.videoId)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-9 items-center gap-2 rounded-md px-4 text-sm text-foreground transition-colors duration-150 hover:bg-muted"
-          >
-            <Play size={14} />
-            Watch Video
-          </a>
+          <VideoEmbed videoId={problem.videoId} />
         )}
       </div>
+
+      {/* Video embed appears here when toggled */}
 
       {/* Complexity */}
       <div className="rounded-lg border border-border bg-muted p-4">
@@ -86,6 +99,11 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
       </div>
+
+      {/* Notes */}
+      {session?.user?.id && (
+        <ProblemNotes problemId={problem.id} initialNotes={initialNotes} />
+      )}
 
       {/* Log Attempt CTA */}
       <Link

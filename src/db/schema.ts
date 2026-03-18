@@ -150,6 +150,7 @@ export const userProblemStates = pgTable("user_problem_state", {
   nextReviewAt: timestamp("next_review_at"),
   totalAttempts: integer("total_attempts").notNull().default(0),
   bestSolutionQuality: qualityEnum("best_solution_quality"),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

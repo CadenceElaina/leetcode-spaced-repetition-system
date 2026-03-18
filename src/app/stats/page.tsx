@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Stats — LeetRepeat" };
+export const metadata = { title: "Stats — LeetcodeSRS" };
 
 export default async function StatsPage() {
   const session = await auth();

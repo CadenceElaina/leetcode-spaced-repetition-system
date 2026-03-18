@@ -7,8 +7,8 @@ import { AttemptForm } from "./attempt-form";
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const rows = await db.select().from(problems).where(eq(problems.id, Number(id))).limit(1);
-  if (!rows[0]) return { title: "Not Found — LeetRepeat" };
-  return { title: `Log Attempt — ${rows[0].title} — LeetRepeat` };
+  if (!rows[0]) return { title: "Not Found — LeetcodeSRS" };
+  return { title: `Log Attempt — ${rows[0].title} — LeetcodeSRS` };
 }
 
 export default async function AttemptPage({ params }: { params: Promise<{ id: string }> }) {
