@@ -6,7 +6,7 @@ import { auth } from "@/auth";
 import { computeRetrievability } from "@/lib/srs";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Problems — LeetcodeSRS" };
+export const metadata = { title: "Problems — NeetcodeSRS" };
 
 export default async function ProblemsPage() {
   const allProblems = await db

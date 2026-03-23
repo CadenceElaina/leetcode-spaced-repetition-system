@@ -1,144 +1,85 @@
-# LeetcodeSRS (System Repetition System)
+# NeetcodeSRS
 
-**A free, open-source spaced repetition tracker for LeetCode interview prep.**
+**Free, open-source spaced repetition for LeetCode interview prep.**
 
-LeetRepeat helps you move beyond "I solved it once" to "I actually retained it." It combines the NeetCode 150 problem set with a science-backed spaced repetition algorithm, structured attempt logging, and honest interview readiness scoring — so you always know exactly where you stand.
+NeetcodeSRS tracks what you've solved, predicts what you're forgetting, and schedules reviews automatically — so you spend time on problems that need work, not problems you already know.
 
----
-
-## The Problem
-
-You've ground through 80 LeetCode problems. But can you solve Two Sum right now, from memory, in under 10 minutes? What about that graph problem you did three weeks ago?
-
-Existing tools leave gaps:
-
-- **LeetCode** tracks submissions but not retention. You can't tell which problems are fading.
-- **NeetCode** gives you a curated list and great explanations but no spaced review system.
-- **Anki** does spaced repetition but handles code terribly — no syntax highlighting, no structured problem metadata, no complexity tracking.
-- **Spreadsheets** require manual scheduling and fall apart at scale.
-
-LeetRepeat fills all of these gaps in one place, for free.
+Built around the NeetCode 150 with a modified [FSRS](https://github.com/open-spaced-repetition/fsrs4anki) algorithm, structured attempt logging, and an interview readiness score.
 
 ---
 
 ## How It Works
 
-1. **Work a problem** on LeetCode as normal.
-2. **Log your attempt** in LeetRepeat — did you solve it independently? What was your approach? What's the time complexity? Paste your code and notes.
-3. **The algorithm schedules your review.** Problems you struggled with come back in 1–3 days. Problems you nailed come back in weeks, then months. The intervals grow as you prove retention.
-4. **Check your dashboard** to see your readiness score, weak categories, problems due today, and whether you're on pace for your target interview date.
+1. **Solve a problem** on LeetCode.
+2. **Log the attempt** — two options:
+   - **Import from NeetCode** (fastest): [neetcode.io/profile](https://neetcode.io/profile) → click a date on the activity calendar (or Roadmap → Calendar → date). On the activity page, select from below the date through the problem list, copy, and paste into the Import tab. Bulk-imports all problems for that day.
+   - **Manual**: Click "Review" or "Start" on the dashboard and fill out the attempt form (outcome, complexity, code, notes).
+3. **The algorithm schedules reviews.** Struggled? Back in 1–3 days. Nailed it? Weeks, then months. Intervals grow as you prove retention.
+4. **Track readiness** — see your tier (S–D), weak categories, review queue, and pace toward your target interview date.
 
 ---
 
 ## Features
 
-### Problem Database
+- **NeetCode 150** — categories, difficulty, LeetCode/NeetCode links, video explanations, verified optimal time & space complexity, Blind 75 flags
+- **Attempt logging** — outcome (solved/partial/no), solution quality, complexity comparison, solve time, rewrite-from-scratch signal, confidence, code, notes
+- **Spaced repetition** — FSRS-based scheduling adapted for coding problems (see [Algorithm](#algorithm) below)
+- **Readiness dashboard** — tier score, coverage, retention, category balance, consistency, pace projection toward a configurable target date
+- **Mock interviews** — random medium + hard from weak categories, 45-minute timer
+- **Pattern drills** — focused practice on a single category, sorted weakest-first
+- **NeetCode import** — paste activity from neetcode.io to bulk-log problems
 
-- Full NeetCode 150 with categories, difficulty, LeetCode/NeetCode links, video explanations, and verified optimal time & space complexity for every problem.
-- Blind 75 subset flagged for focused prep.
-- NeetCode 250 support planned.
+---
 
-### Structured Attempt Logging
+## Algorithm
 
-Every attempt captures:
+The scheduling engine is in [`src/lib/srs.ts`](src/lib/srs.ts). Full design rationale is in [`docs/PLAN.md`](docs/PLAN.md) §6–7.
 
-- Whether you solved independently (Yes / Partial / No)
-- Solution quality (Optimal / Suboptimal / Brute Force / No Solution)
-- Your time & space complexity answers — auto-compared against known optimal
-- Solve time and study time
-- Whether you could rewrite the solution from scratch
-- Confidence level (1–5)
-- Your code (syntax-highlighted editor)
-- Notes and scratch work (Markdown)
+### Retrievability
 
-### Spaced Repetition Scheduling
+$$R(t) = e^{-t/S}$$
 
-Based on FSRS (Free Spaced Repetition Scheduler) — the same research behind modern Anki — adapted for coding problems. Each problem has a **stability** value that determines when you'll see it next:
+$R$ = probability you can solve the problem today. $t$ = days since last review. $S$ = stability (days until R decays to ~37%).
 
-- Solved independently with optimal solution? Stability increases significantly.
-- Rewrote from scratch successfully? Largest stability boost (strongest signal of true understanding).
-- Couldn't solve it? Stability stays low — you'll see it again soon.
+### Stability Update
 
-The result: you spend time on problems you're forgetting, not problems you already know.
+$$S_{\text{new}} = S_{\text{old}} \times \text{multiplier} \times \text{modifier}$$
 
-### Mock Interview & Drill Modes
+**Multipliers** (by outcome × quality):
 
-- **Mock interview mode** — random medium + hard from your weak categories with a 45-minute timer. Simulates real interview conditions.
-- **Pattern-based drill mode** — focused sessions on a single pattern or category (e.g., "Practice all sliding window problems").
-- **Skip with reason** — skip a review problem that feels wrong for today without losing it. It re-enters the queue at lower priority.
+| Outcome    | Optimal | Brute Force | No Solution |
+| ---------- | :-----: | :---------: | :---------: |
+| Solved     |  2.5×   |    1.5×     |      —      |
+| Partial    |  2.0×   |    1.3×     |      —      |
+| Not solved |    —    |    0.8×     |    0.5×     |
 
-### Study Plan & Scheduling
+**Modifiers**: rewrote from scratch (+0.5), correct time complexity (+0.2), correct space complexity (+0.2), high confidence (+0.1), fast solve (+0.2), low confidence (−0.1). Stability clamped to [0.5, 365] days.
 
-- **Study plan generator** — "Here's your 12-week plan to go from D to B" with weekly targets broken down by category.
-- **Weekly review summary** — in-app digest of what's due, where retention is slipping, and what to focus on. Optional calendar integration (Google Calendar / .ics export) for scheduling review blocks.
-- **Review feedback** — tell the algorithm "this came back too early / too late" to help it learn your pace.
+### Readiness Score
 
-### Interview Readiness Dashboard
+Weighted composite (0–100):
 
-Set a target date (e.g., "I'm applying in October 2026") and the app tells you:
+| Component        | Weight | Measures                                         |
+| ---------------- | :----: | ------------------------------------------------ |
+| Coverage         |  30%   | % of NeetCode 150 attempted                      |
+| Retention        |  40%   | % of attempted problems with R > 0.7             |
+| Category Balance |  20%   | Lowest category average R                        |
+| Consistency      |  10%   | % of scheduled reviews completed (14-day window) |
 
-- **Your tier** — S through D, calibrated against real interview expectations
-- **Coverage** — which categories you've hit, which have gaps
-- **Retention** — what percentage of your solved problems you'd still pass today
-- **Pace** — whether your current rate gets you ready in time
-- **Weak spots** — categories with the lowest retention, surfaced automatically
-
-### Readiness Tiers
-
-| Tier  | Target                   | What It Means                                                          |
-| ----- | ------------------------ | ---------------------------------------------------------------------- |
-| **S** | FAANG / Top-tier         | NeetCode 150 mastered + deep into 250. Handles hards consistently.     |
-| **A** | Unicorns / Top startups  | NeetCode 150 strong. Mediums solved confidently in 20 min.             |
-| **B** | Mid-tier / Most startups | NeetCode 150 covered with solid retention. Comfortable with mediums.   |
-| **C** | Getting there            | 75+ problems with moderate retention. Easies down, working on mediums. |
-| **D** | Early stage              | Just starting or low retention across the board.                       |
+**Tiers**: S ≥ 90 · A ≥ 75 · B ≥ 55 · C ≥ 35 · D < 35
 
 ---
 
 ## Tech Stack
 
-| Layer      | Technology               | Purpose                                                               |
-| ---------- | ------------------------ | --------------------------------------------------------------------- |
-| Framework  | Next.js 16 (App Router)  | Full-stack React with SSR and API routes                              |
-| Language   | TypeScript               | Type safety across frontend and backend                               |
-| Database   | PostgreSQL               | Relational data model for users, problems, attempts, and review state |
-| ORM        | Drizzle                  | Type-safe, SQL-like queries in TypeScript                             |
-| Auth       | NextAuth.js (Auth.js v5) | GitHub and Google OAuth                                               |
-| Styling    | Tailwind CSS             | Utility-first CSS                                                     |
-| Deployment | Vercel + Supabase        | Free-tier hosting for app and database                                |
-
----
-
-## Project Structure
-
-```
-├── README.md
-├── problems.json              # Seed data: 150 problems with metadata + complexity
-├── docs/
-│   ├── PLAN.md                # Detailed design doc (features, architecture, edge cases)
-│   ├── STATUS.md              # Current implementation status vs. roadmap
-│   ├── STYLE_GUIDE.md         # Design system (colors, typography, components)
-│   └── ideas.md               # Feature ideas backlog
-├── scripts/
-│   ├── fetch_problems.py      # Data pipeline: fetches + verifies NeetCode problem data
-│   └── seed.ts                # Seeds problems.json into Postgres (problem metadata only)
-└── src/
-    ├── app/
-    │   ├── api/attempts/       # POST endpoint for logging attempts + SRS state update
-    │   ├── api/auth/           # NextAuth route handler
-    │   ├── api/notes/          # GET/PUT per-user problem notes
-    │   ├── api/review/         # Review queue + skip-with-reason endpoint
-    │   ├── dashboard/          # Unified dashboard (readiness, queue, stats)
-    │   ├── drill/              # Pattern-based drill mode
-    │   ├── mock-interview/     # Timed mock interview mode
-    │   ├── problems/           # Problem list, detail, and attempt form
-    │   ├── review/             # Focused review queue
-    │   └── stats/              # Statistics and charts
-    ├── components/             # Nav, theme toggle, badges, video embed
-    ├── db/                     # Drizzle schema + connection
-    └── lib/
-        └── srs.ts              # Core SRS engine (stability, retrievability, readiness)
-```
+| Layer     | Technology              | Purpose                              |
+| --------- | ----------------------- | ------------------------------------ |
+| Framework | Next.js 16 (App Router) | Full-stack React with SSR/API routes |
+| Language  | TypeScript              | End-to-end type safety               |
+| Database  | PostgreSQL (Supabase)   | Users, problems, attempts, SRS state |
+| ORM       | Drizzle                 | Type-safe SQL-like queries           |
+| Auth      | NextAuth v5             | GitHub OAuth                         |
+| Styling   | Tailwind CSS 4          | Utility-first CSS                    |
 
 ---
 
@@ -147,44 +88,32 @@ Set a target date (e.g., "I'm applying in October 2026") and the app tells you:
 ### Prerequisites
 
 - Node.js 18+
-- PostgreSQL 15+ (or a free [Supabase](https://supabase.com) account)
-- Python 3.10+ (for the data pipeline only)
+- PostgreSQL 15+ (or free [Supabase](https://supabase.com) account)
+- Python 3.10+ (data pipeline only)
 
 ### Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/leetrepeat.git
-cd leetrepeat
+git clone https://github.com/CadenceElaina/neetcode-spaced-repetition-system.git
+cd neetcode-spaced-repetition-system
 npm install
-```
-
-Copy `.env.example` to `.env.local` and fill in your values:
-
-```bash
 cp .env.example .env.local
 ```
 
-You'll need:
+Fill in `.env.local`:
 
 - **DATABASE_URL** — Supabase connection string (Project Settings → Database → URI)
-- **AUTH_SECRET** — run `npx auth secret` to generate
-- **AUTH_GITHUB_ID / AUTH_GITHUB_SECRET** — [create a GitHub OAuth app](https://github.com/settings/developers) with callback URL `http://localhost:3000/api/auth/callback/github`
+- **AUTH_SECRET** — run `npx auth secret`
+- **AUTH_GITHUB_ID / AUTH_GITHUB_SECRET** — [create a GitHub OAuth app](https://github.com/settings/developers) (callback: `http://localhost:3000/api/auth/callback/github`)
 
-Push the schema and seed the problem database:
+Push schema and seed problems:
 
 ```bash
 npx drizzle-kit push
 npx tsx scripts/seed.ts
 ```
 
-> **Note on `drizzle-kit push`:** If it crashes on check constraints (a known Drizzle issue), generate the SQL instead and apply it directly:
->
-> ```bash
-> npx drizzle-kit generate
-> # Then apply the generated SQL in drizzle/0000_*.sql via your Postgres client or Supabase SQL editor
-> ```
-
-`scripts/seed.ts` only inserts the 150 NeetCode problem rows (titles, categories, URLs, complexity data). **It contains no user-specific data.** Every fresh install starts with a completely empty attempts and review-state database — your activity belongs only to your account, tied to your OAuth identity.
+> If `drizzle-kit push` crashes on check constraints (known issue), use `npx drizzle-kit generate` and apply the SQL manually.
 
 Start the dev server:
 
@@ -192,78 +121,49 @@ Start the dev server:
 npm run dev
 ```
 
-### Regenerate Problem Data
+`seed.ts` inserts the 150 NeetCode problem rows only — no user data. Fresh installs start with a clean slate.
 
-The seed data is already included in `problems.json`, but if you want to regenerate it from source:
+### Regenerate Problem Data (optional)
 
 ```bash
 python scripts/fetch_problems.py
 ```
 
-This downloads problem metadata and optimal complexity data directly from the [neetcode-gh/leetcode](https://github.com/neetcode-gh/leetcode) GitHub repo (MIT licensed). No scraping, no API keys required. Runs in seconds.
+Downloads metadata from [neetcode-gh/leetcode](https://github.com/neetcode-gh/leetcode) (MIT). No scraping, no API keys.
 
 ---
 
-## Data Pipeline
+## Project Structure
 
-The `scripts/fetch_problems.py` pipeline:
-
-1. Downloads `.problemSiteData.json` from the NeetCode GitHub repo
-2. Filters to the NeetCode 150 subset
-3. Downloads the full repo as a ZIP archive (single HTTP request)
-4. Extracts `hints/*.md` files containing optimal time & space complexity
-5. Maps NeetCode's hint filenames to LeetCode problem slugs (74 of 150 use different naming)
-6. Parses complexity values from HTML hint content
-7. Runs verification checks against expected counts
-
-**Output:** `problems.json` — 150 problems, each with:
-
-- LeetCode number, title, category, difficulty
-- LeetCode URL, NeetCode URL, video explanation ID
-- Blind 75 flag
-- Optimal time and space complexity
-
-**Verification:** The pipeline checks that the output matches expected totals (150 problems, 75 Blind 75, 28 Easy / 101 Medium / 21 Hard, 18 categories) and reports any problems with missing data.
-
----
-
-## Personal Data & Fresh Installs
-
-The `scripts/seed.ts` script — the **only** script committed to this repository — inserts problem metadata only. It has no knowledge of any user's activity.
-
-There are no migrations, schema changes, or committed data tied to any individual's usage history. If you use LeetRepeat for your own prep and want to backfill historical activity from before you started using the app, you can create a local `scripts/seed-my-history.ts` script following the same pattern as `seed.ts`. Add it to `.gitignore` immediately — it should never be committed since it contains personal data.
-
-The `.gitignore` in this repo already excludes:
-
-- `.env.local` and all `*.local` env files — your credentials and database URL
-- `docs/context.md` — personal notes file
-- Any `seed-my-history.ts` script
-
-Fresh clones of this repo work with a clean slate.
-
----
-
-## Who This Is For
-
-- **CS students** preparing for internship or new grad interviews
-- **Career changers** breaking into SWE from other fields
-- **Anyone doing LeetCode** who wants to know they're actually retaining what they practice — not just checking boxes
-
-You don't need to be targeting FAANG. The tier system meets you where you are and helps you work toward whatever level you're aiming for.
+```
+problems.json                  # 150 problems with metadata + complexity
+docs/
+  PLAN.md                      # Full design doc (algorithm, architecture, roadmap)
+  STATUS.md                    # Implementation status
+  STYLE_GUIDE.md               # Design system
+scripts/
+  fetch_problems.py            # Data pipeline
+  seed.ts                      # Seeds problem metadata into Postgres
+src/
+  lib/srs.ts                   # Core SRS engine (stability, retrievability, readiness)
+  db/schema.ts                 # Drizzle schema
+  app/
+    dashboard/                 # Dashboard (queue, stats, readiness)
+    problems/                  # Problem list, detail, attempt form
+    drill/                     # Pattern drill mode
+    mock-interview/            # Timed mock interview
+    api/attempts/              # Attempt logging + SRS update
+    api/notes/                 # Per-user problem notes
+    api/review/                # Review queue + skip endpoint
+```
 
 ---
 
 ## Contributing
 
-Contributions are welcome. See [docs/PLAN.md](docs/PLAN.md) for the full design document including architecture decisions, edge cases, and the development roadmap.
+Contributions welcome. See [docs/PLAN.md](docs/PLAN.md) for architecture decisions, edge cases, and roadmap.
 
-Areas where help is especially useful:
-
-- Optimal complexity verification for edge-case problems
-- Spaced repetition algorithm tuning and calibration
-- UI/UX design for the review flow and dashboard
-- Mobile responsiveness
-- Additional language support for code storage (Python only at launch)
+Areas where help is useful: algorithm tuning, complexity verification, UI/UX, mobile responsiveness.
 
 ---
 
@@ -271,10 +171,8 @@ Areas where help is especially useful:
 
 MIT
 
----
-
 ## Acknowledgments
 
-- [NeetCode](https://neetcode.io) for the curated problem lists and category structure
-- [neetcode-gh/leetcode](https://github.com/neetcode-gh/leetcode) for open-source problem metadata and hint data (MIT licensed)
-- FSRS research by [Jarrett Ye](https://github.com/open-spaced-repetition/fsrs4anki) for the spaced repetition algorithm foundation
+- [NeetCode](https://neetcode.io) — curated problem lists and category structure
+- [neetcode-gh/leetcode](https://github.com/neetcode-gh/leetcode) — open-source problem metadata (MIT)
+- [FSRS](https://github.com/open-spaced-repetition/fsrs4anki) by Jarrett Ye — spaced repetition research foundation

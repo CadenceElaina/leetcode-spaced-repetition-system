@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { DifficultyBadge } from "@/components/difficulty-badge";
 
@@ -130,12 +131,7 @@ export function ProblemsTable({
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 <span className="flex items-center gap-1">
                   Status
-                  <span
-                    className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-muted-foreground/40 text-[9px] text-muted-foreground cursor-default"
-                    title="Retention (R) = how well you remember this problem based on time elapsed since your last review and your stability score. Strong ≥ 80% · Good ≥ 60% · Fading ≥ 40% · Weak ≥ 20% · Critical &lt; 20%"
-                  >
-                    i
-                  </span>
+                  <StatusInfoTooltip />
                 </span>
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Last</th>
@@ -193,4 +189,51 @@ export function ProblemsTable({
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function StatusInfoTooltip() {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  const updatePos = useCallback(() => {
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
+    }
+  }, []);
+
+  return (
+    <span
+      ref={ref}
+      className="relative inline-flex"
+      onMouseEnter={() => { updatePos(); setOpen(true); }}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <span
+        className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-muted-foreground/40 text-[9px] text-muted-foreground hover:text-foreground hover:border-foreground/50 transition-colors cursor-help"
+        aria-label="Status info"
+      >
+        i
+      </span>
+      {open && pos && createPortal(
+        <div
+          className="fixed z-[9999] w-56 rounded-lg border border-border bg-muted p-3 text-xs text-foreground shadow-lg"
+          style={{ top: pos.top, left: pos.left, transform: "translateX(-50%)" }}
+        >
+          <p className="font-medium mb-1.5">Retention Status</p>
+          <p className="text-muted-foreground mb-2">How likely you are to solve this problem right now, based on time since last review.</p>
+          <div className="space-y-1 text-[11px]">
+            <div className="flex justify-between"><span className="text-green-500">Strong</span><span className="text-muted-foreground">R &ge; 80%</span></div>
+            <div className="flex justify-between"><span className="text-emerald-400">Good</span><span className="text-muted-foreground">R &ge; 60%</span></div>
+            <div className="flex justify-between"><span className="text-amber-500">Fading</span><span className="text-muted-foreground">R &ge; 40%</span></div>
+            <div className="flex justify-between"><span className="text-orange-500">Weak</span><span className="text-muted-foreground">R &ge; 20%</span></div>
+            <div className="flex justify-between"><span className="text-red-500">Critical</span><span className="text-muted-foreground">R &lt; 20%</span></div>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2">Number in parentheses = total attempts</p>
+        </div>,
+        document.body,
+      )}
+    </span>
+  );
 }

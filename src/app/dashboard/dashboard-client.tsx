@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { DifficultyBadge } from "@/components/difficulty-badge";
 import { ImportClient } from "@/app/import/import-client";
@@ -20,9 +21,24 @@ type ReviewItem = {
   lastReviewedAt: string | null;
 };
 
-type ListMode = "review" | "new" | "import";
+type CompletedItem = {
+  problemId: number;
+  title: string;
+  leetcodeNumber: number | null;
+  difficulty: "Easy" | "Medium" | "Hard";
+  category: string;
+  totalAttempts: number;
+  retrievability: number;
+  stability: number;
+  lastReviewedAt: string | null;
+  daysUntilReview: number | null;
+  isDue: boolean;
+};
+
+type ListMode = "review" | "new" | "completed" | "import";
 type ReviewSort = "overdue" | "difficulty" | "category";
 type NewSort = "curriculum" | "hardest";
+type CompletedSort = "retention" | "review-date" | "category";
 
 type NewProblem = {
   id: number;
@@ -57,6 +73,13 @@ type ReadinessResult = {
   tier: "S" | "A" | "B" | "C" | "D";
 };
 
+type MasteryItem = {
+  title: string;
+  leetcodeNumber: number | null;
+  stability: number;
+  category: string;
+};
+
 type DashboardData = {
   reviewQueue: ReviewItem[];
   newProblems: NewProblem[];
@@ -64,6 +87,7 @@ type DashboardData = {
   attemptedCount: number;
   retainedCount: number;
   readiness: ReadinessResult;
+  readinessBreakdown: { coverage: number; retention: number; categoryBalance: number; consistency: number };
   currentStreak: number;
   bestStreak: number;
   avgPerDay: number;
@@ -75,6 +99,10 @@ type DashboardData = {
   totalStudyMinutes: number;
   avgSolveMinutes: number;
   avgConfidence: number;
+  masteredCount: number;
+  learningCount: number;
+  masteryList: MasteryItem[];
+  completedProblems: CompletedItem[];
   importProblems: {
     id: number;
     title: string;
@@ -182,6 +210,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
   const [listMode, setListMode] = useState<ListMode>("review");
   const [reviewSort, setReviewSort] = useState<ReviewSort>("overdue");
   const [newSort, setNewSort] = useState<NewSort>("curriculum");
+  const [completedSort, setCompletedSort] = useState<CompletedSort>("retention");
   const [queueSearch, setQueueSearch] = useState("");
 
   // Load saved settings from localStorage
@@ -262,6 +291,26 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     );
   }, [sortedNewProblems, queueSearch]);
 
+  const sortedCompleted = useMemo(() => {
+    const q = [...data.completedProblems];
+    if (completedSort === "retention") {
+      q.sort((a, b) => b.retrievability - a.retrievability);
+    } else if (completedSort === "review-date") {
+      q.sort((a, b) => (a.daysUntilReview ?? 999) - (b.daysUntilReview ?? 999));
+    } else {
+      q.sort((a, b) => a.category.localeCompare(b.category) || b.retrievability - a.retrievability);
+    }
+    return q;
+  }, [data.completedProblems, completedSort]);
+
+  const filteredCompleted = useMemo(() => {
+    if (!queueSearch.trim()) return sortedCompleted;
+    const s = queueSearch.toLowerCase();
+    return sortedCompleted.filter(
+      (p) => p.title.toLowerCase().includes(s) || String(p.leetcodeNumber ?? "").includes(s),
+    );
+  }, [sortedCompleted, queueSearch]);
+
   return (
     <div className="h-[calc(100dvh-120px)]">
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 h-full min-h-0 lg:grid-rows-1">
@@ -291,6 +340,17 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                   {data.newProblems.length > 0 && (
                     <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${listMode === "new" ? "bg-accent-foreground/20" : "bg-muted"}`}>
                       {data.newProblems.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setListMode("completed")}
+                  className={`text-sm px-2.5 py-1 rounded transition-colors ${listMode === "completed" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Done
+                  {data.completedProblems.length > 0 && (
+                    <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${listMode === "completed" ? "bg-accent-foreground/20" : "bg-muted"}`}>
+                      {data.completedProblems.length}
                     </span>
                   )}
                 </button>
@@ -354,6 +414,23 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 ))}
               </div>
             )}
+            {listMode === "completed" && (
+              <div className="flex gap-1">
+                {(["retention", "review-date", "category"] as CompletedSort[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setCompletedSort(s)}
+                    className={`text-xs px-2 py-0.5 rounded transition-colors ${
+                      completedSort === s
+                        ? "bg-muted text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {s === "retention" ? "Strongest" : s === "review-date" ? "Next review" : "Category"}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Review list */}
@@ -375,7 +452,12 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                         key={item.stateId}
                         className="flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-b-0 hover:bg-muted transition-colors duration-150"
                       >
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_DOT[prio]}`} title={prio} />
+                        <StatusDot
+                          color={PRIORITY_DOT[prio]}
+                          label={prio === "critical" ? "Critical" : prio === "high" ? "Overdue" : prio === "medium" ? "Soon" : "Due"}
+                          retrievability={item.retrievability}
+                          daysOverdue={item.daysOverdue}
+                        />
                         <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{item.leetcodeNumber}</span>
                         <div className="min-w-0 flex-1">
                           <Link href={`/problems/${item.problemId}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
@@ -445,6 +527,52 @@ export function DashboardClient({ data }: { data: DashboardData }) {
             )
           )}
 
+          {/* Completed problems list */}
+          {listMode === "completed" && (
+            data.completedProblems.length === 0 ? (
+              <div className="rounded-lg border border-border bg-muted p-6 text-center">
+                <p className="text-sm text-muted-foreground">No completed problems yet. Start reviewing!</p>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-border overflow-hidden flex-1 flex flex-col min-h-0">
+                <div className="overflow-y-auto flex-1 min-h-0">
+                  {filteredCompleted.map((item) => (
+                    <div
+                      key={item.problemId}
+                      className="flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-b-0 hover:bg-muted transition-colors duration-150"
+                    >
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${item.stability >= 30 ? "bg-green-500" : retentionBarColor(item.retrievability)}`} />
+                      <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{item.leetcodeNumber}</span>
+                      <div className="min-w-0 flex-1">
+                        <Link href={`/problems/${item.problemId}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                          {item.title}
+                        </Link>
+                        <span className="text-xs text-muted-foreground">
+                          {item.category} · {item.totalAttempts} attempt{item.totalAttempts !== 1 ? "s" : ""} · Last: {daysAgoLabel(item.lastReviewedAt)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`text-xs font-medium tabular-nums ${retentionColor(item.retrievability)}`}>
+                          {retentionLabel(item.retrievability)}
+                        </span>
+                        <DifficultyBadge difficulty={item.difficulty} />
+                        {item.isDue ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500 font-medium">
+                            Due
+                          </span>
+                        ) : item.daysUntilReview != null && item.daysUntilReview > 0 ? (
+                          <span className="text-[10px] text-muted-foreground tabular-nums">
+                            {item.daysUntilReview}d
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          )}
+
           {/* Import tab */}
           {listMode === "import" && (
             <ImportClient
@@ -458,9 +586,9 @@ export function DashboardClient({ data }: { data: DashboardData }) {
       </div>
 
       {/* ── Right Column ── */}
-      <div className="space-y-4 lg:col-span-6 overflow-y-auto min-h-0">
+      <div className="space-y-3 lg:col-span-6 overflow-y-auto min-h-0">
         {/* Countdown */}
-        <section className="rounded-lg border border-border bg-muted p-4">
+        <section className="rounded-lg border border-border bg-muted p-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-medium text-muted-foreground">Fall Recruiting Countdown</p>
             <button
@@ -501,31 +629,48 @@ export function DashboardClient({ data }: { data: DashboardData }) {
             )}
           </div>
 
-          {/* Readiness / Streak / Avg stats */}
-          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/50">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 mb-0.5">
-                <span className={`inline-flex h-6 w-6 items-center justify-center rounded text-[11px] font-bold ${TIER_COLORS[data.readiness.tier]}`}>
-                  {data.readiness.tier}
-                </span>
+          {/* Compact stats strip */}
+          <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/50 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className={`inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${TIER_COLORS[data.readiness.tier]}`}>
+                {data.readiness.tier}
+              </span>
+              <span className="text-xs text-muted-foreground">Readiness</span>
+              <InfoTooltip
+                content={
+                  <div className="space-y-1.5">
+                    <p className="font-medium">Readiness Score ({data.readiness.score}/100)</p>
+                    <p>Measures how prepared you are overall, based on:</p>
+                    <div className="space-y-1 text-[11px]">
+                      <div className="flex justify-between"><span>Coverage (30%)</span><span>{Math.round(data.readinessBreakdown.coverage * 100)}%</span></div>
+                      <div className="flex justify-between"><span>Retention (40%)</span><span>{Math.round(data.readinessBreakdown.retention * 100)}%</span></div>
+                      <div className="flex justify-between"><span>Category Balance (20%)</span><span>{Math.round(data.readinessBreakdown.categoryBalance * 100)}%</span></div>
+                      <div className="flex justify-between"><span>Consistency (10%)</span><span>{Math.round(data.readinessBreakdown.consistency * 100)}%</span></div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground pt-1">S ≥ 90 · A ≥ 75 · B ≥ 55 · C ≥ 35 · D &lt; 35</p>
+                  </div>
+                }
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-xs leading-none">🔥</span>
+              <span className="text-xs font-semibold tabular-nums">{data.currentStreak}</span>
+              <span className="text-xs text-muted-foreground">streak</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-semibold tabular-nums">{data.avgPerDay.toFixed(1)}</span>
+              <span className="text-xs text-muted-foreground">/day</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-semibold">{formatMinutes(data.totalSolveMinutes)}</span>
+              <span className="text-xs text-muted-foreground">solved</span>
+            </div>
+            {data.avgConfidence > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-semibold tabular-nums">{data.avgConfidence.toFixed(1)}/5</span>
+                <span className="text-xs text-muted-foreground">conf</span>
               </div>
-              <p className="text-sm font-semibold tabular-nums">{data.readiness.score}</p>
-              <p className="text-[11px] text-muted-foreground">Readiness</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 mb-0.5">
-                <span className="text-sm leading-none">🔥</span>
-                <p className="text-sm font-semibold tabular-nums">{data.currentStreak}</p>
-              </div>
-              {data.bestStreak > data.currentStreak && (
-                <p className="text-[11px] text-muted-foreground">Best: {data.bestStreak}</p>
-              )}
-              <p className="text-[11px] text-muted-foreground">Day Streak</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-semibold tabular-nums">{data.avgPerDay.toFixed(1)}</p>
-              <p className="text-[11px] text-muted-foreground">Avg / Day</p>
-            </div>
+            )}
           </div>
 
           {/* Settings */}
@@ -541,92 +686,101 @@ export function DashboardClient({ data }: { data: DashboardData }) {
 
 
 
-        {/* Stats row: Retained + Solve Time */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-border bg-muted p-3">
-            <p className="text-xs text-muted-foreground">Retained</p>
-            <p className="text-base font-semibold tabular-nums">
-              {data.retainedCount}<span className="text-xs text-muted-foreground"> / {data.attemptedCount || 1}</span>
-            </p>
-            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-background">
-              <div
-                className="h-full rounded-full bg-green-500"
-                style={{ width: `${data.attemptedCount > 0 ? Math.round((data.retainedCount / data.attemptedCount) * 100) : 0}%` }}
-              />
-            </div>
-          </div>
-          <div className="rounded-lg border border-border bg-muted p-3">
-            <p className="text-xs text-muted-foreground">Solve Time</p>
-            <p className="text-base font-semibold">{formatMinutes(data.totalSolveMinutes)}</p>
-            {data.avgConfidence > 0 && (
-              <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
-                {data.avgConfidence.toFixed(1)}/5 conf
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Category Breakdown */}
-        <section className="rounded-lg border border-border bg-muted p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-medium text-muted-foreground">Categories</p>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setCategoryView("weak")}
-                className={`text-xs px-2 py-0.5 rounded ${categoryView === "weak" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                Weakest
-              </button>
-              <button
-                onClick={() => setCategoryView("all")}
-                className={`text-xs px-2 py-0.5 rounded ${categoryView === "all" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                All
-              </button>
-            </div>
-          </div>
-          <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-            {displayCategories.map((cat) => (
-              <div key={cat.category} className="flex items-center gap-2">
-                <span className="text-xs w-32 shrink-0 truncate" title={cat.category}>{cat.category}</span>
-                <div className="flex-1 h-2 overflow-hidden rounded-full bg-background">
-                  <div
-                    className={`h-full rounded-full ${retentionBarColor(cat.avgRetention)}`}
-                    style={{ width: `${cat.total > 0 ? Math.round((cat.attempted / cat.total) * 100) : 0}%` }}
-                  />
-                </div>
-                <span className={`text-xs w-16 text-right shrink-0 ${cat.attempted > 0 ? retentionColor(cat.avgRetention) : "text-muted-foreground"}`}>
-                  {cat.attempted}/{cat.total}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Review Urgency */}
+        {data.reviewQueue.length > 0 && (
+          <section className="rounded-lg border border-border bg-muted p-3">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Review Priority</p>
+            <ReviewUrgencyBar queue={data.reviewQueue} />
+          </section>
+        )}
 
         {/* Activity Chart */}
-        <section className="rounded-lg border border-border bg-muted p-4 shrink-0">
-          <p className="text-xs font-medium text-muted-foreground mb-3">Activity (14 days)</p>
+        <section className="rounded-lg border border-border bg-muted p-3 shrink-0">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Activity (14 days)</p>
           <ActivityChart history={data.attemptHistory} />
         </section>
 
-        {/* Difficulty Progress */}
-        <section className="rounded-lg border border-border bg-muted p-4 shrink-0">
-          <p className="text-xs font-medium text-muted-foreground mb-3">Difficulty</p>
-          <div className="space-y-3">
-            {data.difficultyBreakdown.map((d) => {
-              const pct = d.count > 0 ? Math.round((d.attempted / d.count) * 100) : 0;
-              return (
-                <div key={d.difficulty} className="flex items-center gap-3">
-                  <span className="text-xs w-14 shrink-0">{d.difficulty}</span>
-                  <div className="flex-1 h-2 overflow-hidden rounded-full bg-background">
-                    <div className={`h-full rounded-full ${DIFF_COLORS[d.difficulty]}`} style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="text-xs text-muted-foreground w-12 text-right">{d.attempted}/{d.count}</span>
+        {/* Mastery Progress */}
+        <section className="rounded-lg border border-border bg-muted p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <p className="text-xs font-medium text-muted-foreground">Mastery Progress</p>
+            <InfoTooltip
+              content={
+                <div className="space-y-1.5">
+                  <p className="font-medium">Problem Mastery</p>
+                  <p>A problem is <span className="text-green-400 font-medium">mastered</span> when its stability reaches 30+ days — meaning the SRS won&apos;t schedule it again for at least a month.</p>
+                  <p><span className="text-accent font-medium">Learning</span> problems have been attempted but haven&apos;t reached that threshold yet.</p>
+                  <p className="text-[11px] text-muted-foreground pt-1">Mastered problems only need occasional confirmation to verify retention, especially before interviews.</p>
                 </div>
-              );
-            })}
+              }
+            />
           </div>
+          <MasteryProgress
+            mastered={data.masteredCount}
+            learning={data.learningCount}
+            total={data.totalProblems}
+            masteryList={data.masteryList}
+          />
         </section>
+
+        {/* Category + Difficulty side by side */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Category Breakdown */}
+          <section className="rounded-lg border border-border bg-muted p-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-muted-foreground">Categories</p>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setCategoryView("weak")}
+                  className={`text-[10px] px-1.5 py-0.5 rounded ${categoryView === "weak" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Weakest
+                </button>
+                <button
+                  onClick={() => setCategoryView("all")}
+                  className={`text-[10px] px-1.5 py-0.5 rounded ${categoryView === "all" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  All
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1.5 max-h-[160px] overflow-y-auto">
+              {displayCategories.map((cat) => (
+                <div key={cat.category} className="flex items-center gap-2">
+                  <span className="text-[11px] w-24 shrink-0 truncate" title={cat.category}>{cat.category}</span>
+                  <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background">
+                    <div
+                      className={`h-full rounded-full ${retentionBarColor(cat.avgRetention)}`}
+                      style={{ width: `${cat.total > 0 ? Math.round((cat.attempted / cat.total) * 100) : 0}%` }}
+                    />
+                  </div>
+                  <span className={`text-[11px] w-10 text-right shrink-0 tabular-nums ${cat.attempted > 0 ? retentionColor(cat.avgRetention) : "text-muted-foreground"}`}>
+                    {cat.attempted}/{cat.total}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Difficulty Progress */}
+          <section className="rounded-lg border border-border bg-muted p-3">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Difficulty</p>
+            <div className="space-y-2.5">
+              {data.difficultyBreakdown.map((d) => {
+                const pct = d.count > 0 ? Math.round((d.attempted / d.count) * 100) : 0;
+                return (
+                  <div key={d.difficulty} className="flex items-center gap-2">
+                    <span className="text-[11px] w-12 shrink-0">{d.difficulty}</span>
+                    <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background">
+                      <div className={`h-full rounded-full ${DIFF_COLORS[d.difficulty]}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-[11px] text-muted-foreground w-10 text-right tabular-nums">{d.attempted}/{d.count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </div>
 
       </div>
     </div>
@@ -638,33 +792,128 @@ export function DashboardClient({ data }: { data: DashboardData }) {
 
 function ActivityChart({ history }: { history: AttemptDay[] }) {
   const max = Math.max(...history.map((d) => d.count), 1);
-  const MAX_BAR_PX = 48;
+  const MAX_BAR_PX = 44;
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="flex items-end gap-1" style={{ height: MAX_BAR_PX + 20 }}>
+    <div className="flex items-end gap-0.5">
       {history.map((day) => {
         const barPx = day.count > 0
           ? Math.max(Math.round((day.count / max) * MAX_BAR_PX), 4)
           : 3;
-        // Parse as local date to avoid UTC offset shifting the displayed day
         const [, m, dd] = day.date.split("-");
         const label = `${parseInt(m)}/${parseInt(dd)}`;
+        const isToday = day.date === todayStr;
         return (
           <div
             key={day.date}
-            className="flex flex-1 flex-col items-center justify-end h-full gap-1"
-            title={`${label}: ${day.count}`}
+            className="flex flex-1 flex-col items-center justify-end gap-0.5"
+            style={{ minHeight: MAX_BAR_PX + 28 }}
           >
             {day.count > 0 && (
-              <span className="text-[10px] text-muted-foreground leading-none">{day.count}</span>
+              <span className="text-[10px] text-muted-foreground leading-none tabular-nums">{day.count}</span>
             )}
             <div
               className={`w-full rounded-t-sm ${day.count > 0 ? "bg-accent" : "bg-border/40"}`}
               style={{ height: `${barPx}px` }}
             />
+            <span className={`text-[9px] leading-none tabular-nums ${isToday ? "text-accent font-semibold" : "text-muted-foreground"}`}>
+              {label}
+            </span>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/* ── Review Urgency Bar ── */
+
+function ReviewUrgencyBar({ queue }: { queue: ReviewItem[] }) {
+  const counts = { critical: 0, high: 0, medium: 0, due: 0 };
+  queue.forEach(item => { counts[priorityLevel(item)]++; });
+  const total = queue.length;
+
+  const segments = [
+    { key: "critical", label: "Critical", color: "bg-red-500", count: counts.critical },
+    { key: "high", label: "Overdue", color: "bg-orange-500", count: counts.high },
+    { key: "medium", label: "Soon", color: "bg-amber-400", count: counts.medium },
+    { key: "due", label: "Due", color: "bg-sky-400", count: counts.due },
+  ].filter(s => s.count > 0);
+
+  return (
+    <div>
+      <div className="flex h-2.5 overflow-hidden rounded-full bg-background">
+        {segments.map((s) => (
+          <div
+            key={s.key}
+            className={`${s.color} transition-all duration-300`}
+            style={{ width: `${(s.count / total) * 100}%` }}
+          />
+        ))}
+      </div>
+      <div className="flex gap-3 mt-1.5">
+        {segments.map((s) => (
+          <div key={s.key} className="flex items-center gap-1">
+            <div className={`w-1.5 h-1.5 rounded-full ${s.color}`} />
+            <span className="text-[10px] text-muted-foreground">{s.count} {s.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Status Dot (hover tooltip) ── */
+
+function StatusDot({
+  color,
+  label,
+  retrievability,
+  daysOverdue,
+}: {
+  color: string;
+  label: string;
+  retrievability: number;
+  daysOverdue: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const updatePos = useCallback(() => {
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
+    }
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`w-2 h-2 rounded-full shrink-0 cursor-help ${color}`}
+      onMouseEnter={() => { updatePos(); setOpen(true); }}
+      onMouseLeave={() => setOpen(false)}
+    >
+      {open && pos && createPortal(
+        <div
+          className="fixed z-[9999] w-44 rounded-lg border border-border bg-muted p-2.5 text-xs text-foreground shadow-lg"
+          style={{ top: pos.top, left: pos.left, transform: "translateX(-50%)" }}
+        >
+          <p className="font-medium mb-1">{label}</p>
+          <div className="space-y-0.5 text-[11px]">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Retention</span>
+              <span className={retentionColor(retrievability)}>{Math.round(retrievability * 100)}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Overdue</span>
+              <span>{daysOverdue > 0 ? `${daysOverdue} day${daysOverdue !== 1 ? "s" : ""}` : "Due today"}</span>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
@@ -721,6 +970,113 @@ function SettingsPanel({
           Cancel
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ── Info Tooltip ── */
+
+function InfoTooltip({ content }: { content: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  const updatePos = useCallback(() => {
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
+    }
+  }, []);
+
+  return (
+    <span
+      ref={ref}
+      className="relative inline-flex"
+      onMouseEnter={() => { updatePos(); setOpen(true); }}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <span
+        className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-muted-foreground/40 text-[9px] text-muted-foreground hover:text-foreground hover:border-foreground/50 transition-colors cursor-help"
+        aria-label="More info"
+      >
+        i
+      </span>
+      {open && pos && createPortal(
+        <div
+          className="fixed z-[9999] w-64 rounded-lg border border-border bg-muted p-3 text-xs text-foreground shadow-lg"
+          style={{ top: pos.top, left: pos.left, transform: "translateX(-50%)" }}
+        >
+          {content}
+        </div>,
+        document.body,
+      )}
+    </span>
+  );
+}
+
+/* ── Mastery Progress ── */
+
+const MASTERY_THRESHOLD = 30; // stability in days
+
+function MasteryProgress({
+  mastered,
+  learning,
+  total,
+  masteryList,
+}: {
+  mastered: number;
+  learning: number;
+  total: number;
+  masteryList: MasteryItem[];
+}) {
+  const newCount = total - mastered - learning;
+  const masteredPct = total > 0 ? (mastered / total) * 100 : 0;
+  const learningPct = total > 0 ? (learning / total) * 100 : 0;
+
+  return (
+    <div>
+      {/* Stacked bar */}
+      <div className="flex h-2.5 overflow-hidden rounded-full bg-background">
+        {masteredPct > 0 && (
+          <div className="bg-green-500 transition-all duration-300" style={{ width: `${masteredPct}%` }} />
+        )}
+        {learningPct > 0 && (
+          <div className="bg-accent transition-all duration-300" style={{ width: `${learningPct}%` }} />
+        )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex gap-3 mt-1.5">
+        <div className="flex items-center gap-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          <span className="text-[10px] text-muted-foreground">{mastered} Mastered</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+          <span className="text-[10px] text-muted-foreground">{learning} Learning</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-border" />
+          <span className="text-[10px] text-muted-foreground">{newCount} New</span>
+        </div>
+      </div>
+
+      {/* Recently mastered list */}
+      {masteryList.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-border/50">
+          <p className="text-[10px] text-muted-foreground mb-1">Recently mastered</p>
+          <div className="space-y-0.5">
+            {masteryList.slice(0, 5).map((item) => (
+              <div key={item.leetcodeNumber ?? item.title} className="flex items-center gap-1.5 text-[11px]">
+                <span className="text-green-500">✓</span>
+                <span className="text-muted-foreground tabular-nums w-6 shrink-0">{item.leetcodeNumber}</span>
+                <span className="truncate">{item.title}</span>
+                <span className="ml-auto text-muted-foreground text-[10px]">{Math.round(item.stability)}d</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

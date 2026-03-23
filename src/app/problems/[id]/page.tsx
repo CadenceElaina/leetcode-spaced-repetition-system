@@ -13,8 +13,8 @@ import { computeRetrievability } from "@/lib/srs";
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const problem = await db.select().from(problems).where(eq(problems.id, Number(id))).limit(1);
-  if (!problem[0]) return { title: "Not Found — LeetcodeSRS" };
-  return { title: `${problem[0].title} — LeetcodeSRS` };
+  if (!problem[0]) return { title: "Not Found — NeetcodeSRS" };
+  return { title: `${problem[0].title} — NeetcodeSRS` };
 }
 
 export default async function ProblemDetailPage({ params }: { params: Promise<{ id: string }> }) {

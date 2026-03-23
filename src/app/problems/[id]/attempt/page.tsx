@@ -8,8 +8,8 @@ import { auth } from "@/auth";
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const rows = await db.select().from(problems).where(eq(problems.id, Number(id))).limit(1);
-  if (!rows[0]) return { title: "Not Found — LeetcodeSRS" };
-  return { title: `Log Attempt — ${rows[0].title} — LeetcodeSRS` };
+  if (!rows[0]) return { title: "Not Found — NeetcodeSRS" };
+  return { title: `Log Attempt — ${rows[0].title} — NeetcodeSRS` };
 }
 
 export default async function AttemptPage({ params }: { params: Promise<{ id: string }> }) {

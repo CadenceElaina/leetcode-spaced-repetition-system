@@ -4,8 +4,8 @@ import { ThemeProvider } from "@/components/theme";
 import { Nav } from "@/components/nav";
 
 export const metadata: Metadata = {
-  title: "LeetcodeSRS",
-  description: "Spaced repetition tracker for LeetCode interview prep",
+  title: "NeetcodeSRS",
+  description: "Spaced repetition tracker for the NeetCode 150",
 };
 
 export default function RootLayout({

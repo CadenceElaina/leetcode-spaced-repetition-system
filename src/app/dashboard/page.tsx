@@ -7,7 +7,7 @@ import { computeRetrievability, computeReadiness } from "@/lib/srs";
 import { DashboardClient } from "./dashboard-client";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Dashboard — LeetcodeSRS" };
+export const metadata = { title: "Dashboard — NeetcodeSRS" };
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -111,6 +111,47 @@ export default async function DashboardPage() {
       blind75: p.blind75,
       leetcodeUrl: p.leetcodeUrl,
     }));
+
+  // Completed: ALL attempted problems (full history of what you've worked on)
+  const reviewIds = new Set(reviewQueue.map((r) => r.problemId));
+  const completedProblems = userStates
+    .map((s) => {
+      const p = allProblems.find((prob) => prob.id === s.problemId);
+      if (!p) return null;
+      const daysSince = s.lastReviewedAt
+        ? (now.getTime() - s.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24)
+        : 999;
+      const retrievability = computeRetrievability(s.stability, daysSince);
+      const daysUntilReview = s.nextReviewAt
+        ? Math.ceil((s.nextReviewAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+      return {
+        problemId: s.problemId,
+        title: p.title,
+        leetcodeNumber: p.leetcodeNumber,
+        difficulty: p.difficulty as "Easy" | "Medium" | "Hard",
+        category: p.category,
+        totalAttempts: s.totalAttempts,
+        retrievability,
+        stability: s.stability,
+        lastReviewedAt: s.lastReviewedAt ? s.lastReviewedAt.toISOString().slice(0, 10) : null,
+        daysUntilReview,
+        isDue: reviewIds.has(s.problemId),
+      };
+    })
+    .filter(Boolean) as {
+      problemId: number;
+      title: string;
+      leetcodeNumber: number | null;
+      difficulty: "Easy" | "Medium" | "Hard";
+      category: string;
+      totalAttempts: number;
+      retrievability: number;
+      stability: number;
+      lastReviewedAt: string | null;
+      daysUntilReview: number | null;
+      isDue: boolean;
+    }[];
 
   // Compute retrievability for each attempted problem
   const retentions = allProblems
@@ -218,15 +259,37 @@ export default async function DashboardPage() {
     attempted: diffMap.get(d)?.attempted ?? 0,
   }));
 
+  // Mastery: problems with stability >= 30 days
+  const MASTERY_THRESHOLD = 30;
+  const masteryData = userStates
+    .map((s) => {
+      const p = allProblems.find((prob) => prob.id === s.problemId);
+      return p ? { title: p.title, leetcodeNumber: p.leetcodeNumber, stability: s.stability, category: p.category } : null;
+    })
+    .filter(Boolean) as { title: string; leetcodeNumber: number | null; stability: number; category: string }[];
+
+  const masteredCount = masteryData.filter((m) => m.stability >= MASTERY_THRESHOLD).length;
+  const learningCount = userStates.length - masteredCount;
+  const masteryList = masteryData
+    .filter((m) => m.stability >= MASTERY_THRESHOLD)
+    .sort((a, b) => b.stability - a.stability);
+
   return (
     <DashboardClient
       data={{
         reviewQueue,
         newProblems,
+        completedProblems,
         totalProblems: allProblems.length,
         attemptedCount: userStates.length,
         retainedCount,
         readiness: { score: readiness.score, tier: readiness.tier },
+        readinessBreakdown: {
+          coverage: readiness.coverage,
+          retention: readiness.retention,
+          categoryBalance: readiness.categoryBalance,
+          consistency: readiness.consistency,
+        },
         currentStreak: streaks.current,
         bestStreak: streaks.best,
         avgPerDay,
@@ -238,6 +301,9 @@ export default async function DashboardPage() {
         totalStudyMinutes: Number(timeRows[0]?.totalStudy ?? 0),
         avgSolveMinutes: Number(timeRows[0]?.avgSolve ?? 0),
         avgConfidence: Number(timeRows[0]?.avgConfidence ?? 0),
+        masteredCount,
+        learningCount,
+        masteryList,
         importProblems: allProblems.map((p) => ({
           id: p.id,
           title: p.title,

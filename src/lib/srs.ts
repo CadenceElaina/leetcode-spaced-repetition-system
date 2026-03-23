@@ -6,7 +6,7 @@
 /* ── Types ── */
 
 export type SolvedIndependently = "YES" | "PARTIAL" | "NO";
-export type SolutionQuality = "OPTIMAL" | "SUBOPTIMAL" | "BRUTE_FORCE" | "NONE";
+export type SolutionQuality = "OPTIMAL" | "BRUTE_FORCE" | "NONE";
 export type RewroteFromScratch = "YES" | "NO" | "DID_NOT_ATTEMPT";
 
 export interface AttemptSignals {
@@ -31,17 +31,13 @@ const RETRIEVABILITY_FLOOR = 0.3;
 const BASE_MULTIPLIERS: Record<string, number> = {
   // solved=YES
   "YES:OPTIMAL": 2.5,
-  "YES:SUBOPTIMAL": 2.0,
   "YES:BRUTE_FORCE": 1.5,
   "YES:NONE": 1.0,
   // solved=PARTIAL
   "PARTIAL:OPTIMAL": 2.0,
-  "PARTIAL:SUBOPTIMAL": 1.5,
   "PARTIAL:BRUTE_FORCE": 1.3,
   "PARTIAL:NONE": 1.0,
   // solved=NO
-  "NO:OPTIMAL": 1.0,
-  "NO:SUBOPTIMAL": 1.0,
   "NO:BRUTE_FORCE": 0.8,
   "NO:NONE": 0.5,
 };
@@ -184,8 +180,7 @@ export function computeReadiness(input: ReadinessInput): ReadinessResult {
   const categoryBalance = input.lowestCategoryAvgR;
   const consistency = input.reviewsCompletedPct;
 
-  // Weighted sum (§7.1): coverage 25%, retention 35%, category 20%, consistency 10%, pace 10%
-  // Pace is hard to compute without target date, so we allocate that 10% to coverage+retention
+  // Weighted sum: coverage 30%, retention 40%, category balance 20%, consistency 10%
   const score = Math.round(
     (coverage * 30 + retention * 40 + categoryBalance * 20 + consistency * 10) * 100,
   ) / 100;

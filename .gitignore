@@ -9,7 +9,6 @@ out/
 .env
 .env.local
 .env.*.local
-.env.example
 
 # personal notes (not for public repo)
 docs/context.md
