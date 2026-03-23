@@ -22,7 +22,7 @@ type ReviewItem = {
 
 type ListMode = "review" | "new" | "import";
 type ReviewSort = "overdue" | "difficulty" | "category";
-type NewSort = "curriculum" | "b75" | "hardest";
+type NewSort = "curriculum" | "hardest";
 
 type NewProblem = {
   id: number;
@@ -239,12 +239,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
 
   const sortedNewProblems = useMemo(() => {
     const q = [...data.newProblems];
-    if (newSort === "b75") {
-      q.sort((a, b) => {
-        if (a.blind75 !== b.blind75) return a.blind75 ? -1 : 1;
-        return (a.leetcodeNumber ?? 0) - (b.leetcodeNumber ?? 0);
-      });
-    } else if (newSort === "hardest") {
+    if (newSort === "hardest") {
       q.sort((a, b) => DIFF_ORDER[a.difficulty] - DIFF_ORDER[b.difficulty]);
     }
     // "curriculum" = default order from server (already sorted by id)
@@ -271,87 +266,92 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     <div className="flex flex-col gap-4 h-[calc(100dvh-120px)]">
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 flex-1 min-h-0 lg:grid-rows-1">
       {/* ── Combined Problem Queue ── */}
-      <div className="flex flex-col min-h-0 lg:col-span-7">
+      <div className="flex flex-col min-h-0 lg:col-span-5">
         <section className="flex flex-col flex-1 min-h-0">
-          {/* Tab header */}
-          <div className="flex items-center justify-between mb-3 shrink-0">
-            <div className="flex gap-0.5 rounded-md border border-border p-0.5">
-              <button
-                onClick={() => { setListMode("review"); setQueueSearch(""); }}
-                className={`text-sm px-3 py-1 rounded transition-colors ${listMode === "review" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                Due for Review
-                {data.reviewQueue.length > 0 && (
-                  <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${listMode === "review" ? "bg-accent-foreground/20" : "bg-muted"}`}>
-                    {data.reviewQueue.length}
-                  </span>
+          {/* Tab header — row 1: tabs + search/browse always visible */}
+          <div className="flex flex-col gap-1.5 mb-2 shrink-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex gap-0.5 rounded-md border border-border p-0.5">
+                <button
+                  onClick={() => setListMode("review")}
+                  className={`text-sm px-2.5 py-1 rounded transition-colors ${listMode === "review" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Review
+                  {data.reviewQueue.length > 0 && (
+                    <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${listMode === "review" ? "bg-accent-foreground/20" : "bg-muted"}`}>
+                      {data.reviewQueue.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setListMode("new")}
+                  className={`text-sm px-2.5 py-1 rounded transition-colors ${listMode === "new" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  New
+                  {data.newProblems.length > 0 && (
+                    <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${listMode === "new" ? "bg-accent-foreground/20" : "bg-muted"}`}>
+                      {data.newProblems.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setListMode("import")}
+                  className={`text-sm px-2.5 py-1 rounded transition-colors ${listMode === "import" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Import
+                </button>
+              </div>
+              {/* Search + Browse — always visible */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {listMode !== "import" && (
+                  <input
+                    type="text"
+                    value={queueSearch}
+                    onChange={(e) => setQueueSearch(e.target.value)}
+                    placeholder="Filter…"
+                    className="h-7 w-24 rounded border border-border bg-background px-2 text-xs placeholder:text-muted-foreground focus:outline-none"
+                  />
                 )}
-              </button>
-              <button
-                onClick={() => { setListMode("new"); setQueueSearch(""); }}
-                className={`text-sm px-3 py-1 rounded transition-colors ${listMode === "new" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                New Problems
-                {data.newProblems.length > 0 && (
-                  <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${listMode === "new" ? "bg-accent-foreground/20" : "bg-muted"}`}>
-                    {data.newProblems.length}
-                  </span>
+                {listMode === "new" && (
+                  <Link href="/problems" className="text-xs text-accent hover:underline shrink-0">
+                    Browse all →
+                  </Link>
                 )}
-              </button>
-              <button
-                onClick={() => { setListMode("import"); setQueueSearch(""); }}
-                className={`text-sm px-3 py-1 rounded transition-colors ${listMode === "import" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                Import
-              </button>
+              </div>
             </div>
-
-            {/* Sort controls — context-sensitive */}
-            {listMode === "review" && data.reviewQueue.length > 0 && (
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  value={queueSearch}
-                  onChange={(e) => setQueueSearch(e.target.value)}
-                  placeholder="Filter…"
-                  className="h-7 w-28 rounded border border-border bg-background px-2 text-xs placeholder:text-muted-foreground focus:outline-none"
-                />
-                <div className="flex gap-1 rounded-md border border-border p-0.5">
+            {/* Row 2: sort pills — left-aligned, unobtrusive */}
+            {listMode === "review" && (
+              <div className="flex gap-1">
                 {(["overdue", "difficulty", "category"] as ReviewSort[]).map((s) => (
                   <button
                     key={s}
                     onClick={() => setReviewSort(s)}
-                    className={`text-xs px-2 py-0.5 rounded transition-colors ${reviewSort === s ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`text-xs px-2 py-0.5 rounded transition-colors ${
+                      reviewSort === s
+                        ? "bg-muted text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
                   >
                     {s === "overdue" ? "Oldest" : s === "difficulty" ? "Hardest" : "Category"}
                   </button>
                 ))}
-                </div>
               </div>
             )}
-            {listMode === "new" && data.newProblems.length > 0 && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={queueSearch}
-                  onChange={(e) => setQueueSearch(e.target.value)}
-                  placeholder="Filter…"
-                  className="h-7 w-28 rounded border border-border bg-background px-2 text-xs placeholder:text-muted-foreground focus:outline-none"
-                />
-                <Link href="/problems" className="text-xs text-accent hover:underline shrink-0">
-                  Browse all →
-                </Link>
-                <div className="flex gap-1 rounded-md border border-border p-0.5">
-                  {(["curriculum", "b75", "hardest"] as NewSort[]).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setNewSort(s)}
-                      className={`text-xs px-2 py-0.5 rounded transition-colors ${newSort === s ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                    >
-                      {s === "curriculum" ? "Order" : s === "b75" ? "B75 first" : "Hardest"}
-                    </button>
-                  ))}
-                </div>
+            {listMode === "new" && (
+              <div className="flex gap-1">
+                {(["curriculum", "hardest"] as NewSort[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setNewSort(s)}
+                    className={`text-xs px-2 py-0.5 rounded transition-colors ${
+                      newSort === s
+                        ? "bg-muted text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {s === "curriculum" ? "Curriculum order" : "Hardest first"}
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -458,7 +458,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
       </div>
 
       {/* ── Right Column ── */}
-      <div className="space-y-4 lg:col-span-5 overflow-y-auto min-h-0">
+      <div className="space-y-4 lg:col-span-7 overflow-y-auto min-h-0">
         {/* Countdown */}
         <section className="rounded-lg border border-border bg-muted p-4">
           <div className="flex items-center justify-between mb-2">
@@ -539,11 +539,11 @@ export function DashboardClient({ data }: { data: DashboardData }) {
           </div>
         </div>
 
-        {/* Coverage + Retention Row */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Stats row: Coverage + Retained + Solve Time */}
+        <div className="grid grid-cols-3 gap-3">
           <div className="rounded-lg border border-border bg-muted p-3">
             <p className="text-xs text-muted-foreground">Coverage</p>
-            <p className="text-lg font-semibold tabular-nums">
+            <p className="text-base font-semibold tabular-nums">
               {data.attemptedCount}<span className="text-xs text-muted-foreground"> / {data.totalProblems}</span>
             </p>
             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-background">
@@ -554,8 +554,8 @@ export function DashboardClient({ data }: { data: DashboardData }) {
             </div>
           </div>
           <div className="rounded-lg border border-border bg-muted p-3">
-            <p className="text-xs text-muted-foreground">Retained (R &gt; 50%)</p>
-            <p className="text-lg font-semibold tabular-nums">
+            <p className="text-xs text-muted-foreground">Retained</p>
+            <p className="text-base font-semibold tabular-nums">
               {data.retainedCount}<span className="text-xs text-muted-foreground"> / {data.attemptedCount || 1}</span>
             </p>
             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-background">
@@ -565,9 +565,16 @@ export function DashboardClient({ data }: { data: DashboardData }) {
               />
             </div>
           </div>
+          <div className="rounded-lg border border-border bg-muted p-3">
+            <p className="text-xs text-muted-foreground">Solve Time</p>
+            <p className="text-base font-semibold">{formatMinutes(data.totalSolveMinutes)}</p>
+            {data.avgConfidence > 0 && (
+              <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
+                {data.avgConfidence.toFixed(1)}/5 conf
+              </p>
+            )}
+          </div>
         </div>
-
-        {/* Activity Chart (14 days) — moved to bottom row */}
 
         {/* Category Breakdown */}
         <section className="rounded-lg border border-border bg-muted p-4">
@@ -606,12 +613,11 @@ export function DashboardClient({ data }: { data: DashboardData }) {
           </div>
         </section>
 
-        {/* Time Stats — moved to bottom row */}
       </div>
     </div>
 
     {/* ── Bottom Analytics Row ── */}
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-3 shrink-0">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 shrink-0">
 
       {/* Activity Chart */}
       <section className="rounded-lg border border-border bg-muted p-4">
@@ -638,27 +644,6 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         </div>
       </section>
 
-      {/* Solve Stats */}
-      <section className="rounded-lg border border-border bg-muted p-4">
-        <p className="text-xs font-medium text-muted-foreground mb-3">Stats</p>
-        <div className="space-y-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Total Solve Time</p>
-            <p className="text-sm font-semibold">{formatMinutes(data.totalSolveMinutes)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Avg Confidence</p>
-            <p className="text-sm font-semibold">
-              {data.avgConfidence > 0 ? data.avgConfidence.toFixed(1) : "—"}
-              <span className="text-xs text-muted-foreground"> / 5</span>
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Avg / Day (30d)</p>
-            <p className="text-sm font-semibold">{data.avgPerDay.toFixed(1)}</p>
-          </div>
-        </div>
-      </section>
 
     </div>
     </div>
