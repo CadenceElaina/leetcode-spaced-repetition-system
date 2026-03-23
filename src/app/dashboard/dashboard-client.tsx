@@ -240,13 +240,13 @@ export function DashboardClient({ data }: { data: DashboardData }) {
   }, [data.newProblems, newSort]);
 
   return (
-    <div className="space-y-6">
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+    <div className="flex flex-col gap-4 h-[calc(100dvh-120px)]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 flex-1 min-h-0 lg:grid-rows-1">
       {/* ── Combined Problem Queue ── */}
-      <div className="space-y-6 lg:col-span-7">
-        <section>
+      <div className="flex flex-col min-h-0 lg:col-span-7">
+        <section className="flex flex-col flex-1 min-h-0">
           {/* Tab header */}
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 shrink-0">
             <div className="flex gap-0.5 rounded-md border border-border p-0.5">
               <button
                 onClick={() => setListMode("review")}
@@ -316,8 +316,8 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 </button>
               </div>
             ) : (
-              <div className="rounded-lg border border-border overflow-hidden">
-                <div className="max-h-[580px] overflow-y-auto">
+              <div className="rounded-lg border border-border overflow-hidden flex-1 flex flex-col min-h-0">
+                <div className="overflow-y-auto flex-1 min-h-0">
                   {sortedReviewQueue.map((item) => {
                     const prio = priorityLevel(item);
                     return (
@@ -362,8 +362,8 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 <p className="text-sm text-muted-foreground">You&apos;ve attempted every problem!</p>
               </div>
             ) : (
-              <div className="rounded-lg border border-border overflow-hidden">
-                <div className="max-h-[580px] overflow-y-auto">
+              <div className="rounded-lg border border-border overflow-hidden flex-1 flex flex-col min-h-0">
+                <div className="overflow-y-auto flex-1 min-h-0">
                   {sortedNewProblems.map((p) => (
                     <div
                       key={p.id}
@@ -398,7 +398,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
       </div>
 
       {/* ── Right Column ── */}
-      <div className="space-y-4 lg:col-span-5">
+      <div className="space-y-4 lg:col-span-5 overflow-y-auto min-h-0">
         {/* Countdown */}
         <section className="rounded-lg border border-border bg-muted p-4">
           <div className="flex items-center justify-between mb-2">
@@ -551,7 +551,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     </div>
 
     {/* ── Bottom Analytics Row ── */}
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-3 shrink-0">
 
       {/* Activity Chart */}
       <section className="rounded-lg border border-border bg-muted p-4">
