@@ -1,8 +1,8 @@
 # LeetRepeat — Design Document
 
-> **Version:** 1.0  
-> **Last Updated:** 2026-03-17  
-> **Status:** Pre-development (data pipeline complete, app development next)
+> **Version:** 1.2  
+> **Last Updated:** 2026-03-23  
+> **Status:** Feature freeze — usability-only mode
 
 ---
 
@@ -103,20 +103,40 @@ LeetRepeat is a free, open-source web application that combines structured LeetC
 
 ### FR-3: Attempt Logging
 
-- **FR-3.1:** Users log an attempt against a specific problem with the following fields:
+- **FR-3.1:** Users log an attempt via a streamlined 3-step flow:
 
-| Field                            | Type                                                   | Required | Description                                                              |
-| -------------------------------- | ------------------------------------------------------ | :------: | ------------------------------------------------------------------------ |
-| Solved independently             | Enum: Yes / Partial / No                               |    ✓     | Did you reach a working solution without external help?                  |
-| Solution quality                 | Enum: Optimal / Suboptimal / Brute Force / No Solution |    ✓     | Self-assessed quality of the approach                                    |
-| Time complexity (user's answer)  | String (e.g., "O(n log n)")                            |    ✓     | What the user believes their solution's time complexity is               |
-| Space complexity (user's answer) | String                                                 |    ✓     | Same for space                                                           |
-| Solve time                       | Integer (minutes)                                      | Optional | Time spent working on the problem                                        |
-| Study time                       | Integer (minutes)                                      | Optional | Time spent reviewing the solution afterward                              |
-| Rewrote from scratch             | Enum: Yes / No / Did Not Attempt                       | Optional | After stepping away, could you rewrite the solution?                     |
-| Confidence                       | Integer 1–5                                            |    ✓     | Gut feeling on retention. 1 = "no clue", 5 = "could do this in my sleep" |
-| Code                             | Text (multi-line)                                      | Optional | The user's solution, stored as text. Syntax-highlighted in the UI.       |
-| Notes                            | Text (Markdown)                                        | Optional | Approach, edge cases spotted, patterns recognized, mistakes made         |
+**Step 1 — Outcome:** One of three buttons:
+
+| Outcome                    | Maps to solvedIndependently | Maps to solutionQuality |
+| -------------------------- | --------------------------- | ----------------------- |
+| Could not solve            | NO                          | NONE (auto-set)         |
+| Partial — needed hint / AI | PARTIAL                     | (ask in step 2)         |
+| Solved independently       | YES                         | (ask in step 2)         |
+
+**Step 2 — Quality** (only shown if Partial or Solved): Brute Force or Optimal.
+
+**Step 3 — Details:**
+
+| Field                            | Type                  |     Required      | Description                                                                    |
+| -------------------------------- | --------------------- | :---------------: | ------------------------------------------------------------------------------ |
+| Time complexity (user's answer)  | String (e.g., "O(n)") | If solution found | Hidden when outcome is "Could not solve"                                       |
+| Space complexity (user's answer) | String                | If solution found | Hidden when outcome is "Could not solve"                                       |
+| Solve time                       | Integer (minutes)     |    Has default    | Defaults to 20 min for new problems, 15 min for reviews                        |
+| Study time                       | Integer (minutes)     |     Optional      | Time spent reviewing the solution afterward                                    |
+| Rewrote from scratch             | Yes / No toggle       |    Has default    | Defaults to No                                                                 |
+| Confidence                       | Integer 1–5 buttons   |    Has default    | Defaults to 3. Labeled: 1="Can't solve/pseudocode" → 5="Solve cold, no issues" |
+| Notes                            | Text                  |     Optional      | Key insights, patterns, mistakes                                               |
+| Code                             | Text (collapsible)    |     Optional      | Hidden by default behind "Add code" toggle                                     |
+
+**Confidence scale definitions:**
+
+| Level | Meaning                               |
+| :---: | ------------------------------------- |
+|   1   | Can't solve or pseudocode this at all |
+|   2   | Can pseudocode brute force only       |
+|   3   | Can pseudocode optimal, maybe code it |
+|   4   | Can code it, minor bugs possible      |
+|   5   | Solve cold, no issues whatsoever      |
 
 - **FR-3.2:** After submission, the system auto-compares the user's time and space complexity answers against the known optimal values and flags mismatches.
 - **FR-3.3:** Attempt history is preserved — users can view all past attempts for any problem.
@@ -136,12 +156,18 @@ LeetRepeat is a free, open-source web application that combines structured LeetC
 - **FR-5.3:** Surface weak categories — categories with the lowest average retrievability.
 - **FR-5.4:** If a target date is set, compute whether the user's current pace will get them ready in time.
 
-### FR-6: Dashboard
+### FR-6: Dashboard (Unified Hub)
 
-- **FR-6.1:** Display: readiness tier, readiness score, days until target, problems due today, problems due this week.
-- **FR-6.2:** Category coverage heatmap showing per-category retention.
-- **FR-6.3:** Streak / consistency indicator.
-- **FR-6.4:** Quick link to start today's review queue.
+The dashboard is the primary interface — a two-column layout that consolidates review queue, new problems, stats, and countdown into one view.
+
+- **FR-6.1:** **Left column:** Review queue (scrollable, all due problems with direct "Review" links to attempt form) + new/unattempted problems list (scrollable, with "Start" links).
+- **FR-6.2:** **Right column — Countdown:** Fall recruiting countdown (defaults to Sep 1 of current year, configurable target date and problem count stored in localStorage). Shows days remaining, progress bar, on-track/behind projection, and needed problems/day.
+- **FR-6.3:** **Right column — Quick stats:** Readiness tier badge + score, current streak (consecutive days with attempts), best streak, avg problems/day.
+- **FR-6.4:** **Right column — Coverage & retention:** Coverage progress bar (attempted/total), retention progress bar (retained with R > 70% / attempted).
+- **FR-6.5:** **Right column — Activity chart:** 14-day attempt history bar chart.
+- **FR-6.6:** **Right column — Difficulty progress:** Easy/Medium/Hard progress bars showing attempted/total per difficulty.
+- **FR-6.7:** **Right column — Category breakdown:** Toggle between "Weakest" (bottom 6 by avg retention) and "All" categories with retention-colored progress bars.
+- **FR-6.8:** **Right column — Time stats:** Total solve time, avg confidence.
 
 ### FR-7: Analytics
 
@@ -344,16 +370,16 @@ If a target date is set:
 
 ### Stack Decisions
 
-| Layer           | Choice                       | Rationale                                                                                                |
-| --------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **Framework**   | Next.js 14 (App Router)      | Full-stack React with SSR, API routes, and server components. Widely adopted, excellent DX.              |
-| **Language**    | TypeScript                   | Type safety across frontend and backend. Industry standard.                                              |
-| **Database**    | PostgreSQL (Supabase)        | Relational model is a natural fit. Supabase provides free hosted Postgres with connection pooling.       |
-| **ORM**         | Drizzle                      | SQL-like syntax in TypeScript. Lightweight, fast, excellent type inference. Teaches relational thinking. |
-| **Auth**        | NextAuth.js / Auth.js v5     | Battle-tested Next.js auth. GitHub + Google OAuth. Session stored in DB.                                 |
-| **Styling**     | Tailwind CSS                 | Utility-first, fast to build, no component library lock-in.                                              |
-| **Code Editor** | CodeMirror 6                 | Lightweight, extensible, supports syntax highlighting for common languages.                              |
-| **Hosting**     | Vercel (app) + Supabase (DB) | Both have generous free tiers. Zero-config deployment.                                                   |
+| Layer           | Choice                                    | Rationale                                                                                                |
+| --------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Framework**   | Next.js 16 (App Router)                   | Full-stack React with SSR, API routes, and server components. Widely adopted, excellent DX.              |
+| **Language**    | TypeScript                                | Type safety across frontend and backend. Industry standard.                                              |
+| **Database**    | PostgreSQL (Supabase)                     | Relational model is a natural fit. Supabase provides free hosted Postgres with connection pooling.       |
+| **ORM**         | Drizzle                                   | SQL-like syntax in TypeScript. Lightweight, fast, excellent type inference. Teaches relational thinking. |
+| **Auth**        | NextAuth.js / Auth.js v5                  | Battle-tested Next.js auth. GitHub + Google OAuth. Session stored in DB.                                 |
+| **Styling**     | Tailwind CSS                              | Utility-first, fast to build, no component library lock-in.                                              |
+| **Code Editor** | Plain `<textarea>` (CodeMirror 6 planned) | Lightweight textarea for MVP. CodeMirror 6 upgrade planned for syntax highlighting.                      |
+| **Hosting**     | Vercel (app) + Supabase (DB)              | Both have generous free tiers. Zero-config deployment.                                                   |
 
 ### Application Architecture
 
@@ -386,30 +412,33 @@ Server Components handle data fetching where possible (dashboard, problem list, 
 
 ### 9.1 Page Map
 
-| Page           | Route                    | Purpose                                                                        |
-| -------------- | ------------------------ | ------------------------------------------------------------------------------ |
-| Landing        | `/`                      | Unauthenticated: product info + sign in. Authenticated: redirect to dashboard. |
-| Dashboard      | `/dashboard`             | Readiness score, tier, review summary, category heatmap, streak                |
-| Review Queue   | `/review`                | Priority-ordered list of problems due for review. Start a review session.      |
-| Problem List   | `/problems`              | Browse all 150 problems. Filter, sort, see per-problem retention color.        |
-| Problem Detail | `/problems/[id]`         | Problem info, attempt history, current R/S, notes. Log new attempt.            |
-| Attempt Form   | `/problems/[id]/attempt` | The structured logging form (§FR-3). Code editor + all fields.                 |
-| Stats          | `/stats`                 | Charts and analytics (§FR-7).                                                  |
-| Settings       | `/settings`              | Target date, account, data export.                                             |
+| Page           | Route                    | Primary Nav | Purpose                                                                                            |
+| -------------- | ------------------------ | :---------: | -------------------------------------------------------------------------------------------------- |
+| Landing        | `/`                      |      —      | Redirects to dashboard.                                                                            |
+| Dashboard      | `/dashboard`             |      ✓      | Unified hub: review queue, new problems, stats, countdown, streak (see §FR-6).                     |
+| Drill          | `/drill`                 |      ✓      | Category picker → focused practice session sorted by weakest retention.                            |
+| Mock Interview | `/mock-interview`        |      ✓      | Timed 45-min session: 1 medium + 1 hard from weak categories.                                      |
+| Problem List   | `/problems`              |      —      | Browse all 150 problems. Filter by category/difficulty/Blind75/search. Linked from dashboard.      |
+| Problem Detail | `/problems/[id]`         |      —      | Problem info, complexity, notes, LeetCode/NeetCode links. "Log Attempt" CTA.                       |
+| Attempt Form   | `/problems/[id]/attempt` |      —      | Streamlined 3-step attempt logging (see §FR-3). Fits on one screen.                                |
+| Review Queue   | `/review`                |      —      | Priority-ordered list with skip/feedback. Accessible via direct URL; review queue is on dashboard. |
+| Stats          | `/stats`                 |      —      | Full analytics page (stats are summarized on dashboard right column).                              |
+
+**Navigation:** 3 primary tabs: Dashboard, Drill, Mock. Other routes still exist and are linked contextually.
 
 ### 9.2 Core User Flow: Daily Review
 
 ```
-Dashboard → "X problems due today" → Review Queue → Pick problem →
+Dashboard (review queue section) → Click "Review" on a due problem →
   Open on LeetCode (new tab) → Solve → Return to LeetRepeat →
-  Log Attempt (form) → Submit → See updated R/S →
-  Next problem in queue (or done for today)
+  Log Attempt (3-step form) → Submit → See updated R/S →
+  Return to Dashboard → Next problem in queue
 ```
 
 ### 9.3 Core User Flow: Free Practice
 
 ```
-Problem List → Filter to category → Pick a problem →
+Dashboard (new problems section) → Click "Start" on a problem →
   Problem Detail → "Log Attempt" → Attempt Form → Submit
 ```
 
@@ -560,61 +589,65 @@ A Drizzle seed script (to be written) will read `problems.json` and insert/upser
 
 ## 16. Development Roadmap
 
-### Phase 1 — Foundation
+### Phase 1 — Foundation ✅
 
 > Get the app running with core data and logging.
 
-- [ ] Initialize Next.js project (App Router, TypeScript, Tailwind)
-- [ ] Configure Drizzle ORM + PostgreSQL connection (Supabase)
-- [ ] Define Drizzle schema + generate initial migration
-- [ ] Implement database seed script (read `problems.json` → insert Problem rows)
-- [ ] Set up NextAuth with GitHub OAuth
-- [ ] Build Problem List page (browse, filter by category/difficulty)
-- [ ] Build Problem Detail page (problem info, LeetCode/NeetCode links)
-- [ ] Build Attempt Form (all fields from §FR-3, CodeMirror editor)
-- [ ] Build attempt submission API route (create Attempt, create/update UserProblemState)
+- [x] Initialize Next.js project (App Router, TypeScript, Tailwind)
+- [x] Configure Drizzle ORM + PostgreSQL connection (Supabase)
+- [x] Define Drizzle schema + generate initial migration
+- [x] Implement database seed script (read `problems.json` → insert Problem rows)
+- [x] Set up NextAuth with GitHub OAuth
+- [x] Build Problem List page (browse, filter by category/difficulty)
+- [x] Build Problem Detail page (problem info, LeetCode/NeetCode links)
+- [x] Build Attempt Form (streamlined 3-step flow — see §FR-3)
+- [x] Build attempt submission API route (create Attempt, create/update UserProblemState)
 
-### Phase 2 — The Brain
+### Phase 2 — The Brain ✅
 
 > Spaced repetition engine and review system.
 
-- [ ] Implement stability calculation logic (§6.2)
-- [ ] Implement retrievability computation (§6.1)
-- [ ] Build review queue query and API route (§6.3)
-- [ ] Build Review Queue page with skip option (skip with reason: too easy / wrong timing / wrong category — skipped problems re-enter queue at lower priority)
-- [ ] Review feedback button on each review ("this came back too early / too late") for algorithm tuning data
-- [ ] Implement readiness score computation (§7.1)
-- [ ] Implement tier assignment (§7.2)
-- [ ] Build Dashboard (readiness score, tier, category heatmap, due today)
-- [ ] Add complexity comparison logic (auto-flag time/space correctness)
-- [ ] Alternate complexity acceptance — accept multiple valid optimal complexities per problem (add `alternateComplexities` array to Problem)
+- [x] Implement stability calculation logic (§6.2)
+- [x] Implement retrievability computation (§6.1)
+- [x] Build review queue query and API route (§6.3)
+- [x] Build Review Queue page with skip option (skip with reason: too easy / wrong timing / wrong category)
+- [x] Review feedback button on each review ("this came back too early / too late")
+- [x] Implement readiness score computation (§7.1)
+- [x] Implement tier assignment (§7.2)
+- [x] Build Dashboard — unified hub layout with review queue, new problems, stats, and countdown (§FR-6)
+- [x] Add complexity comparison logic (auto-flag time/space correctness)
+- [ ] Alternate complexity acceptance — accept multiple valid optimal complexities per problem
 
-### Phase 3 — Polish
+### Phase 3 — Polish (feature freeze)
 
 > Analytics, quality of life, and extended content.
+> **Status:** Feature freeze as of 3/22/26. All remaining items are tabled until 50 problems are completed. Only usability/logging improvements are in scope.
 
-- [ ] Build Stats page (charts: problems over time, retention distribution, category breakdown)
-- [ ] Target date projection ("you need X problems/week to reach Tier B by [date]")
-- [ ] Study plan generator ("Here's your 12-week plan to go from D to B" — pacing model with weekly targets by category)
-- [ ] Mock interview mode (random medium + hard from weak categories, 45-min timer, simulates real interview conditions)
-- [ ] Pattern-based drill mode ("Practice all sliding window problems" — focused category/pattern sessions)
-- [ ] NeetCode 250 support (extend pipeline, add 100 problems)
-- [ ] Data export (JSON download of all user data)
-- [ ] Settings page (target date, account management)
-- [ ] Weekly review summary — in-app notification or text digest ("Here's what's due this week + your retention is slipping in Graphs"). Optionally link to user's calendar (Google Calendar / .ics export) for scheduled review blocks.
-- [ ] Mobile-responsive layout pass
-- [ ] Onboarding flow for new users (first-time guidance)
+- [x] Build Stats page (charts: problems over time, retention distribution, category breakdown)
+- [x] Target date countdown on dashboard (configurable date + problem count, on-track projection)
+- [x] Streak tracking (current + best streak computed from attempt dates, displayed on dashboard)
+- [x] Mock interview mode (random medium + hard from weak categories, 45-min timer)
+- [x] Pattern-based drill mode (category picker → focused session sorted weakest-first)
+- [x] Dark mode (theme toggle + localStorage persistence)
+- [ ] ~~Study plan generator~~ — tabled
+- [ ] ~~NeetCode 250 support~~ — tabled
+- [ ] ~~Data export~~ — tabled
+- [ ] ~~Settings page~~ — tabled (target date handled client-side for now)
+- [ ] ~~Weekly review summary / calendar integration~~ — tabled
+- [ ] ~~Mobile-responsive layout pass~~ — tabled
+- [ ] ~~Onboarding flow~~ — tabled
 
-### Phase 4 — Stretch
+### Phase 4 — Stretch (tabled)
 
-> Post-MVP enhancements.
+> Post-MVP enhancements. All tabled until feature freeze lifts.
 
 - [ ] Problem difficulty calibration from aggregate user data
 - [ ] Custom problem support (add your own problems beyond NeetCode lists)
-- [ ] Dark mode
 - [ ] Keyboard shortcuts for the review flow
 - [ ] Public sharing — opt-in shareable readiness profile link
-- [ ] Additional language support for code storage (Java, C++, JavaScript, etc.) — community contributions welcome
+- [ ] Additional language support for code storage (Java, C++, JavaScript, etc.)
+- [ ] Attempt history on problem detail page
+- [ ] Google OAuth (currently GitHub only)
 
 ---
 
