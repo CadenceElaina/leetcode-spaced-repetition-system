@@ -29,13 +29,13 @@ const RETRIEVABILITY_FLOOR = 0.3;
 /* ── Base multipliers (§6.2) ── */
 
 const BASE_MULTIPLIERS: Record<string, number> = {
-  // solved=YES
+  // solved=YES — quality matters
   "YES:OPTIMAL": 2.5,
   "YES:BRUTE_FORCE": 1.5,
   "YES:NONE": 1.0,
-  // solved=PARTIAL
-  "PARTIAL:OPTIMAL": 2.0,
-  "PARTIAL:BRUTE_FORCE": 1.3,
+  // solved=PARTIAL — needed help, quality is irrelevant
+  "PARTIAL:OPTIMAL": 1.1,
+  "PARTIAL:BRUTE_FORCE": 1.1,
   "PARTIAL:NONE": 1.0,
   // solved=NO
   "NO:BRUTE_FORCE": 0.8,
@@ -46,17 +46,20 @@ const BASE_MULTIPLIERS: Record<string, number> = {
 
 function computeModifier(signals: AttemptSignals): number {
   let mod = 0;
+  const solvedAlone = signals.solvedIndependently === "YES";
 
-  // Rewrote from scratch = YES → +0.5
-  if (signals.rewroteFromScratch === "YES") mod += 0.5;
+  // Rewrote from scratch = YES → +0.5 (only meaningful if solved independently)
+  if (solvedAlone && signals.rewroteFromScratch === "YES") mod += 0.5;
 
-  // Complexity correctness
-  if (signals.timeComplexityCorrect === true) mod += 0.2;
-  if (signals.spaceComplexityCorrect === true) mod += 0.2;
+  // Complexity correctness — only credit when solved independently
+  if (solvedAlone && signals.timeComplexityCorrect === true) mod += 0.2;
+  if (solvedAlone && signals.spaceComplexityCorrect === true) mod += 0.2;
 
-  // Confidence
-  if (signals.confidence >= 4) mod += 0.1;
-  if (signals.confidence <= 2) mod -= 0.1;
+  // Confidence — stronger impact
+  if (signals.confidence >= 5) mod += 0.3;
+  else if (signals.confidence >= 4) mod += 0.1;
+  else if (signals.confidence <= 1) mod -= 0.4;
+  else if (signals.confidence <= 2) mod -= 0.2;
 
   // Fast solve for mediums
   if (

@@ -59,11 +59,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Problem not found" }, { status: 404 });
   }
 
-  // Compare complexities
+  // Compare complexities — only meaningful when solved independently
+  const solvedAlone = solvedIndependently === "YES";
   const optTime = problem[0].optimalTimeComplexity;
   const optSpace = problem[0].optimalSpaceComplexity;
-  const timeCorrect = isNoSolution ? null : (optTime ? normalize(finalTimeComplexity) === normalize(optTime) : null);
-  const spaceCorrect = isNoSolution ? null : (optSpace ? normalize(finalSpaceComplexity) === normalize(optSpace) : null);
+  const timeCorrect = (isNoSolution || !solvedAlone) ? null : (optTime ? normalize(finalTimeComplexity) === normalize(optTime) : null);
+  const spaceCorrect = (isNoSolution || !solvedAlone) ? null : (optSpace ? normalize(finalSpaceComplexity) === normalize(optSpace) : null);
 
   const rewrote: RewroteFromScratch | null = VALID_REWROTE.includes(body.rewroteFromScratch)
     ? body.rewroteFromScratch
@@ -116,12 +117,17 @@ export async function POST(req: NextRequest) {
 
   const now = new Date();
 
-  // Failed attempts (couldn't solve) should be immediately due for review
+  // Failed or struggled attempts should come back quickly
   const isFailed = solvedIndependently === "NO";
+  const isStruggled = solvedIndependently === "PARTIAL" && confidence <= 2;
 
   if (existing[0]) {
     const newStability = computeNewStability(existing[0].stability, signals);
-    const nextReview = isFailed ? now : computeNextReviewDate(newStability, now);
+    const nextReview = isFailed
+      ? now // immediately
+      : isStruggled
+        ? new Date(now.getTime() + 24 * 60 * 60 * 1000) // 1 day
+        : computeNextReviewDate(newStability, now);
 
     await db
       .update(userProblemStates)
@@ -139,7 +145,11 @@ export async function POST(req: NextRequest) {
       .where(eq(userProblemStates.id, existing[0].id));
   } else {
     const initialStability = computeInitialStability(signals);
-    const nextReview = isFailed ? now : computeNextReviewDate(initialStability, now);
+    const nextReview = isFailed
+      ? now
+      : isStruggled
+        ? new Date(now.getTime() + 24 * 60 * 60 * 1000)
+        : computeNextReviewDate(initialStability, now);
 
     await db.insert(userProblemStates).values({
       userId: session.user.id,
