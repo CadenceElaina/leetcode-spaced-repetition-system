@@ -31,7 +31,7 @@ export function AttemptForm({ problemId, optimalTimeComplexity, optimalSpaceComp
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const showQuality = outcome === "PARTIAL" || outcome === "SOLVED";
+  const showQuality = outcome === "SOLVED";
   const defaultSolveTime = isReview ? 15 : 20;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -50,7 +50,7 @@ export function AttemptForm({ problemId, optimalTimeComplexity, optimalSpaceComp
       solutionQuality = "NONE";
     } else if (outcome === "PARTIAL") {
       solvedIndependently = "PARTIAL";
-      solutionQuality = quality ?? "BRUTE_FORCE";
+      solutionQuality = "BRUTE_FORCE";
     } else {
       solvedIndependently = "YES";
       solutionQuality = quality ?? "OPTIMAL";
@@ -107,7 +107,7 @@ export function AttemptForm({ problemId, optimalTimeComplexity, optimalSpaceComp
             <button
               key={opt.value}
               type="button"
-              onClick={() => { setOutcome(opt.value); if (opt.value === "NO_SOLUTION") setQuality(null); }}
+              onClick={() => { setOutcome(opt.value); if (opt.value !== "SOLVED") setQuality(null); }}
               className={`${btnBase} ${outcome === opt.value ? btnActive : btnInactive}`}
             >
               {opt.label}

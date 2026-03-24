@@ -10,6 +10,7 @@ const navLinks = [
   { href: "/problems", label: "Problems" },
   { href: "/drill", label: "Drill" },
   { href: "/mock-interview", label: "Mock" },
+  { href: "/info", label: "Info" },
 ];
 
 export function Nav() {
