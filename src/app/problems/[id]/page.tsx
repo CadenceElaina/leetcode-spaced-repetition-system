@@ -132,26 +132,26 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
 
       {/* Links */}
       <div className="flex flex-wrap gap-3">
-        <a
-          href={problem.leetcodeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-4 text-sm text-accent-foreground transition-colors duration-150 hover:opacity-90"
-        >
-          <ExternalLink size={14} />
-          Open on LeetCode
-        </a>
         {problem.neetcodeUrl && (
           <a
             href={problem.neetcodeUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-9 items-center gap-2 rounded-md px-4 text-sm text-foreground transition-colors duration-150 hover:bg-muted"
+            className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-4 text-sm text-accent-foreground transition-colors duration-150 hover:opacity-90"
           >
             <ExternalLink size={14} />
-            NeetCode Solution
+            Open on NeetCode
           </a>
         )}
+        <a
+          href={problem.leetcodeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-9 items-center gap-2 rounded-md px-4 text-sm text-foreground transition-colors duration-150 hover:bg-muted"
+        >
+          <ExternalLink size={14} />
+          Open on LeetCode
+        </a>
         {problem.videoId && (
           <VideoEmbed videoId={problem.videoId} />
         )}
