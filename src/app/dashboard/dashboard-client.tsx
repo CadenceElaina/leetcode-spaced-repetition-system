@@ -245,10 +245,15 @@ export function DashboardClient({ data }: { data: DashboardData }) {
       setSrsBanner({ oldS: Number(oldS), newS: Number(newS), next, pct: Number(pct) });
       // Clean URL without reload
       router.replace("/dashboard", { scroll: false });
-      const timer = setTimeout(() => setSrsBanner(null), 5000);
-      return () => clearTimeout(timer);
     }
   }, [searchParams, router]);
+
+  // Auto-dismiss SRS banner after 8s
+  useEffect(() => {
+    if (!srsBanner) return;
+    const timer = setTimeout(() => setSrsBanner(null), 8000);
+    return () => clearTimeout(timer);
+  }, [srsBanner]);
 
   function saveSettings(date: string, count: number) {
     setTargetDate(date);
@@ -1096,29 +1101,29 @@ function MasteryProgress({
       <div className="flex gap-3 mt-1.5">
         <div className="flex items-center gap-1">
           <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-          <span className="text-[10px] text-muted-foreground">{mastered} Mastered <span className="text-foreground/50">({masteredPct.toFixed(0)}%)</span></span>
+          <span className="text-[11px] text-muted-foreground">{mastered} Mastered <span className="text-foreground/50">({masteredPct.toFixed(0)}%)</span></span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-          <span className="text-[10px] text-muted-foreground">{learning} Learning</span>
+          <span className="text-[11px] text-muted-foreground">{learning} Learning</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-1.5 h-1.5 rounded-full bg-border" />
-          <span className="text-[10px] text-muted-foreground">{newCount} New</span>
+          <span className="text-[11px] text-muted-foreground">{newCount} New</span>
         </div>
       </div>
 
       {/* Recently mastered list */}
       {masteryList.length > 0 && (
         <div className="mt-2 pt-2 border-t border-border/50">
-          <p className="text-[10px] text-muted-foreground mb-1">Recently mastered</p>
+          <p className="text-[11px] text-muted-foreground mb-1">Recently mastered</p>
           <div className="space-y-0.5">
             {masteryList.slice(0, 5).map((item) => (
-              <div key={item.leetcodeNumber ?? item.title} className="flex items-center gap-1.5 text-[11px]">
+              <div key={item.leetcodeNumber ?? item.title} className="flex items-center gap-1.5 text-xs">
                 <span className="text-green-500">✓</span>
                 <span className="text-muted-foreground tabular-nums w-6 shrink-0">{item.leetcodeNumber}</span>
                 <span className="truncate">{item.title}</span>
-                <span className="ml-auto text-muted-foreground text-[10px]">{Math.round(item.stability)}d</span>
+                <span className="ml-auto text-muted-foreground text-[11px]">{Math.round(item.stability)}d</span>
               </div>
             ))}
           </div>
@@ -1128,21 +1133,21 @@ function MasteryProgress({
       {/* Learning problems — stability progress toward 30d */}
       {learningList.length > 0 && (
         <div className="mt-2 pt-2 border-t border-border/50">
-          <p className="text-[10px] text-muted-foreground mb-1">Learning — stability toward 30d</p>
+          <p className="text-[11px] text-muted-foreground mb-1">Learning — stability toward 30d</p>
           <div className="space-y-1">
             {displayLearning.map((item) => {
               const pct = Math.min(100, (item.stability / MASTERY_THRESHOLD) * 100);
               return (
-                <div key={item.leetcodeNumber ?? item.title} className="flex items-center gap-1.5 text-[11px] group/learn">
+                <div key={item.leetcodeNumber ?? item.title} className="flex items-center gap-1.5 text-xs group/learn">
                   <span className="text-muted-foreground tabular-nums w-6 shrink-0">{item.leetcodeNumber}</span>
-                  <span className="w-28 shrink-0 truncate group-hover/learn:text-foreground transition-colors" title={item.title}>{item.title}</span>
+                  <span className="w-32 shrink-0 truncate group-hover/learn:text-foreground transition-colors" title={item.title}>{item.title}</span>
                   <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background group-hover/learn:h-2 transition-all duration-150">
                     <div
                       className="h-full rounded-full bg-accent transition-all duration-300"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <span className="text-muted-foreground text-[10px] tabular-nums w-10 text-right shrink-0">{item.stability.toFixed(1)}d</span>
+                  <span className="text-muted-foreground text-[11px] tabular-nums w-10 text-right shrink-0">{item.stability.toFixed(1)}d</span>
                 </div>
               );
             })}
@@ -1150,7 +1155,7 @@ function MasteryProgress({
           {learningList.length > 5 && (
             <button
               onClick={() => setShowAll(!showAll)}
-              className="text-[10px] text-muted-foreground hover:text-foreground mt-1"
+              className="text-[11px] text-muted-foreground hover:text-foreground mt-1"
             >
               {showAll ? "Show less" : `Show all ${learningList.length}`}
             </button>
