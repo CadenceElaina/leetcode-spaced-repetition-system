@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    // Time-window dedup: skip if same problem has a pending submission within last 60 min
+    // Time-window dedup: skip if same problem has an unresolved pending submission within last 60 min
     const commitTime = new Date(commit.timestamp);
     const windowStart = new Date(commitTime.getTime() - 60 * 60 * 1000);
 
@@ -131,6 +131,7 @@ export async function POST(req: NextRequest) {
         and(
           eq(pendingSubmissions.userId, user.id),
           eq(pendingSubmissions.problemId, problemId),
+          eq(pendingSubmissions.status, "pending"),
           gte(pendingSubmissions.detectedAt, windowStart),
         ),
       )
