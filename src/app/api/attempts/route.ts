@@ -30,8 +30,6 @@ export async function POST(req: NextRequest) {
     problemId,
     solvedIndependently,
     solutionQuality,
-    userTimeComplexity,
-    userSpaceComplexity,
     confidence,
   } = body;
 
@@ -44,14 +42,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
-  // Complexity is required unless quality is NONE (could not solve)
-  const isNoSolution = solutionQuality === "NONE";
-  const finalTimeComplexity = isNoSolution ? "N/A" : (typeof userTimeComplexity === "string" ? userTimeComplexity.trim() : "");
-  const finalSpaceComplexity = isNoSolution ? "N/A" : (typeof userSpaceComplexity === "string" ? userSpaceComplexity.trim() : "");
-
-  if (!isNoSolution && (!finalTimeComplexity || !finalSpaceComplexity)) {
-    return NextResponse.json({ error: "Complexity required when solution was found" }, { status: 400 });
-  }
+  // Complexity fields — no longer user-tracked, always store N/A
+  const finalTimeComplexity = "N/A";
+  const finalSpaceComplexity = "N/A";
 
   // Verify problem exists
   const problem = await db.select().from(problems).where(eq(problems.id, problemId)).limit(1);
@@ -88,13 +81,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Compare complexities — only meaningful when solved independently
-  const solvedAlone = solvedIndependently === "YES";
-  const optTime = problem[0].optimalTimeComplexity;
-  const optSpace = problem[0].optimalSpaceComplexity;
-  const timeCorrect = (isNoSolution || !solvedAlone) ? null : (optTime ? normalize(finalTimeComplexity) === normalize(optTime) : null);
-  const spaceCorrect = (isNoSolution || !solvedAlone) ? null : (optSpace ? normalize(finalSpaceComplexity) === normalize(optSpace) : null);
-
   const rewrote: RewroteFromScratch | null = VALID_REWROTE.includes(body.rewroteFromScratch)
     ? body.rewroteFromScratch
     : null;
@@ -109,8 +95,8 @@ export async function POST(req: NextRequest) {
       solutionQuality,
       userTimeComplexity: finalTimeComplexity,
       userSpaceComplexity: finalSpaceComplexity,
-      timeComplexityCorrect: timeCorrect,
-      spaceComplexityCorrect: spaceCorrect,
+      timeComplexityCorrect: null,
+      spaceComplexityCorrect: null,
       solveTimeMinutes: typeof body.solveTimeMinutes === "number" ? body.solveTimeMinutes : null,
       studyTimeMinutes: typeof body.studyTimeMinutes === "number" ? body.studyTimeMinutes : null,
       rewroteFromScratch: rewrote,
@@ -126,8 +112,6 @@ export async function POST(req: NextRequest) {
     solvedIndependently: solvedIndependently as SolvedIndependently,
     solutionQuality: solutionQuality as SolutionQuality,
     rewroteFromScratch: rewrote,
-    timeComplexityCorrect: timeCorrect,
-    spaceComplexityCorrect: spaceCorrect,
     confidence,
     solveTimeMinutes: typeof body.solveTimeMinutes === "number" ? body.solveTimeMinutes : null,
     difficulty: problem[0].difficulty,
@@ -271,13 +255,10 @@ export async function DELETE(req: NextRequest) {
 
     for (let i = 0; i < remainingAttempts.length; i++) {
       const a = remainingAttempts[i];
-      const solvedAlone = a.solvedIndependently === "YES";
       const signals: AttemptSignals = {
         solvedIndependently: a.solvedIndependently as SolvedIndependently,
         solutionQuality: a.solutionQuality as SolutionQuality,
         rewroteFromScratch: a.rewroteFromScratch as RewroteFromScratch | null,
-        timeComplexityCorrect: a.timeComplexityCorrect,
-        spaceComplexityCorrect: a.spaceComplexityCorrect,
         confidence: a.confidence,
         solveTimeMinutes: a.solveTimeMinutes,
         difficulty: problem[0].difficulty,
@@ -299,8 +280,6 @@ export async function DELETE(req: NextRequest) {
       solvedIndependently: lastAttempt.solvedIndependently as SolvedIndependently,
       solutionQuality: lastAttempt.solutionQuality as SolutionQuality,
       rewroteFromScratch: lastAttempt.rewroteFromScratch as RewroteFromScratch | null,
-      timeComplexityCorrect: lastAttempt.timeComplexityCorrect,
-      spaceComplexityCorrect: lastAttempt.spaceComplexityCorrect,
       confidence: lastAttempt.confidence,
       solveTimeMinutes: lastAttempt.solveTimeMinutes,
       difficulty: problem[0].difficulty,
@@ -334,10 +313,6 @@ export async function DELETE(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true });
-}
-
-function normalize(s: string): string {
-  return s.toLowerCase().replace(/\s+/g, "");
 }
 
 function rankQuality(q: string | null): number {

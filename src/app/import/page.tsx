@@ -22,8 +22,6 @@ export default async function ImportPage() {
         leetcodeNumber: problems.leetcodeNumber,
         difficulty: problems.difficulty,
         category: problems.category,
-        optimalTimeComplexity: problems.optimalTimeComplexity,
-        optimalSpaceComplexity: problems.optimalSpaceComplexity,
       })
       .from(problems),
     db

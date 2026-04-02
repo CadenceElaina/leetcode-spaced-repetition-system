@@ -27,8 +27,6 @@ export async function GET() {
       leetcodeNumber: problems.leetcodeNumber,
       difficulty: problems.difficulty,
       category: problems.category,
-      optimalTimeComplexity: problems.optimalTimeComplexity,
-      optimalSpaceComplexity: problems.optimalSpaceComplexity,
     })
     .from(pendingSubmissions)
     .innerJoin(problems, eq(pendingSubmissions.problemId, problems.id))

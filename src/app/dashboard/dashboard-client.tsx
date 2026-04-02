@@ -91,8 +91,6 @@ type PendingItem = {
   category: string;
   isReview: boolean;
   detectedAt: string;
-  optimalTimeComplexity: string | null;
-  optimalSpaceComplexity: string | null;
 };
 
 type DashboardData = {
@@ -125,13 +123,10 @@ type DashboardData = {
     leetcodeNumber: number | null;
     difficulty: "Easy" | "Medium" | "Hard";
     category: string;
-    optimalTimeComplexity: string | null;
-    optimalSpaceComplexity: string | null;
   }[];
   importAttemptedIds: number[];
   importTodayAttemptedIds: number[];
   pendingSubmissions: PendingItem[];
-  githubConnected: boolean;
 };
 
 const TIER_COLORS: Record<string, string> = {
@@ -240,9 +235,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
   const [queueSearch, setQueueSearch] = useState("");
   const [showStatsDetail, setShowStatsDetail] = useState(false);
   const [pendingItems, setPendingItems] = useState<PendingItem[]>(data.pendingSubmissions);
-  const [dismissedSetup, setDismissedSetup] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [githubConnected, setGithubConnected] = useState(data.githubConnected);
 
   // Load saved settings from localStorage
   useEffect(() => {
@@ -451,8 +444,8 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                     problemId: item.problemId,
                     solvedIndependently: "YES",
                     solutionQuality: "OPTIMAL",
-                    userTimeComplexity: item.optimalTimeComplexity ?? "O(n)",
-                    userSpaceComplexity: item.optimalSpaceComplexity ?? "O(n)",
+                    userTimeComplexity: "N/A",
+                    userSpaceComplexity: "N/A",
                     confidence: 3,
                     solveTimeMinutes: 20,
                     source: "github",
@@ -889,14 +882,6 @@ export function DashboardClient({ data }: { data: DashboardData }) {
           </section>
         ) : (
         <>
-        {/* GitHub Sync Setup / Status Banner */}
-        {!githubConnected && !dismissedSetup && (
-          <GitHubSetupBanner onDismiss={() => setDismissedSetup(true)} onConnected={() => setGithubConnected(true)} />
-        )}
-        {githubConnected && !dismissedSetup && (
-          <GitHubConnectedBanner onDisconnect={() => { setGithubConnected(false); setDismissedSetup(false); }} />
-        )}
-
         {/* Countdown */}
         <section className="rounded-lg border border-border bg-muted p-3">
           <div className="flex items-center justify-between mb-2">
@@ -1582,166 +1567,5 @@ function PendingBanner({
         </div>
       )}
     </div>
-  );
-}
-
-/* ── GitHub Setup Banner ── */
-
-function GitHubSetupBanner({ onDismiss, onConnected }: { onDismiss: () => void; onConnected: () => void }) {
-  const [showSteps, setShowSteps] = useState(false);
-  const [connecting, setConnecting] = useState(false);
-  const [repo, setRepo] = useState("");
-  const [result, setResult] = useState<{ secret: string; webhookUrl: string } | null>(null);
-
-  async function handleConnect() {
-    if (!repo.trim()) return;
-    setConnecting(true);
-    try {
-      const res = await fetch("/api/github-sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repo: repo.trim() }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setResult({ secret: data.secret, webhookUrl: data.webhookUrl });
-      }
-    } finally {
-      setConnecting(false);
-    }
-  }
-
-  return (
-    <section className="rounded-lg border border-border bg-muted p-3 mb-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm">⚡</span>
-          <p className="text-xs font-medium text-foreground">Auto-sync from NeetCode</p>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setShowSteps(!showSteps)}
-            className="text-xs text-accent hover:underline"
-          >
-            {showSteps ? "Hide" : "Set up"}
-          </button>
-          <button onClick={onDismiss} className="text-xs text-muted-foreground hover:text-foreground ml-1">✕</button>
-        </div>
-      </div>
-      <p className="text-xs text-muted-foreground mt-1">
-        Automatically detect when you solve problems on NeetCode via GitHub webhook.
-      </p>
-
-      {showSteps && !result && (
-        <div className="mt-3 space-y-3">
-          <div className="space-y-2 text-xs text-muted-foreground">
-            <p><span className="font-medium text-foreground">1.</span> Go to <a href="https://neetcode.io/profile/github" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">neetcode.io/profile/github</a> and connect your GitHub account</p>
-            <p><span className="font-medium text-foreground">2.</span> Enter your NeetCode submissions repo below:</p>
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={repo}
-              onChange={(e) => setRepo(e.target.value)}
-              placeholder="owner/repo-name"
-              className="h-8 flex-1 rounded-md border border-border bg-background px-2.5 text-sm placeholder:text-muted-foreground focus:outline-none"
-            />
-            <button
-              onClick={handleConnect}
-              disabled={connecting || !repo.trim()}
-              className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-xs text-accent-foreground hover:opacity-90 disabled:opacity-50"
-            >
-              {connecting ? "..." : "Connect"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {result && (
-        <div className="mt-3 space-y-3">
-          <div className="rounded-md bg-green-500/10 p-2 text-xs text-green-500 font-medium">
-            Connected! Now configure the webhook in GitHub.
-          </div>
-          <div className="space-y-2 text-xs text-muted-foreground">
-            <p><span className="font-medium text-foreground">3.</span> Go to your repo → Settings → Webhooks → Add webhook</p>
-            <div>
-              <p className="text-muted-foreground mb-1">Payload URL:</p>
-              <code className="block rounded bg-background px-2 py-1.5 text-[11px] text-foreground select-all break-all">{result.webhookUrl}</code>
-            </div>
-            <p>
-              <span className="font-medium text-foreground">4.</span> <span className="font-medium text-orange-400">Change Content type</span> to <code className="rounded bg-background px-1 py-0.5 text-[11px]">application/json</code> <span className="text-orange-400">(GitHub defaults to form-urlencoded — you must change this)</span>
-            </p>
-            <div>
-              <p className="text-muted-foreground mb-1"><span className="font-medium text-foreground">5.</span> Secret:</p>
-              <code className="block rounded bg-background px-2 py-1.5 text-[11px] text-foreground select-all break-all">{result.secret}</code>
-            </div>
-            <p><span className="font-medium text-foreground">6.</span> Under &quot;Which events&quot;, select <span className="font-medium text-foreground">Just the push event</span></p>
-            <p><span className="font-medium text-foreground">7.</span> Keep SSL verification enabled, then click <span className="font-medium text-foreground">Add webhook</span></p>
-          </div>
-          <button
-            onClick={() => { onConnected(); onDismiss(); }}
-            className="text-xs text-accent hover:underline"
-          >
-            Done
-          </button>
-        </div>
-      )}
-    </section>
-  );
-}
-
-/* ── GitHub Connected Banner ── */
-
-function GitHubConnectedBanner({ onDisconnect }: { onDisconnect: () => void }) {
-  const [confirming, setConfirming] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
-
-  async function handleDisconnect() {
-    setDisconnecting(true);
-    try {
-      const res = await fetch("/api/github-sync", { method: "DELETE" });
-      if (res.ok) {
-        onDisconnect();
-      }
-    } finally {
-      setDisconnecting(false);
-      setConfirming(false);
-    }
-  }
-
-  return (
-    <section className="rounded-lg border border-border bg-muted p-3 mb-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-green-500">●</span>
-          <p className="text-xs font-medium text-foreground">GitHub sync active</p>
-        </div>
-        {!confirming ? (
-          <button
-            onClick={() => setConfirming(true)}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            Disconnect
-          </button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Disconnect?</span>
-            <button
-              onClick={handleDisconnect}
-              disabled={disconnecting}
-              className="text-xs text-red-400 hover:text-red-300 font-medium disabled:opacity-50"
-            >
-              {disconnecting ? "..." : "Yes"}
-            </button>
-            <button
-              onClick={() => setConfirming(false)}
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
-              No
-            </button>
-          </div>
-        )}
-      </div>
-    </section>
   );
 }

@@ -11,8 +11,6 @@ type DbProblem = {
   leetcodeNumber: number | null;
   difficulty: "Easy" | "Medium" | "Hard";
   category: string;
-  optimalTimeComplexity: string | null;
-  optimalSpaceComplexity: string | null;
 };
 
 type Outcome = "SOLVED" | "PARTIAL" | "NO_SOLUTION";
@@ -28,8 +26,6 @@ type ImportAttempt = {
   outcome: Outcome;
   quality: Quality;
   confidence: number;
-  userTimeComplexity: string;
-  userSpaceComplexity: string;
   notes: string;
   deleted: boolean;
   submitStatus: "idle" | "submitting" | "done" | "skipped" | "error";
@@ -134,8 +130,6 @@ function buildAttempt(
     outcome: accepted ? "SOLVED" : "NO_SOLUTION",
     quality: "OPTIMAL",
     confidence: 3,
-    userTimeComplexity: matchedProblem?.optimalTimeComplexity ?? "",
-    userSpaceComplexity: matchedProblem?.optimalSpaceComplexity ?? "",
     notes: "",
     deleted: false,
     submitStatus: "idle",
@@ -201,10 +195,6 @@ function groupIntoAttempts(
 
 function validateAttempt(a: ImportAttempt): string | null {
   if (!a.matchedProblem) return null; // will be skipped
-  if (a.outcome !== "NO_SOLUTION") {
-    if (!a.userTimeComplexity.trim()) return "Time complexity required";
-    if (!a.userSpaceComplexity.trim()) return "Space complexity required";
-  }
   return null;
 }
 
@@ -300,12 +290,8 @@ export function ImportClient({ allProblems, attemptedIds, todayAttemptedIds, onD
               ? "PARTIAL"
               : "NO",
         solutionQuality: isNoSolution ? "NONE" : attempt.quality,
-        userTimeComplexity: isNoSolution
-          ? "N/A"
-          : attempt.userTimeComplexity || "N/A",
-        userSpaceComplexity: isNoSolution
-          ? "N/A"
-          : attempt.userSpaceComplexity || "N/A",
+        userTimeComplexity: "N/A",
+        userSpaceComplexity: "N/A",
         confidence: attempt.confidence,
         solveTimeMinutes: attempt.solveTimeMinutes,
         rewroteFromScratch: attempt.isReview ? "YES" : "DID_NOT_ATTEMPT",
@@ -447,9 +433,6 @@ export function ImportClient({ allProblems, attemptedIds, todayAttemptedIds, onD
   const validIdle = activeAttempts.filter(
     (a) => a.matchedProblem && a.submitStatus === "idle" && !validateAttempt(a),
   );
-  const invalidCount = activeAttempts.filter(
-    (a) => a.matchedProblem && a.submitStatus === "idle" && validateAttempt(a),
-  ).length;
 
   return (
     <div className={embedded ? "flex flex-col flex-1 min-h-0 gap-3" : "max-w-2xl mx-auto space-y-4"}>
@@ -464,12 +447,6 @@ export function ImportClient({ allProblems, attemptedIds, todayAttemptedIds, onD
               <span className="text-amber-500">
                 {" "}
                 · {unmatched.length} unmatched (will skip)
-              </span>
-            )}
-            {invalidCount > 0 && (
-              <span className="text-red-400">
-                {" "}
-                · {invalidCount} missing complexity
               </span>
             )}
           </p>
@@ -523,8 +500,6 @@ function AttemptCard({ attempt, onUpdate, onDelete }: CardProps) {
     outcome,
     quality,
     confidence,
-    userTimeComplexity,
-    userSpaceComplexity,
     notes,
     submitStatus,
     submitError,
@@ -554,8 +529,16 @@ function AttemptCard({ attempt, onUpdate, onDelete }: CardProps) {
         <span className="text-sm font-medium text-muted-foreground">
           {matchedProblem?.title ?? attempt.rawTitle}
         </span>
-        <span className="ml-auto text-xs text-muted-foreground">
-          {submitError ?? "Already logged today"}
+        <span className="ml-auto flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {submitError ?? "Already logged today"}
+          </span>
+          <button
+            onClick={() => onUpdate({ submitStatus: "idle", submitError: null })}
+            className="text-xs text-accent hover:underline"
+          >
+            Log anyway
+          </button>
         </span>
       </div>
     );
@@ -572,7 +555,7 @@ function AttemptCard({ attempt, onUpdate, onDelete }: CardProps) {
     );
   }
 
-  const showComplexity = outcome !== "NO_SOLUTION";
+  const showQuality = outcome !== "NO_SOLUTION";
 
   return (
     <div
@@ -659,7 +642,7 @@ function AttemptCard({ attempt, onUpdate, onDelete }: CardProps) {
           </div>
 
           {/* Quality (not shown for NO_SOLUTION) */}
-          {showComplexity && (
+          {showQuality && (
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-muted-foreground w-16 shrink-0">Quality:</span>
               {(["OPTIMAL", "BRUTE_FORCE"] as Quality[]).map(
@@ -677,48 +660,6 @@ function AttemptCard({ attempt, onUpdate, onDelete }: CardProps) {
                   </button>
                 ),
               )}
-            </div>
-          )}
-
-          {/* Complexity */}
-          {showComplexity && (
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-muted-foreground shrink-0">
-                  Time:
-                </label>
-                <input
-                  type="text"
-                  value={userTimeComplexity}
-                  onChange={(e) =>
-                    onUpdate({ userTimeComplexity: e.target.value })
-                  }
-                  placeholder="O(n)"
-                  className={`w-24 rounded border px-2 py-0.5 text-xs bg-background ${
-                    !userTimeComplexity.trim() && validationError
-                      ? "border-red-500"
-                      : "border-border"
-                  }`}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-muted-foreground shrink-0">
-                  Space:
-                </label>
-                <input
-                  type="text"
-                  value={userSpaceComplexity}
-                  onChange={(e) =>
-                    onUpdate({ userSpaceComplexity: e.target.value })
-                  }
-                  placeholder="O(1)"
-                  className={`w-24 rounded border px-2 py-0.5 text-xs bg-background ${
-                    !userSpaceComplexity.trim() && validationError
-                      ? "border-red-500"
-                      : "border-border"
-                  }`}
-                />
-              </div>
             </div>
           )}
 

@@ -46,8 +46,6 @@ export default async function AttemptPage({ params }: { params: Promise<{ id: st
         problemId={problem.id}
         problemTitle={problem.title}
         leetcodeNumber={problem.leetcodeNumber}
-        optimalTimeComplexity={problem.optimalTimeComplexity}
-        optimalSpaceComplexity={problem.optimalSpaceComplexity}
         isReview={isReview}
       />
     </div>

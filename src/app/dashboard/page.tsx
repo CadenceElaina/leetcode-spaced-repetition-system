@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { db } from "@/db";
-import { problems, userProblemStates, attempts, pendingSubmissions, users } from "@/db/schema";
+import { problems, userProblemStates, attempts, pendingSubmissions } from "@/db/schema";
 import { auth } from "@/auth";
 import { eq, and, asc, count, sql, sum, avg, gte, lt } from "drizzle-orm";
 import Link from "next/link";
@@ -38,7 +38,7 @@ export default async function DashboardPage() {
   tomorrowStart.setDate(tomorrowStart.getDate() + 1);
 
   // Parallel data fetching
-  const [allProblems, userStates, attemptDateRows, timeRows, pendingRows, userRows, todayAttemptRows] = await Promise.all([
+  const [allProblems, userStates, attemptDateRows, timeRows, pendingRows, todayAttemptRows] = await Promise.all([
     db.select().from(problems).orderBy(asc(problems.id)),
     db.select().from(userProblemStates).where(eq(userProblemStates.userId, userId)),
     db
@@ -69,8 +69,6 @@ export default async function DashboardPage() {
         leetcodeNumber: problems.leetcodeNumber,
         difficulty: problems.difficulty,
         category: problems.category,
-        optimalTimeComplexity: problems.optimalTimeComplexity,
-        optimalSpaceComplexity: problems.optimalSpaceComplexity,
       })
       .from(pendingSubmissions)
       .innerJoin(problems, eq(pendingSubmissions.problemId, problems.id))
@@ -81,11 +79,6 @@ export default async function DashboardPage() {
         ),
       )
       .orderBy(pendingSubmissions.detectedAt),
-    db
-      .select({ githubRepo: users.githubRepo })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1),
     db
       .select({ problemId: attempts.problemId })
       .from(attempts)
@@ -359,8 +352,6 @@ export default async function DashboardPage() {
           leetcodeNumber: p.leetcodeNumber,
           difficulty: p.difficulty as "Easy" | "Medium" | "Hard",
           category: p.category,
-          optimalTimeComplexity: p.optimalTimeComplexity,
-          optimalSpaceComplexity: p.optimalSpaceComplexity,
         })),
         importAttemptedIds: [...attemptedIds],
         importTodayAttemptedIds: todayAttemptRows.map((a) => a.problemId),
@@ -373,10 +364,7 @@ export default async function DashboardPage() {
           category: p.category,
           isReview: p.isReview,
           detectedAt: p.detectedAt.toISOString(),
-          optimalTimeComplexity: p.optimalTimeComplexity,
-          optimalSpaceComplexity: p.optimalSpaceComplexity,
         })),
-        githubConnected: !!userRows[0]?.githubRepo,
       }}
     />
     </Suspense>

@@ -13,8 +13,6 @@ export interface AttemptSignals {
   solvedIndependently: SolvedIndependently;
   solutionQuality: SolutionQuality;
   rewroteFromScratch: RewroteFromScratch | null;
-  timeComplexityCorrect: boolean | null;
-  spaceComplexityCorrect: boolean | null;
   confidence: number; // 1–5
   solveTimeMinutes: number | null;
   difficulty: "Easy" | "Medium" | "Hard";
@@ -50,10 +48,6 @@ function computeModifier(signals: AttemptSignals): number {
 
   // Rewrote from scratch = YES → +0.5 (only meaningful if solved independently)
   if (solvedAlone && signals.rewroteFromScratch === "YES") mod += 0.5;
-
-  // Complexity correctness — only credit when solved independently
-  if (solvedAlone && signals.timeComplexityCorrect === true) mod += 0.2;
-  if (solvedAlone && signals.spaceComplexityCorrect === true) mod += 0.2;
 
   // Confidence — stronger impact
   if (signals.confidence >= 5) mod += 0.3;

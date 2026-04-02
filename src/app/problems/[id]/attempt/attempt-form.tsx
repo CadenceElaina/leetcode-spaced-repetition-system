@@ -17,12 +17,10 @@ type Props = {
   problemId: number;
   problemTitle: string;
   leetcodeNumber: number | null;
-  optimalTimeComplexity: string | null;
-  optimalSpaceComplexity: string | null;
   isReview: boolean;
 };
 
-export function AttemptForm({ problemId, problemTitle, leetcodeNumber, optimalTimeComplexity, optimalSpaceComplexity, isReview }: Props) {
+export function AttemptForm({ problemId, problemTitle, leetcodeNumber, isReview }: Props) {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [quality, setQuality] = useState<Quality | null>(null);
   const [confidence, setConfidence] = useState(3);
@@ -55,8 +53,8 @@ export function AttemptForm({ problemId, problemTitle, leetcodeNumber, optimalTi
       problemId,
       solvedIndependently,
       solutionQuality,
-      userTimeComplexity: quality === "OPTIMAL" ? (optimalTimeComplexity ?? "N/A") : "N/A",
-      userSpaceComplexity: quality === "OPTIMAL" ? (optimalSpaceComplexity ?? "N/A") : "N/A",
+      userTimeComplexity: "N/A",
+      userSpaceComplexity: "N/A",
       solveTimeMinutes: Number(form.get("solveTimeMinutes")) || null,
       studyTimeMinutes: Number(form.get("studyTimeMinutes")) || null,
       rewroteFromScratch: rewrote ? "YES" : "NO",
@@ -182,7 +180,7 @@ export function AttemptForm({ problemId, problemTitle, leetcodeNumber, optimalTi
               onClick={() => setQuality("BRUTE_FORCE")}
               className={`${btnBase} ${quality === "BRUTE_FORCE" ? "border-orange-500 bg-orange-500/10 text-orange-500 font-medium" : btnInactive}`}
             >
-              Brute Force
+              Not Optimal
             </button>
             <button
               type="button"
@@ -193,13 +191,6 @@ export function AttemptForm({ problemId, problemTitle, leetcodeNumber, optimalTi
             </button>
           </div>
         </div>
-      )}
-
-      {/* Optimal complexity hint */}
-      {showQuality && (optimalTimeComplexity || optimalSpaceComplexity) && (
-        <p className="text-xs text-muted-foreground">
-          Optimal: Time {optimalTimeComplexity ?? "?"} · Space {optimalSpaceComplexity ?? "?"}
-        </p>
       )}
 
       {/* Timing */}
