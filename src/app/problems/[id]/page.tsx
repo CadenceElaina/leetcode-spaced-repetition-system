@@ -7,6 +7,7 @@ import { DifficultyBadge } from "@/components/difficulty-badge";
 import { ExternalLink } from "lucide-react";
 import { VideoEmbed } from "@/components/video-embed";
 import { ProblemNotes } from "@/components/problem-notes";
+import { DeleteAttemptButton } from "@/components/delete-attempt-button";
 import { auth } from "@/auth";
 import { computeRetrievability } from "@/lib/srs";
 
@@ -216,6 +217,7 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
                   <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Confidence</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Time</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Complexity</th>
+                  <th className="px-4 py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -246,6 +248,9 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                    </td>
+                    <td className="px-4 py-2">
+                      <DeleteAttemptButton attemptId={a.id} />
                     </td>
                   </tr>
                 ))}

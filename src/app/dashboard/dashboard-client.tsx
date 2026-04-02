@@ -271,10 +271,11 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     const target = new Date(targetDate + "T00:00:00");
     const daysLeft = Math.max(0, Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
     const remaining = Math.max(0, targetCount - data.attemptedCount);
-    const projected = Math.min(targetCount, data.attemptedCount + Math.round(data.avgNewPerDay * daysLeft));
-    const onTrack = projected >= targetCount;
+    const projectedRaw = data.attemptedCount + Math.round(data.avgNewPerDay * daysLeft);
+    const projected = Math.min(targetCount, projectedRaw);
+    const onTrack = projectedRaw >= targetCount;
     const neededPerDay = daysLeft > 0 ? remaining / daysLeft : remaining;
-    return { daysLeft, remaining, projected, onTrack, neededPerDay };
+    return { daysLeft, remaining, projected, projectedRaw, onTrack, neededPerDay };
   }, [targetDate, targetCount, data.attemptedCount, data.avgNewPerDay]);
 
   const weakCategories = useMemo(() =>
@@ -705,7 +706,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
               <span className="text-xs text-muted-foreground">/day</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className={`text-xs font-semibold tabular-nums ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>{countdown.projected}</span>
+              <span className={`text-xs font-semibold tabular-nums ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>{countdown.projectedRaw}</span>
               <span className="text-xs text-muted-foreground">projected</span>
             </div>
             <div className="flex items-center gap-1">
