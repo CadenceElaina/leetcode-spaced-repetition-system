@@ -32,7 +32,7 @@ type ImportAttempt = {
   userSpaceComplexity: string;
   notes: string;
   deleted: boolean;
-  submitStatus: "idle" | "submitting" | "done" | "error";
+  submitStatus: "idle" | "submitting" | "done" | "skipped" | "error";
   submitError: string | null;
 };
 
@@ -307,10 +307,18 @@ export function ImportClient({ allProblems, attemptedIds, onDone, embedded }: Pr
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          updateAttempt(attempt.id, {
-            submitStatus: "error",
-            submitError: (data as { error?: string }).error ?? "Failed",
-          });
+          if (res.status === 409) {
+            updateAttempt(attempt.id, {
+              submitStatus: "skipped",
+              submitError: (data as { message?: string }).message ?? "Already logged today",
+            });
+            count++;
+          } else {
+            updateAttempt(attempt.id, {
+              submitStatus: "error",
+              submitError: (data as { error?: string }).error ?? "Failed",
+            });
+          }
         } else {
           updateAttempt(attempt.id, { submitStatus: "done" });
           count++;
@@ -326,7 +334,7 @@ export function ImportClient({ allProblems, attemptedIds, onDone, embedded }: Pr
     setSubmittedCount((c) => c + count);
     // Transition to done if no errors remain
     const stillHasErrors = attempts
-      .filter((a) => !a.deleted && a.submitStatus !== "done")
+      .filter((a) => !a.deleted && a.submitStatus !== "done" && a.submitStatus !== "skipped")
       .some((a) => a.submitStatus === "error");
     if (!stillHasErrors && count > 0) {
       if (onDone) {
@@ -521,6 +529,20 @@ function AttemptCard({ attempt, onUpdate, onDelete }: CardProps) {
         </span>
         <span className="ml-auto text-xs text-muted-foreground">
           {isReview ? "Review" : "New"} · logged
+        </span>
+      </div>
+    );
+  }
+
+  if (submitStatus === "skipped") {
+    return (
+      <div className="flex items-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
+        <span className="text-yellow-500">⊘</span>
+        <span className="text-sm font-medium text-muted-foreground">
+          {matchedProblem?.title ?? attempt.rawTitle}
+        </span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {submitError ?? "Already logged today"}
         </span>
       </div>
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type Outcome = "NO_SOLUTION" | "PARTIAL" | "SOLVED";
 type Quality = "BRUTE_FORCE" | "OPTIMAL";
@@ -30,18 +30,13 @@ export function AttemptForm({ problemId, problemTitle, leetcodeNumber, optimalTi
   const [showCode, setShowCode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const showQuality = outcome === "SOLVED";
   const defaultSolveTime = isReview ? 15 : 20;
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!outcome) return;
-    setSubmitting(true);
-    setError(null);
-
-    const form = new FormData(e.currentTarget);
-
+  function buildBody(form: FormData, force = false) {
     let solvedIndependently: string;
     let solutionQuality: string;
 
@@ -56,7 +51,7 @@ export function AttemptForm({ problemId, problemTitle, leetcodeNumber, optimalTi
       solutionQuality = quality ?? "OPTIMAL";
     }
 
-    const body = {
+    return {
       problemId,
       solvedIndependently,
       solutionQuality,
@@ -68,8 +63,11 @@ export function AttemptForm({ problemId, problemTitle, leetcodeNumber, optimalTi
       confidence,
       code: form.get("code") || null,
       notes: form.get("notes") || null,
+      ...(force && { force: true }),
     };
+  }
 
+  async function submitAttempt(body: Record<string, unknown>) {
     const res = await fetch("/api/attempts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -78,10 +76,58 @@ export function AttemptForm({ problemId, problemTitle, leetcodeNumber, optimalTi
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error || "Something went wrong");
+      if (res.status === 409) {
+        setDuplicateWarning(true);
+        setSubmitting(false);
+        return;
+      }
+      setError((data as { error?: string }).error || "Something went wrong");
       setSubmitting(false);
       return;
     }
+
+    return res;
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!outcome) return;
+    setSubmitting(true);
+    setError(null);
+    setDuplicateWarning(false);
+
+    const form = new FormData(e.currentTarget);
+    formRef.current = e.currentTarget;
+    const body = buildBody(form);
+
+    const res = await submitAttempt(body);
+    if (!res) return;
+
+    const data = await res.json();
+    const srs = data.srs;
+    const params = new URLSearchParams({
+      oldS: String(srs.oldStability),
+      newS: String(srs.newStability),
+      next: srs.nextReviewAt,
+      pct: String(srs.masteryPct),
+      attemptId: data.id,
+      pName: problemTitle,
+      pNum: String(leetcodeNumber ?? ""),
+    });
+    window.location.href = `/dashboard?${params.toString()}`;
+  }
+
+  async function handleForceSubmit() {
+    if (!formRef.current || !outcome) return;
+    setSubmitting(true);
+    setDuplicateWarning(false);
+    setError(null);
+
+    const form = new FormData(formRef.current);
+    const body = buildBody(form, true);
+
+    const res = await submitAttempt(body);
+    if (!res) return;
 
     const data = await res.json();
     const srs = data.srs;
@@ -231,6 +277,28 @@ export function AttemptForm({ problemId, problemTitle, leetcodeNumber, optimalTi
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {duplicateWarning && (
+        <div className="rounded-md border border-yellow-500/40 bg-yellow-500/5 p-3 space-y-2">
+          <p className="text-sm text-yellow-500">You already logged this problem today.</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleForceSubmit}
+              className="inline-flex h-8 items-center rounded-md bg-yellow-600 px-3 text-xs text-white hover:bg-yellow-700"
+            >
+              Log Again Anyway
+            </button>
+            <button
+              type="button"
+              onClick={() => setDuplicateWarning(false)}
+              className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs text-muted-foreground hover:bg-muted"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <button
         type="submit"

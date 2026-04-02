@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { attempts, userProblemStates, problems } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lt } from "drizzle-orm";
 import {
   computeNewStability,
   computeInitialStability,
@@ -57,6 +57,35 @@ export async function POST(req: NextRequest) {
   const problem = await db.select().from(problems).where(eq(problems.id, problemId)).limit(1);
   if (!problem[0]) {
     return NextResponse.json({ error: "Problem not found" }, { status: 404 });
+  }
+
+  // Duplicate check: same user + problem + calendar day
+  const skipDupeCheck = body.force === true;
+  if (!skipDupeCheck) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+    const existing = await db
+      .select({ id: attempts.id })
+      .from(attempts)
+      .where(
+        and(
+          eq(attempts.userId, session.user.id),
+          eq(attempts.problemId, problemId),
+          gte(attempts.createdAt, todayStart),
+          lt(attempts.createdAt, tomorrowStart),
+        ),
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      return NextResponse.json(
+        { error: "duplicate", message: `Already logged ${problem[0].title} today` },
+        { status: 409 },
+      );
+    }
   }
 
   // Compare complexities — only meaningful when solved independently
