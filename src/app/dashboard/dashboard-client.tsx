@@ -451,9 +451,10 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                     confidence: 3,
                     solveTimeMinutes: 20,
                     source: "github",
+                    force: true,
                   }),
                 });
-                if (res.ok || res.status === 409) {
+                if (res.ok) {
                   // Mark pending as confirmed
                   await fetch("/api/pending", {
                     method: "POST",
