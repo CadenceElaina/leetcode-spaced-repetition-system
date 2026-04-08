@@ -41,14 +41,20 @@ function statusLabel(r: number, bestQuality?: string | null): { label: string; c
 export function ProblemsTable({
   problems,
   problemStates,
+  initialCategory,
+  initialDifficulty,
+  initialStatus,
 }: {
   problems: Problem[];
   problemStates: Record<number, ProblemState>;
+  initialCategory?: string;
+  initialDifficulty?: string;
+  initialStatus?: string;
 }) {
   const [search, setSearch] = useState("");
-  const [difficultyFilter, setDifficultyFilter] = useState<string>(ALL);
-  const [categoryFilter, setCategoryFilter] = useState<string>(ALL);
-  const [statusFilter, setStatusFilter] = useState<string>(ALL);
+  const [difficultyFilter, setDifficultyFilter] = useState<string>(initialDifficulty ?? ALL);
+  const [categoryFilter, setCategoryFilter] = useState<string>(initialCategory ?? ALL);
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? ALL);
   const [blind75Only, setBlind75Only] = useState(false);
 
   const categories = useMemo(

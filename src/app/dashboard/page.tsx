@@ -274,11 +274,19 @@ export default async function DashboardPage() {
   const avgNewPerDay = newProbsRecent / 14;
 
   // Attempt history (last 14 days) with new vs review breakdown
-  // A "new" attempt on a given day = a userProblemState was created that day
+  // A "new" attempt on a given day = the first-ever attempt for that problem
+  const firstAttemptByProblem = await db
+    .select({
+      problemId: attempts.problemId,
+      firstDate: sql<string>`date(min(${attempts.createdAt}))`,
+    })
+    .from(attempts)
+    .where(eq(attempts.userId, userId))
+    .groupBy(attempts.problemId);
+
   const newByDate = new Map<string, number>();
-  for (const s of userStates) {
-    const d = s.createdAt.toISOString().slice(0, 10);
-    newByDate.set(d, (newByDate.get(d) ?? 0) + 1);
+  for (const r of firstAttemptByProblem) {
+    newByDate.set(r.firstDate, (newByDate.get(r.firstDate) ?? 0) + 1);
   }
 
   const attemptHistory: { date: string; count: number; newCount: number; reviewCount: number }[] = [];
@@ -310,9 +318,9 @@ export default async function DashboardPage() {
   const masteryData = userStates
     .map((s) => {
       const p = allProblems.find((prob) => prob.id === s.problemId);
-      return p ? { title: p.title, leetcodeNumber: p.leetcodeNumber, stability: s.stability, category: p.category } : null;
+      return p ? { problemId: p.id, title: p.title, leetcodeNumber: p.leetcodeNumber, stability: s.stability, category: p.category } : null;
     })
-    .filter(Boolean) as { title: string; leetcodeNumber: number | null; stability: number; category: string }[];
+    .filter(Boolean) as { problemId: number; title: string; leetcodeNumber: number | null; stability: number; category: string }[];
 
   const masteredCount = masteryData.filter((m) => m.stability >= MASTERY_THRESHOLD).length;
   const learningCount = userStates.length - masteredCount;

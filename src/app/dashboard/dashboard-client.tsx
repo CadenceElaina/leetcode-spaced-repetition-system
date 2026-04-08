@@ -78,6 +78,7 @@ type ReadinessResult = {
 };
 
 type MasteryItem = {
+  problemId: number;
   title: string;
   leetcodeNumber: number | null;
   stability: number;
@@ -1047,7 +1048,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
             </div>
             <div className="space-y-1.5 max-h-[160px] overflow-y-auto">
               {displayCategories.map((cat) => (
-                <div key={cat.category} className="flex items-center gap-2 group/cat cursor-default">
+                <Link key={cat.category} href={`/problems?category=${encodeURIComponent(cat.category)}`} className="flex items-center gap-2 group/cat cursor-pointer">
                   <span className="text-[11px] w-24 shrink-0 truncate group-hover/cat:text-foreground transition-colors" title={cat.category}>{cat.category}</span>
                   <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background group-hover/cat:h-2 transition-all duration-150">
                     <div
@@ -1059,7 +1060,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                     <span className="group-hover/cat:hidden">{cat.attempted}/{cat.total}</span>
                     <span className="hidden group-hover/cat:inline">{cat.attempted > 0 ? `${Math.round(cat.avgRetention * 100)}%` : "—"}</span>
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           </section>
@@ -1071,7 +1072,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
               {data.difficultyBreakdown.map((d) => {
                 const pct = d.count > 0 ? Math.round((d.attempted / d.count) * 100) : 0;
                 return (
-                  <div key={d.difficulty} className="flex items-center gap-2 group/diff cursor-default">
+                  <Link key={d.difficulty} href={`/problems?difficulty=${d.difficulty}&status=Attempted`} className="flex items-center gap-2 group/diff cursor-pointer">
                     <span className="text-[11px] w-12 shrink-0 group-hover/diff:text-foreground transition-colors">{d.difficulty}</span>
                     <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background group-hover/diff:h-2 transition-all duration-150">
                       <div className={`h-full rounded-full transition-all duration-300 ${DIFF_COLORS[d.difficulty]}`} style={{ width: `${pct}%` }} />
@@ -1080,7 +1081,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                       <span className="group-hover/diff:hidden">{d.attempted}/{d.count}</span>
                       <span className="hidden group-hover/diff:inline">{pct}%</span>
                     </span>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -1428,12 +1429,12 @@ function MasteryProgress({
           <p className="text-[11px] text-muted-foreground mb-1">Recently mastered</p>
           <div className="space-y-0.5">
             {masteryList.slice(0, 5).map((item) => (
-              <div key={item.leetcodeNumber ?? item.title} className="flex items-center gap-1.5 text-xs">
+              <Link key={item.leetcodeNumber ?? item.title} href={`/problems/${item.problemId}`} className="flex items-center gap-1.5 text-xs hover:bg-background/50 rounded px-1 -mx-1 transition-colors">
                 <span className="text-green-500">✓</span>
                 <span className="text-muted-foreground tabular-nums w-6 shrink-0">{item.leetcodeNumber}</span>
                 <span className="truncate">{item.title}</span>
                 <span className="ml-auto text-muted-foreground text-[11px]">{Math.round(item.stability)}d</span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -1447,7 +1448,7 @@ function MasteryProgress({
             {displayLearning.map((item) => {
               const pct = Math.min(100, (item.stability / MASTERY_THRESHOLD) * 100);
               return (
-                <div key={item.leetcodeNumber ?? item.title} className="flex items-center gap-1.5 text-xs group/learn">
+                <Link key={item.leetcodeNumber ?? item.title} href={`/problems/${item.problemId}`} className="flex items-center gap-1.5 text-xs group/learn hover:bg-background/50 rounded px-1 -mx-1 transition-colors">
                   <span className="text-muted-foreground tabular-nums w-6 shrink-0">{item.leetcodeNumber}</span>
                   <span className="w-32 shrink-0 truncate group-hover/learn:text-foreground transition-colors" title={item.title}>{item.title}</span>
                   <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background group-hover/learn:h-2 transition-all duration-150">
@@ -1457,7 +1458,7 @@ function MasteryProgress({
                     />
                   </div>
                   <span className="text-muted-foreground text-[11px] tabular-nums w-10 text-right shrink-0">{item.stability.toFixed(1)}d</span>
-                </div>
+                </Link>
               );
             })}
           </div>

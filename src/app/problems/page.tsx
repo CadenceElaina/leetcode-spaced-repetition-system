@@ -8,7 +8,12 @@ import { computeRetrievability } from "@/lib/srs";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Problems — NeetcodeSRS" };
 
-export default async function ProblemsPage() {
+export default async function ProblemsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string; difficulty?: string; status?: string }>;
+}) {
+  const params = await searchParams;
   const allProblems = await db
     .select()
     .from(problems)
@@ -40,7 +45,13 @@ export default async function ProblemsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Problems</h1>
-      <ProblemsTable problems={allProblems} problemStates={problemStates} />
+      <ProblemsTable
+        problems={allProblems}
+        problemStates={problemStates}
+        initialCategory={params.category}
+        initialDifficulty={params.difficulty}
+        initialStatus={params.status}
+      />
     </div>
   );
 }
