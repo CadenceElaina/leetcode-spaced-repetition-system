@@ -89,8 +89,8 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    // Parse commit message: "Add: {slug} - submission-{N}"
-    const match = commit.message.match(/^Add:\s+(.+?)\s+-\s+submission-\d+/i);
+    // Parse commit message: "Add: {slug} - submission-{N}" or "Update: {slug} - submission-{N}"
+    const match = commit.message.match(/^(?:Add|Update):\s+(.+?)\s+-\s+submission-\d+/i);
     if (!match) {
       skipped.push(commit.id);
       continue;
