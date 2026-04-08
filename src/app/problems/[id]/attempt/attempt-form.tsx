@@ -32,8 +32,9 @@ export function AttemptForm({ problemId, problemTitle, leetcodeNumber, isReview,
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Pre-fill date from GitHub commit timestamp if provided
-  const initialDate = defaultAttemptDate ? new Date(defaultAttemptDate).toISOString().slice(0, 10) : "";
+  // Pre-fill date from GitHub commit timestamp if provided, otherwise default to today
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const initialDate = defaultAttemptDate ? new Date(defaultAttemptDate).toISOString().slice(0, 10) : todayStr;
   const [attemptDate, setAttemptDate] = useState(initialDate);
 
   const showQuality = outcome === "SOLVED";
@@ -203,31 +204,29 @@ export function AttemptForm({ problemId, problemTitle, leetcodeNumber, isReview,
         </div>
       )}
 
-      {/* Attempt Date (shown when pre-filled from GitHub, or user can add) */}
-      {(attemptDate || defaultAttemptDate) ? (
-        <div>
-          <label className={labelClass}>Attempt Date</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={attemptDate}
-              onChange={(e) => setAttemptDate(e.target.value)}
-              max={new Date().toISOString().slice(0, 10)}
-              className={`${inputClass} w-48`}
-            />
-            {attemptDate && (
-              <button
-                type="button"
-                onClick={() => setAttemptDate("")}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Use today
-              </button>
-            )}
-            <span className="text-xs text-muted-foreground">From GitHub commit</span>
-          </div>
+      {/* Attempt Date */}
+      <div>
+        <label className={labelClass}>Date</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={attemptDate}
+            onChange={(e) => setAttemptDate(e.target.value)}
+            max={todayStr}
+            className={`${inputClass} w-48`}
+          />
+          {attemptDate !== todayStr && (
+            <button
+              type="button"
+              onClick={() => setAttemptDate(todayStr)}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Reset to today
+            </button>
+          )}
+          {defaultAttemptDate && <span className="text-xs text-muted-foreground">From GitHub commit</span>}
         </div>
-      ) : null}
+      </div>
 
       {/* Timing */}
       <div className="grid grid-cols-2 gap-3">
