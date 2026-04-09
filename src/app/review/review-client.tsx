@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DifficultyBadge } from "@/components/difficulty-badge";
+import { LogAttemptModal, type LogModalProblem } from "@/components/log-attempt-modal";
 
 type QueueItem = {
   stateId: string;
@@ -26,10 +28,12 @@ const SKIP_REASONS = [
 ] as const;
 
 export function ReviewQueueClient({ initialQueue }: Props) {
+  const router = useRouter();
   const [queue, setQueue] = useState(initialQueue);
   const [skippingId, setSkippingId] = useState<string | null>(null);
   const [feedbackId, setFeedbackId] = useState<string | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
+  const [logModalProblem, setLogModalProblem] = useState<LogModalProblem | null>(null);
 
   async function handleSkip(problemId: number, stateId: string, reason: string) {
     setLoading(stateId);
@@ -61,6 +65,18 @@ export function ReviewQueueClient({ initialQueue }: Props) {
 
   return (
     <div className="space-y-6">
+      {logModalProblem && (
+        <LogAttemptModal
+          problem={logModalProblem}
+          onClose={() => setLogModalProblem(null)}
+          onLogged={() => {
+            // Remove from queue and close modal
+            setQueue((q) => q.filter((item) => item.problemId !== logModalProblem.problemId));
+            setLogModalProblem(null);
+            router.refresh();
+          }}
+        />
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Review Queue</h1>
         <span className="text-sm text-muted-foreground">{queue.length} due</span>
@@ -115,12 +131,18 @@ export function ReviewQueueClient({ initialQueue }: Props) {
                     Skip
                   </button>
 
-                  <Link
-                    href={`/problems/${item.problemId}/attempt`}
+                  <button
+                    onClick={() => setLogModalProblem({
+                      problemId: item.problemId,
+                      title: item.title,
+                      leetcodeNumber: item.leetcodeNumber,
+                      difficulty: item.difficulty,
+                      isReview: true,
+                    })}
                     className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm text-accent-foreground transition-colors duration-150 hover:opacity-90"
                   >
                     Review
-                  </Link>
+                  </button>
                 </div>
               </div>
 

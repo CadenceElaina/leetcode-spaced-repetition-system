@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { DifficultyBadge } from "@/components/difficulty-badge";
 import { ImportClient } from "@/app/import/import-client";
+import { LogAttemptModal, type LogModalProblem, type LogModalResult } from "@/components/log-attempt-modal";
 
 /* ── Types ── */
 
@@ -244,8 +245,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
   const [queueSearch, setQueueSearch] = useState("");
   const [showStatsDetail, setShowStatsDetail] = useState(false);
   const [pendingItems, setPendingItems] = useState<PendingItem[]>(data.pendingSubmissions);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
+  const [logModalProblem, setLogModalProblem] = useState<LogModalProblem | null>(null);
 
   // Load saved settings from localStorage
   useEffect(() => {
@@ -427,8 +427,35 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     );
   }, [sortedCompleted, queueSearch]);
 
+  function handleLoggedFromModal(result: LogModalResult) {
+    const problem = logModalProblem;
+    setLogModalProblem(null);
+    setSrsBanner({
+      oldS: result.srs.oldStability,
+      newS: result.srs.newStability,
+      next: result.srs.nextReviewAt,
+      pct: result.srs.masteryPct,
+      attemptId: result.attemptId,
+      pName: problem?.title ?? "",
+      pNum: String(problem?.leetcodeNumber ?? ""),
+    });
+    // Remove from pending if applicable
+    if (problem?.pendingId) {
+      setPendingItems((prev) => prev.filter((p) => p.id !== problem.pendingId));
+    }
+    router.refresh();
+  }
+
   return (
     <div className="h-[calc(100dvh-120px)]">
+    {/* Log Attempt Modal */}
+    {logModalProblem && (
+      <LogAttemptModal
+        problem={logModalProblem}
+        onClose={() => setLogModalProblem(null)}
+        onLogged={handleLoggedFromModal}
+      />
+    )}
     {/* SRS Feedback Banner */}
     {srsBanner && <SrsFeedbackBanner {...srsBanner} onDismiss={() => setSrsBanner(null)} onUndo={async () => {
       if (!srsBanner.attemptId) return;
@@ -445,45 +472,17 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         {pendingItems.length > 0 && (
           <PendingBanner
             items={pendingItems}
-            confirmingId={confirmingId}
-            confirmedIds={confirmedIds}
-            onConfirm={async (item) => {
-              setConfirmingId(item.id);
-              try {
-                // Quick confirm with sensible defaults
-                const res = await fetch("/api/attempts", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    problemId: item.problemId,
-                    solvedIndependently: "YES",
-                    solutionQuality: "OPTIMAL",
-                    userTimeComplexity: "N/A",
-                    userSpaceComplexity: "N/A",
-                    confidence: 3,
-                    solveTimeMinutes: 20,
-                    source: "github",
-                    force: true,
-                    attemptDate: item.detectedAt,
-                  }),
-                });
-                if (res.ok) {
-                  // Mark pending as confirmed
-                  await fetch("/api/pending", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ id: item.id, action: "confirm" }),
-                  });
-                  // Show confirmed state briefly, then remove + refresh
-                  setConfirmedIds((prev) => new Set(prev).add(item.id));
-                  setTimeout(() => {
-                    setPendingItems((prev) => prev.filter((p) => p.id !== item.id));
-                    router.refresh();
-                  }, 800);
-                }
-              } finally {
-                setConfirmingId(null);
-              }
+            onConfirm={(item) => {
+              setLogModalProblem({
+                problemId: item.problemId,
+                title: item.problemTitle,
+                leetcodeNumber: item.leetcodeNumber,
+                difficulty: item.difficulty,
+                isReview: item.isReview,
+                attemptDate: item.detectedAt,
+                pendingId: item.id,
+                source: "github",
+              });
             }}
             onDismiss={async (item) => {
               await fetch("/api/pending", {
@@ -658,12 +657,18 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                             {item.daysOverdue > 0 ? `${item.daysOverdue}d overdue` : "Due today"}
                           </span>
                           <DifficultyBadge difficulty={item.difficulty} />
-                          <Link
-                            href={`/problems/${item.problemId}/attempt`}
+                          <button
+                            onClick={() => setLogModalProblem({
+                              problemId: item.problemId,
+                              title: item.title,
+                              leetcodeNumber: item.leetcodeNumber,
+                              difficulty: item.difficulty,
+                              isReview: true,
+                            })}
                             className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs text-accent-foreground transition-colors hover:opacity-90"
                           >
                             Log
-                          </Link>
+                          </button>
                         </div>
                       </div>
                     );
@@ -705,12 +710,18 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <DifficultyBadge difficulty={p.difficulty} />
-                        <Link
-                          href={`/problems/${p.id}/attempt`}
+                        <button
+                          onClick={() => setLogModalProblem({
+                            problemId: p.id,
+                            title: p.title,
+                            leetcodeNumber: p.leetcodeNumber,
+                            difficulty: p.difficulty,
+                            isReview: false,
+                          })}
                           className="inline-flex h-7 items-center rounded-md border border-border px-3 text-xs text-foreground transition-colors hover:bg-muted"
                         >
                           Log
-                        </Link>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1580,14 +1591,10 @@ function SrsFeedbackBanner({
 
 function PendingBanner({
   items,
-  confirmingId,
-  confirmedIds,
   onConfirm,
   onDismiss,
 }: {
   items: PendingItem[];
-  confirmingId: string | null;
-  confirmedIds: Set<string>;
   onConfirm: (item: PendingItem) => void;
   onDismiss: (item: PendingItem) => void;
 }) {
@@ -1615,18 +1622,8 @@ function PendingBanner({
           {items.map((item) => (
             <div
               key={item.id}
-              className={`flex items-center gap-3 px-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors ${
-                confirmedIds.has(item.id) ? "bg-green-500/10" : "hover:bg-muted/50"
-              }`}
+              className="flex items-center gap-3 px-3 py-2.5 border-b border-border/50 last:border-b-0 transition-colors hover:bg-muted/50"
             >
-              {confirmedIds.has(item.id) ? (
-                <>
-                  <span className="text-green-500 text-sm">✓</span>
-                  <span className="text-sm font-medium text-green-500">{item.problemTitle}</span>
-                  <span className="ml-auto text-xs text-green-500/70">Logged</span>
-                </>
-              ) : (
-                <>
               <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{item.leetcodeNumber}</span>
               <div className="min-w-0 flex-1">
                 <Link href={`/problems/${item.problemId}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
@@ -1638,18 +1635,11 @@ function PendingBanner({
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <DifficultyBadge difficulty={item.difficulty} />
-                <Link
-                  href={`/problems/${item.problemId}/attempt?attemptDate=${encodeURIComponent(item.detectedAt)}`}
-                  className="inline-flex h-7 items-center rounded-md border border-border px-2.5 text-xs text-foreground transition-colors hover:bg-muted"
-                >
-                  Full form
-                </Link>
                 <button
                   onClick={() => onConfirm(item)}
-                  disabled={confirmingId === item.id}
-                  className="inline-flex h-7 items-center rounded-md bg-accent px-2.5 text-xs text-accent-foreground transition-colors hover:opacity-90 disabled:opacity-50"
+                  className="inline-flex h-7 items-center rounded-md bg-accent px-2.5 text-xs text-accent-foreground transition-colors hover:opacity-90"
                 >
-                  {confirmingId === item.id ? "..." : "Quick confirm"}
+                  Log
                 </button>
                 <button
                   onClick={() => onDismiss(item)}
@@ -1658,8 +1648,6 @@ function PendingBanner({
                   ✕
                 </button>
               </div>
-                </>
-              )}
             </div>
           ))}
         </div>

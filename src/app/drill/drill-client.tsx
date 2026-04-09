@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DifficultyBadge } from "@/components/difficulty-badge";
 import { ExternalLink } from "lucide-react";
+import { LogAttemptModal, type LogModalProblem } from "@/components/log-attempt-modal";
 
 type DrillProblem = {
   id: number;
@@ -45,12 +47,24 @@ function retentionBgColor(r: number): string {
 }
 
 export function DrillClient({ categories }: Props) {
+  const router = useRouter();
   const [selected, setSelected] = useState<string | null>(null);
+  const [logModalProblem, setLogModalProblem] = useState<LogModalProblem | null>(null);
 
   const activeCategory = selected ? categories.find((c) => c.name === selected) : null;
 
   return (
     <div className="space-y-6">
+      {logModalProblem && (
+        <LogAttemptModal
+          problem={logModalProblem}
+          onClose={() => setLogModalProblem(null)}
+          onLogged={() => {
+            setLogModalProblem(null);
+            router.refresh();
+          }}
+        />
+      )}
       <h1 className="text-2xl font-semibold">Pattern Drill</h1>
       <p className="text-sm text-muted-foreground">
         Pick a category to focus on. Problems are sorted by retention — weakest first.
@@ -145,12 +159,18 @@ export function DrillClient({ categories }: Props) {
                     <ExternalLink size={12} />
                     LeetCode
                   </a>
-                  <Link
-                    href={`/problems/${p.id}/attempt`}
+                  <button
+                    onClick={() => setLogModalProblem({
+                      problemId: p.id,
+                      title: p.title,
+                      leetcodeNumber: p.leetcodeNumber,
+                      difficulty: p.difficulty,
+                      isReview: p.attempted,
+                    })}
                     className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-xs text-accent-foreground transition-colors duration-150 hover:opacity-90"
                   >
                     Log Attempt
-                  </Link>
+                  </button>
                 </div>
               </div>
             ))}
