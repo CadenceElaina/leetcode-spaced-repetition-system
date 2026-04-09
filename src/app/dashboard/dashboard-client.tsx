@@ -14,6 +14,7 @@ type ReviewItem = {
   problemId: number;
   title: string;
   leetcodeNumber: number | null;
+  neetcodeUrl: string | null;
   difficulty: "Easy" | "Medium" | "Hard";
   category: string;
   totalAttempts: number;
@@ -46,6 +47,7 @@ type NewProblem = {
   id: number;
   leetcodeNumber: number | null;
   title: string;
+  neetcodeUrl: string | null;
   difficulty: "Easy" | "Medium" | "Hard";
   category: string;
   blind75: boolean;
@@ -108,6 +110,10 @@ type DashboardData = {
   bestStreak: number;
   avgPerDay: number;
   avgNewPerDay: number;
+  avgReviewPerDay: number;
+  overallPerDay: number;
+  overallNewPerDay: number;
+  overallReviewPerDay: number;
   categoryStats: CategoryStat[];
   difficultyBreakdown: DifficultyBreakdown[];
   attemptHistory: AttemptDay[];
@@ -347,7 +353,10 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     const projectedRaw = data.attemptedCount + Math.round(projectedNew);
     const projected = Math.min(targetCount, projectedRaw);
     const onTrack = projectedRaw >= targetCount;
-    const neededPerDay = daysLeft > 0 ? remaining / daysLeft : remaining;
+    // Effective needed rate: accounts for review load by computing
+    // how many new/day you'd need to actually hit the target
+    const shortfall = Math.max(0, remaining - Math.round(projectedNew));
+    const neededPerDay = daysLeft > 0 ? (remaining + shortfall) / daysLeft : remaining;
     return { daysLeft, remaining, projected, projectedRaw, onTrack, neededPerDay };
   }, [targetDate, targetCount, data.attemptedCount, data.avgPerDay, data.learningCount, data.masteredCount, data.learningList]);
 
@@ -631,9 +640,15 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                         />
                         <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{item.leetcodeNumber}</span>
                         <div className="min-w-0 flex-1">
-                          <Link href={`/problems/${item.problemId}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
-                            {item.title}
-                          </Link>
+                          {item.neetcodeUrl ? (
+                            <a href={item.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                              {item.title}
+                            </a>
+                          ) : (
+                            <Link href={`/problems/${item.problemId}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                              {item.title}
+                            </Link>
+                          )}
                           <span className="text-xs text-muted-foreground">
                             {item.category} · {item.totalAttempts} attempt{item.totalAttempts !== 1 ? "s" : ""} · Last: {daysAgoLabel(item.lastReviewedAt)}
                           </span>
@@ -647,7 +662,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                             href={`/problems/${item.problemId}/attempt`}
                             className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs text-accent-foreground transition-colors hover:opacity-90"
                           >
-                            Review
+                            Log
                           </Link>
                         </div>
                       </div>
@@ -674,9 +689,15 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                     >
                       <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{p.leetcodeNumber}</span>
                       <div className="min-w-0 flex-1">
-                        <Link href={`/problems/${p.id}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
-                          {p.title}
-                        </Link>
+                        {p.neetcodeUrl ? (
+                          <a href={p.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                            {p.title}
+                          </a>
+                        ) : (
+                          <Link href={`/problems/${p.id}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                            {p.title}
+                          </Link>
+                        )}
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground">{p.category}</span>
                           {p.blind75 && <span className="text-xs font-medium text-violet-500">B75</span>}
@@ -688,7 +709,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                           href={`/problems/${p.id}/attempt`}
                           className="inline-flex h-7 items-center rounded-md border border-border px-3 text-xs text-foreground transition-colors hover:bg-muted"
                         >
-                          Start
+                          Log
                         </Link>
                       </div>
                     </div>
@@ -776,19 +797,38 @@ export function DashboardClient({ data }: { data: DashboardData }) {
 
             {/* Pace */}
             <div>
-              <p className="text-[11px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Pace</p>
+              <p className="text-[11px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Pace (14 day)</p>
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <p className="text-lg font-bold tabular-nums">{data.avgNewPerDay.toFixed(1)}</p>
-                  <p className="text-[11px] text-muted-foreground">new problems/day</p>
+                  <p className="text-[11px] text-muted-foreground">new/day</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold tabular-nums">{Math.max(0, data.avgPerDay - data.avgNewPerDay).toFixed(1)}</p>
+                  <p className="text-lg font-bold tabular-nums">{data.avgReviewPerDay.toFixed(1)}</p>
                   <p className="text-[11px] text-muted-foreground">reviews/day</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold tabular-nums">{data.avgPerDay.toFixed(1)}</p>
-                  <p className="text-[11px] text-muted-foreground">total attempts/day</p>
+                  <p className="text-[11px] text-muted-foreground">total/day</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Overall Pace */}
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Pace (Overall)</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <p className="text-lg font-bold tabular-nums">{data.overallNewPerDay.toFixed(1)}</p>
+                  <p className="text-[11px] text-muted-foreground">new/day</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold tabular-nums">{data.overallReviewPerDay.toFixed(1)}</p>
+                  <p className="text-[11px] text-muted-foreground">reviews/day</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold tabular-nums">{data.overallPerDay.toFixed(1)}</p>
+                  <p className="text-[11px] text-muted-foreground">total/day</p>
                 </div>
               </div>
             </div>
@@ -965,7 +1005,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
               <span className="text-xs text-muted-foreground">streak</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-xs font-semibold tabular-nums">{Math.max(0, data.avgPerDay - data.avgNewPerDay).toFixed(1)}</span>
+              <span className="text-xs font-semibold tabular-nums">{data.avgReviewPerDay.toFixed(1)}</span>
               <span className="text-xs text-muted-foreground">reviews/day</span>
             </div>
             <div className="flex items-center gap-1">

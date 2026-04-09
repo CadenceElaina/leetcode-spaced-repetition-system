@@ -113,6 +113,7 @@ export default async function DashboardPage() {
         problemId: s.problemId,
         title: p.title,
         leetcodeNumber: p.leetcodeNumber,
+        neetcodeUrl: p.neetcodeUrl,
         difficulty: p.difficulty as "Easy" | "Medium" | "Hard",
         category: p.category,
         totalAttempts: s.totalAttempts,
@@ -126,6 +127,7 @@ export default async function DashboardPage() {
       problemId: number;
       title: string;
       leetcodeNumber: number | null;
+      neetcodeUrl: string | null;
       difficulty: "Easy" | "Medium" | "Hard";
       category: string;
       totalAttempts: number;
@@ -141,6 +143,7 @@ export default async function DashboardPage() {
       id: p.id,
       leetcodeNumber: p.leetcodeNumber,
       title: p.title,
+      neetcodeUrl: p.neetcodeUrl,
       difficulty: p.difficulty as "Easy" | "Medium" | "Hard",
       category: p.category,
       blind75: p.blind75,
@@ -260,18 +263,27 @@ export default async function DashboardPage() {
   const attemptDates = attemptDateRows.map((a) => a.date);
   const streaks = computeStreak(attemptDates, today);
 
-  // Average per day (last 30 days)
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const totalRecentAttempts = attemptDateRows
-    .filter((a) => a.date >= thirtyDaysAgo)
+  // Average per day (last 14 days — consistent window for all pace stats)
+  const fourteenDayAttempts = attemptDateRows
+    .filter((a) => a.date >= fourteenDaysAgo.toISOString().slice(0, 10))
     .reduce((s, a) => s + a.count, 0);
-  const avgPerDay = totalRecentAttempts / 30;
+  const avgPerDay = fourteenDayAttempts / 14;
 
   // New problems per day (rate of progress through curriculum)
   const newProbsRecent = userStates.filter(
     (s) => s.createdAt >= fourteenDaysAgo,
   ).length;
   const avgNewPerDay = newProbsRecent / 14;
+  const avgReviewPerDay = Math.max(0, avgPerDay - avgNewPerDay);
+
+  // Overall averages (since first attempt)
+  const totalAllTimeAttempts = attemptDateRows.reduce((s, a) => s + a.count, 0);
+  const firstDate = attemptDateRows.length > 0 ? attemptDateRows[attemptDateRows.length - 1].date : today;
+  const totalDays = Math.max(1, Math.ceil((now.getTime() - new Date(firstDate + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24)));
+  const overallPerDay = totalAllTimeAttempts / totalDays;
+  const totalNewProblems = userStates.length;
+  const overallNewPerDay = totalNewProblems / totalDays;
+  const overallReviewPerDay = Math.max(0, overallPerDay - overallNewPerDay);
 
   // Attempt history (last 14 days) with new vs review breakdown
   // A "new" attempt on a given day = the first-ever attempt for that problem
@@ -352,6 +364,10 @@ export default async function DashboardPage() {
         bestStreak: streaks.best,
         avgPerDay,
         avgNewPerDay,
+        avgReviewPerDay,
+        overallPerDay,
+        overallNewPerDay,
+        overallReviewPerDay,
         categoryStats,
         difficultyBreakdown,
         attemptHistory,
