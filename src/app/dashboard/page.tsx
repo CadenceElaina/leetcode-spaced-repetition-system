@@ -311,6 +311,22 @@ export default async function DashboardPage() {
     attemptHistory.push({ date: key, count: total, newCount, reviewCount: total - newCount });
   }
 
+  // Full attempt history (all days since first attempt)
+  const fullAttemptHistory: { date: string; count: number; newCount: number; reviewCount: number }[] = [];
+  if (attemptDateRows.length > 0) {
+    const firstDateStr = attemptDateRows[attemptDateRows.length - 1].date;
+    const firstD = new Date(firstDateStr + "T00:00:00");
+    const totalHistDays = Math.ceil((now.getTime() - firstD.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    for (let i = totalHistDays - 1; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().slice(0, 10);
+      const found = attemptDateRows.find((a) => a.date === key);
+      const total = found?.count ?? 0;
+      const nc = Math.min(newByDate.get(key) ?? 0, total);
+      fullAttemptHistory.push({ date: key, count: total, newCount: nc, reviewCount: total - nc });
+    }
+  }
+
   // Difficulty breakdown
   const diffMap = new Map<string, { count: number; attempted: number }>();
   for (const p of allProblems) {
@@ -371,6 +387,7 @@ export default async function DashboardPage() {
         categoryStats,
         difficultyBreakdown,
         attemptHistory,
+        fullAttemptHistory,
         totalSolveMinutes: Number(timeRows[0]?.totalSolve ?? 0),
         totalStudyMinutes: Number(timeRows[0]?.totalStudy ?? 0),
         avgSolveMinutes: Number(timeRows[0]?.avgSolve ?? 0),

@@ -15,7 +15,24 @@ export default async function DrillPage() {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-semibold">Pattern Drill</h1>
-        <p className="text-sm text-muted-foreground">Sign in to start a drill session.</p>
+        <div className="rounded-lg border border-border bg-muted p-6 space-y-4 max-w-2xl">
+          <p className="text-sm text-foreground">
+            Pattern Drill lets you focus on one category at a time — like Sliding Window or Binary Search — and practice problems sorted by weakness.
+          </p>
+          <ul className="text-sm text-muted-foreground space-y-1 list-disc pl-5">
+            <li>Pick a category to drill</li>
+            <li>Problems are sorted by retention — weakest first</li>
+            <li>Track your progress across each pattern</li>
+          </ul>
+          <div className="pt-2">
+            <a
+              href="/api/auth/signin"
+              className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm text-accent-foreground transition-colors duration-150 hover:opacity-90"
+            >
+              Sign in to start drilling
+            </a>
+          </div>
+        </div>
       </div>
     );
   }

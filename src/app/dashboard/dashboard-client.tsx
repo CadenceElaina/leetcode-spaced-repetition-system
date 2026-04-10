@@ -118,6 +118,7 @@ type DashboardData = {
   categoryStats: CategoryStat[];
   difficultyBreakdown: DifficultyBreakdown[];
   attemptHistory: AttemptDay[];
+  fullAttemptHistory: AttemptDay[];
   totalSolveMinutes: number;
   totalStudyMinutes: number;
   avgSolveMinutes: number;
@@ -246,6 +247,20 @@ export function DashboardClient({ data }: { data: DashboardData }) {
   const [showStatsDetail, setShowStatsDetail] = useState(false);
   const [pendingItems, setPendingItems] = useState<PendingItem[]>(data.pendingSubmissions);
   const [logModalProblem, setLogModalProblem] = useState<LogModalProblem | null>(null);
+  const [collapsedWidgets, setCollapsedWidgets] = useState<Record<string, boolean>>({});
+  const [showOverallPace, setShowOverallPace] = useState(false);
+  const [activityRange, setActivityRange] = useState<"14d" | "30d" | "90d" | "all">("14d");
+
+  const activityData = useMemo(() => {
+    if (activityRange === "14d") return data.attemptHistory;
+    if (activityRange === "all") return data.fullAttemptHistory;
+    const days = activityRange === "30d" ? 30 : 90;
+    return data.fullAttemptHistory.slice(-days);
+  }, [activityRange, data.attemptHistory, data.fullAttemptHistory]);
+
+  function toggleWidget(key: string) {
+    setCollapsedWidgets((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   // Load saved settings from localStorage
   useEffect(() => {
@@ -653,6 +668,13 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
+                          <Link
+                            href={`/problems/${item.problemId}`}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            title="View problem activity"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                          </Link>
                           <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none ${PRIORITY_BG[prio]}`}>
                             {item.daysOverdue > 0 ? `${item.daysOverdue}d overdue` : "Due today"}
                           </span>
@@ -791,20 +813,18 @@ export function DashboardClient({ data }: { data: DashboardData }) {
 
       {/* ── Right Column ── */}
       <div className="space-y-3 lg:col-span-6 overflow-y-auto min-h-0">
-        {/* Flip toggle */}
-        <div className="flex justify-end">
-          <button
-            onClick={() => setShowStatsDetail(!showStatsDetail)}
-            className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {showStatsDetail ? "← Dashboard" : "All Stats →"}
-          </button>
-        </div>
-
         {showStatsDetail ? (
           /* ── Stats Detail (back side) ── */
           <section className="rounded-lg border border-border bg-muted p-4 space-y-4">
-            <p className="text-xs font-medium text-muted-foreground">All Stats</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground">All Stats</p>
+              <button
+                onClick={() => setShowStatsDetail(false)}
+                className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Dashboard
+              </button>
+            </div>
 
             {/* Pace */}
             <div>
@@ -949,13 +969,21 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         <section className="rounded-lg border border-border bg-muted p-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-medium text-muted-foreground">Fall Recruiting Countdown</p>
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="text-xs text-muted-foreground hover:text-foreground"
-              title="Edit target"
-            >
-              ⚙
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+                title="Edit target"
+              >
+                ⚙
+              </button>
+              <button
+                onClick={() => setShowStatsDetail(!showStatsDetail)}
+                className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                All Stats →
+              </button>
+            </div>
           </div>
 
           <div className="flex items-baseline gap-2 mb-1">
@@ -1016,21 +1044,29 @@ export function DashboardClient({ data }: { data: DashboardData }) {
               <span className="text-xs text-muted-foreground">streak</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-xs font-semibold tabular-nums">{data.avgReviewPerDay.toFixed(1)}</span>
+              <span className="text-xs font-semibold tabular-nums">{(showOverallPace ? data.overallReviewPerDay : data.avgReviewPerDay).toFixed(1)}</span>
               <span className="text-xs text-muted-foreground">reviews/day</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-xs font-semibold tabular-nums">{data.avgNewPerDay.toFixed(1)}</span>
+              <span className="text-xs font-semibold tabular-nums">{(showOverallPace ? data.overallNewPerDay : data.avgNewPerDay).toFixed(1)}</span>
               <span className="text-xs text-muted-foreground">new/day</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-xs font-semibold tabular-nums">{data.avgPerDay.toFixed(1)}</span>
+              <span className="text-xs font-semibold tabular-nums">{(showOverallPace ? data.overallPerDay : data.avgPerDay).toFixed(1)}</span>
               <span className="text-xs text-muted-foreground">total/day</span>
             </div>
             <div className="flex items-center gap-1">
               <span className={`text-xs font-semibold tabular-nums ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>{countdown.projectedRaw}/{targetCount}</span>
               <span className="text-xs text-muted-foreground">projected</span>
             </div>
+            <button
+              onClick={() => setShowOverallPace(!showOverallPace)}
+              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors ml-auto"
+              title={showOverallPace ? "Showing overall averages — click for 14-day" : "Showing 14-day averages — click for overall"}
+            >
+              <span className="text-[9px] uppercase tracking-wider">{showOverallPace ? "overall" : "14d"}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            </button>
           </div>
 
           {/* Settings */}
@@ -1048,40 +1084,86 @@ export function DashboardClient({ data }: { data: DashboardData }) {
 
         {/* Activity Chart */}
         <section className="rounded-lg border border-border bg-muted p-3 shrink-0">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Activity (14 days)</p>
-          <ActivityChart history={data.attemptHistory} />
+          <button
+            onClick={() => toggleWidget("activity")}
+            className="flex items-center justify-between w-full"
+          >
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-medium text-muted-foreground">Activity</p>
+              <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
+                {(["14d", "30d", "90d", "all"] as const).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setActivityRange(r)}
+                    className={`text-[9px] px-1.5 py-0.5 rounded transition-colors ${
+                      activityRange === r
+                        ? "bg-background text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {r === "all" ? "All" : r}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.activity ? "▼" : "▲"}</span>
+          </button>
+          {!collapsedWidgets.activity && (
+            <div className="mt-2">
+              <ActivityChart history={activityData} />
+            </div>
+          )}
         </section>
 
         {/* Mastery Progress */}
         <section className="rounded-lg border border-border bg-muted p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <p className="text-xs font-medium text-muted-foreground">Mastery Progress</p>
-            <InfoTooltip
-              content={
-                <div className="space-y-1.5">
-                  <p className="font-medium">Problem Mastery</p>
-                  <p>A problem is <span className="text-green-400 font-medium">mastered</span> when its stability reaches 30+ days — meaning the SRS won&apos;t schedule it again for at least a month.</p>
-                  <p><span className="text-accent font-medium">Learning</span> problems have been attempted but haven&apos;t reached that threshold yet.</p>
-                  <p className="text-[11px] text-muted-foreground pt-1">Mastered problems only need occasional confirmation to verify retention, especially before interviews.</p>
-                </div>
-              }
-            />
-          </div>
-          <MasteryProgress
-            mastered={data.masteredCount}
-            learning={data.learningCount}
-            total={data.totalProblems}
-            masteryList={data.masteryList}
-            learningList={data.learningList}
-          />
+          <button
+            onClick={() => toggleWidget("mastery")}
+            className="flex items-center justify-between w-full"
+          >
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Mastery Progress</p>
+              <InfoTooltip
+                content={
+                  <div className="space-y-1.5">
+                    <p className="font-medium">Problem Mastery</p>
+                    <p>A problem is <span className="text-green-400 font-medium">mastered</span> when its stability reaches 30+ days — meaning the SRS won&apos;t schedule it again for at least a month.</p>
+                    <p><span className="text-accent font-medium">Learning</span> problems have been attempted but haven&apos;t reached that threshold yet.</p>
+                    <p className="text-[11px] text-muted-foreground pt-1">Mastered problems only need occasional confirmation to verify retention, especially before interviews.</p>
+                  </div>
+                }
+              />
+            </div>
+            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.mastery ? "▼" : "▲"}</span>
+          </button>
+          {!collapsedWidgets.mastery && (
+            <div className="mt-2">
+              <MasteryProgress
+                mastered={data.masteredCount}
+                learning={data.learningCount}
+                total={data.totalProblems}
+                masteryList={data.masteryList}
+                learningList={data.learningList}
+              />
+            </div>
+          )}
         </section>
 
         {/* Category + Difficulty side by side */}
-        <div className="grid grid-cols-2 gap-3">
+        <section className="rounded-lg border border-border bg-muted p-3">
+          <button
+            onClick={() => toggleWidget("breakdown")}
+            className="flex items-center justify-between w-full"
+          >
+            <p className="text-xs font-medium text-muted-foreground">Categories &amp; Difficulty</p>
+            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.breakdown ? "▼" : "▲"}</span>
+          </button>
+          {!collapsedWidgets.breakdown && (
+          <div className="grid grid-cols-2 gap-3 mt-2">
           {/* Category Breakdown */}
-          <section className="rounded-lg border border-border bg-muted p-3">
+          <div>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-muted-foreground">Categories</p>
+              <p className="text-[11px] font-medium text-muted-foreground">Categories</p>
               <div className="flex gap-1">
                 <button
                   onClick={() => setCategoryView("weak")}
@@ -1114,11 +1196,11 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 </Link>
               ))}
             </div>
-          </section>
+          </div>
 
           {/* Difficulty Progress */}
-          <section className="rounded-lg border border-border bg-muted p-3">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Difficulty</p>
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground mb-2">Difficulty</p>
             <div className="space-y-2.5">
               {data.difficultyBreakdown.map((d) => {
                 const pct = d.count > 0 ? Math.round((d.attempted / d.count) * 100) : 0;
@@ -1136,8 +1218,10 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 );
               })}
             </div>
-          </section>
-        </div>
+          </div>
+          </div>
+          )}
+        </section>
 
         </>
         )}
@@ -1153,30 +1237,33 @@ function ActivityChart({ history }: { history: AttemptDay[] }) {
   const max = Math.max(...history.map((d) => d.count), 1);
   const MAX_BAR_PX = 44;
   const todayStr = new Date().toISOString().slice(0, 10);
+  const showLabels = history.length <= 30;
+  const showCounts = history.length <= 21;
 
   return (
     <div>
-      <div className="flex items-end gap-0.5">
-        {history.map((day) => {
+      <div className="flex items-end gap-0.5" style={{ minHeight: MAX_BAR_PX + (showLabels ? 28 : 12) }}>
+        {history.map((day, idx) => {
           const barPx = day.count > 0
             ? Math.max(Math.round((day.count / max) * MAX_BAR_PX), 4)
             : 3;
           const reviewPx = day.count > 0
             ? Math.round((day.reviewCount / day.count) * barPx)
             : 0;
-          const newPx = barPx - reviewPx;
           const [, m, dd] = day.date.split("-");
           const label = `${parseInt(m)}/${parseInt(dd)}`;
           const isToday = day.date === todayStr;
+          // For long ranges, only show some labels
+          const showThisLabel = showLabels || (idx % Math.ceil(history.length / 15) === 0) || isToday;
           return (
             <Link
               key={day.date}
               href={`/activity?date=${day.date}`}
               className="flex flex-1 flex-col items-center justify-end gap-0.5 cursor-pointer group"
-              style={{ minHeight: MAX_BAR_PX + 28 }}
-              title={day.count > 0 ? `${day.newCount} new · ${day.reviewCount} review` : undefined}
+              style={{ minWidth: history.length > 60 ? 2 : undefined }}
+              title={`${label}: ${day.count > 0 ? `${day.newCount} new · ${day.reviewCount} review` : "no activity"}`}
             >
-              {day.count > 0 && (
+              {showCounts && day.count > 0 && (
                 <span className="text-[10px] text-muted-foreground leading-none tabular-nums group-hover:text-foreground transition-colors">{day.count}</span>
               )}
               {day.count > 0 ? (
@@ -1184,7 +1271,7 @@ function ActivityChart({ history }: { history: AttemptDay[] }) {
                   {day.newCount > 0 && (
                     <div
                       className="w-full rounded-t-sm bg-green-500 group-hover:brightness-125"
-                      style={{ height: `${newPx}px` }}
+                      style={{ height: `${barPx - reviewPx}px` }}
                     />
                   )}
                   {day.reviewCount > 0 && (
@@ -1200,9 +1287,11 @@ function ActivityChart({ history }: { history: AttemptDay[] }) {
                   style={{ height: `${barPx}px` }}
                 />
               )}
-              <span className={`text-[9px] leading-none tabular-nums transition-colors ${isToday ? "text-accent font-semibold" : "text-muted-foreground group-hover:text-foreground"}`}>
-                {label}
-              </span>
+              {showThisLabel && (
+                <span className={`text-[9px] leading-none tabular-nums transition-colors ${isToday ? "text-accent font-semibold" : "text-muted-foreground group-hover:text-foreground"}`}>
+                  {label}
+                </span>
+              )}
             </Link>
           );
         })}
