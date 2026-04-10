@@ -820,9 +820,10 @@ export function DashboardClient({ data }: { data: DashboardData }) {
               <p className="text-xs font-medium text-muted-foreground">All Stats</p>
               <button
                 onClick={() => setShowStatsDetail(false)}
-                className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                title="Back to dashboard"
               >
-                ← Dashboard
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
               </button>
             </div>
 
@@ -978,10 +979,11 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 ⚙
               </button>
               <button
-                onClick={() => setShowStatsDetail(!showStatsDetail)}
-                className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setShowStatsDetail(true)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                title="View all stats"
               >
-                All Stats →
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
               </button>
             </div>
           </div>
@@ -1234,49 +1236,112 @@ export function DashboardClient({ data }: { data: DashboardData }) {
 /* ── Activity Chart ── */
 
 function ActivityChart({ history }: { history: AttemptDay[] }) {
-  const max = Math.max(...history.map((d) => d.count), 1);
-  const MAX_BAR_PX = 44;
   const todayStr = new Date().toISOString().slice(0, 10);
-  const showLabels = history.length <= 30;
-  const showCounts = history.length <= 21;
+
+  // Aggregate into weekly buckets if >30 days
+  const shouldAggregate = history.length > 30;
+  type Bucket = { label: string; count: number; newCount: number; reviewCount: number; dateRange: string; linkDate: string };
+
+  const buckets: Bucket[] = useMemo(() => {
+    if (!shouldAggregate) {
+      return history.map((day) => {
+        const [, m, dd] = day.date.split("-");
+        return {
+          label: `${parseInt(m)}/${parseInt(dd)}`,
+          count: day.count,
+          newCount: day.newCount,
+          reviewCount: day.reviewCount,
+          dateRange: day.date,
+          linkDate: day.date,
+        };
+      });
+    }
+
+    // Group into weeks (Mon-Sun)
+    const weeks: Bucket[] = [];
+    let currentWeek: AttemptDay[] = [];
+    let weekStart = "";
+
+    for (const day of history) {
+      const d = new Date(day.date + "T12:00:00Z");
+      const dow = d.getUTCDay();
+      const isMonday = dow === 1;
+
+      if (isMonday && currentWeek.length > 0) {
+        const [, m1, d1] = weekStart.split("-");
+        const lastDay = currentWeek[currentWeek.length - 1].date;
+        const [, m2, d2] = lastDay.split("-");
+        weeks.push({
+          label: `${parseInt(m1)}/${parseInt(d1)}`,
+          count: currentWeek.reduce((s, d) => s + d.count, 0),
+          newCount: currentWeek.reduce((s, d) => s + d.newCount, 0),
+          reviewCount: currentWeek.reduce((s, d) => s + d.reviewCount, 0),
+          dateRange: `${parseInt(m1)}/${parseInt(d1)}–${parseInt(m2)}/${parseInt(d2)}`,
+          linkDate: weekStart,
+        });
+        currentWeek = [];
+      }
+
+      if (currentWeek.length === 0) weekStart = day.date;
+      currentWeek.push(day);
+    }
+
+    // Flush remaining
+    if (currentWeek.length > 0) {
+      const [, m1, d1] = weekStart.split("-");
+      const lastDay = currentWeek[currentWeek.length - 1].date;
+      const [, m2, d2] = lastDay.split("-");
+      weeks.push({
+        label: `${parseInt(m1)}/${parseInt(d1)}`,
+        count: currentWeek.reduce((s, d) => s + d.count, 0),
+        newCount: currentWeek.reduce((s, d) => s + d.newCount, 0),
+        reviewCount: currentWeek.reduce((s, d) => s + d.reviewCount, 0),
+        dateRange: `${parseInt(m1)}/${parseInt(d1)}–${parseInt(m2)}/${parseInt(d2)}`,
+        linkDate: weekStart,
+      });
+    }
+
+    return weeks;
+  }, [history, shouldAggregate]);
+
+  const max = Math.max(...buckets.map((d) => d.count), 1);
+  const MAX_BAR_PX = 44;
+  const showCounts = buckets.length <= 21;
 
   return (
     <div>
-      <div className="flex items-end gap-0.5" style={{ minHeight: MAX_BAR_PX + (showLabels ? 28 : 12) }}>
-        {history.map((day, idx) => {
-          const barPx = day.count > 0
-            ? Math.max(Math.round((day.count / max) * MAX_BAR_PX), 4)
+      <div className="flex items-end gap-0.5" style={{ minHeight: MAX_BAR_PX + 28 }}>
+        {buckets.map((bucket, idx) => {
+          const barPx = bucket.count > 0
+            ? Math.max(Math.round((bucket.count / max) * MAX_BAR_PX), 4)
             : 3;
-          const reviewPx = day.count > 0
-            ? Math.round((day.reviewCount / day.count) * barPx)
+          const reviewPx = bucket.count > 0
+            ? Math.round((bucket.reviewCount / bucket.count) * barPx)
             : 0;
-          const [, m, dd] = day.date.split("-");
-          const label = `${parseInt(m)}/${parseInt(dd)}`;
-          const isToday = day.date === todayStr;
-          // For long ranges, only show some labels
-          const showThisLabel = showLabels || (idx % Math.ceil(history.length / 15) === 0) || isToday;
+          const isCurrentWeek = !shouldAggregate && bucket.linkDate === todayStr;
+          // Show every label for ≤30 buckets, otherwise evenly spaced
+          const showThisLabel = buckets.length <= 30 || (idx % Math.ceil(buckets.length / 12) === 0) || idx === buckets.length - 1;
           return (
             <Link
-              key={day.date}
-              href={`/activity?date=${day.date}`}
+              key={bucket.linkDate}
+              href={`/activity?date=${bucket.linkDate}${shouldAggregate ? "&range=week" : ""}`}
               className="flex flex-1 flex-col items-center justify-end gap-0.5 cursor-pointer group"
-              style={{ minWidth: history.length > 60 ? 2 : undefined }}
-              title={`${label}: ${day.count > 0 ? `${day.newCount} new · ${day.reviewCount} review` : "no activity"}`}
+              title={`${bucket.dateRange}: ${bucket.count > 0 ? `${bucket.newCount} new · ${bucket.reviewCount} review` : "no activity"}`}
             >
-              {showCounts && day.count > 0 && (
-                <span className="text-[10px] text-muted-foreground leading-none tabular-nums group-hover:text-foreground transition-colors">{day.count}</span>
+              {showCounts && bucket.count > 0 && (
+                <span className="text-[10px] text-muted-foreground leading-none tabular-nums group-hover:text-foreground transition-colors">{bucket.count}</span>
               )}
-              {day.count > 0 ? (
+              {bucket.count > 0 ? (
                 <div className="w-full flex flex-col transition-all duration-150 group-hover:scale-x-110">
-                  {day.newCount > 0 && (
+                  {bucket.newCount > 0 && (
                     <div
                       className="w-full rounded-t-sm bg-green-500 group-hover:brightness-125"
                       style={{ height: `${barPx - reviewPx}px` }}
                     />
                   )}
-                  {day.reviewCount > 0 && (
+                  {bucket.reviewCount > 0 && (
                     <div
-                      className={`w-full bg-accent group-hover:brightness-125 ${day.newCount === 0 ? "rounded-t-sm" : ""}`}
+                      className={`w-full bg-accent group-hover:brightness-125 ${bucket.newCount === 0 ? "rounded-t-sm" : ""}`}
                       style={{ height: `${reviewPx}px` }}
                     />
                   )}
@@ -1288,8 +1353,8 @@ function ActivityChart({ history }: { history: AttemptDay[] }) {
                 />
               )}
               {showThisLabel && (
-                <span className={`text-[9px] leading-none tabular-nums transition-colors ${isToday ? "text-accent font-semibold" : "text-muted-foreground group-hover:text-foreground"}`}>
-                  {label}
+                <span className={`text-[9px] leading-none tabular-nums transition-colors ${isCurrentWeek ? "text-accent font-semibold" : "text-muted-foreground group-hover:text-foreground"}`}>
+                  {bucket.label}
                 </span>
               )}
             </Link>
@@ -1303,6 +1368,9 @@ function ActivityChart({ history }: { history: AttemptDay[] }) {
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
           <span className="inline-block w-2 h-2 rounded-sm bg-accent" /> Review
         </span>
+        {shouldAggregate && (
+          <span className="text-[10px] text-muted-foreground ml-1">(weekly)</span>
+        )}
       </div>
     </div>
   );
