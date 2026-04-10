@@ -6,6 +6,22 @@ NeetcodeSRS tracks what you've solved, predicts what you're forgetting, and sche
 
 Built around the NeetCode 150 with a modified [FSRS](https://github.com/open-spaced-repetition/fsrs4anki) algorithm, structured attempt logging, and an interview readiness score.
 
+## Table of Contents
+
+- [How It Works](#how-it-works)
+- [Features](#features)
+- [Algorithm](#algorithm)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Deployment](#deployment)
+- [GitHub Sync (Optional)](#github-sync-optional)
+- [Project Structure](#project-structure)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [Glossary](#glossary)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+
 ---
 
 ## How It Works
@@ -148,7 +164,59 @@ python scripts/fetch_problems.py
 
 Downloads metadata from [neetcode-gh/leetcode](https://github.com/neetcode-gh/leetcode) (MIT). No scraping, no API keys.
 
-### GitHub Sync (Optional)
+---
+
+## Deployment
+
+### Vercel (Recommended)
+
+1. Push the repo to GitHub
+2. Import the repo in [Vercel](https://vercel.com)
+3. Add environment variables in **Settings → Environment Variables**:
+
+   | Variable             | Value                                                        |
+   | -------------------- | ------------------------------------------------------------ |
+   | `DATABASE_URL`       | Supabase connection string (Project Settings → Database → URI) |
+   | `AUTH_SECRET`        | Run `npx auth secret` locally and paste the **value only**   |
+   | `AUTH_GITHUB_ID`     | GitHub OAuth App Client ID                                   |
+   | `AUTH_GITHUB_SECRET` | GitHub OAuth App Client Secret (**value only**, not `KEY=value`) |
+
+4. Update your GitHub OAuth App's **Authorization callback URL** to:
+   ```
+   https://your-app.vercel.app/api/auth/callback/github
+   ```
+5. Deploy — Vercel auto-deploys on push to `main`
+
+> **Important:** When pasting env vars in Vercel, paste only the **value** (e.g., `abc123`), not the full line from `.env.local` (e.g., `AUTH_SECRET=abc123`). Vercel does not strip prefixes.
+
+### Supabase Database Setup
+
+After creating a Supabase project, push the schema and seed:
+
+```bash
+npx drizzle-kit push
+npx tsx scripts/seed.ts
+```
+
+If Supabase's Row Level Security (RLS) blocks Auth.js operations, run in the Supabase SQL Editor:
+
+```sql
+ALTER TABLE "user" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "service_role_all" ON "user" FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE "account" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "service_role_all" ON "account" FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE "session" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "service_role_all" ON "session" FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE "verification_token" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "service_role_all" ON "verification_token" FOR ALL USING (true) WITH CHECK (true);
+```
+
+---
+
+## GitHub Sync (Optional)
 
 Auto-detect when you solve problems on NeetCode and surface them for confirmation on your dashboard.
 
@@ -205,6 +273,32 @@ src/
     api/github-sync/           # GitHub repo connection settings
     api/webhook/github/        # GitHub push webhook receiver
 ```
+
+---
+
+## Troubleshooting
+
+### `CallbackRouteError` or `error=Configuration` after deploying
+
+1. **Check env vars in Vercel** — go to Settings → Environment Variables and verify all four are set (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`). **Ensure you pasted only the value**, not the `KEY=value` line.
+2. **Verify GitHub OAuth callback URL** — must match your deployed domain exactly: `https://your-app.vercel.app/api/auth/callback/github`
+3. **Redeploy after changing env vars** — Vercel doesn't apply env var changes to existing deployments. Trigger a redeploy from the Deployments tab.
+
+### `incorrect_client_credentials` in Vercel logs
+
+Your `AUTH_GITHUB_ID` or `AUTH_GITHUB_SECRET` doesn't match what GitHub has. Verify the Client ID on your [GitHub OAuth App page](https://github.com/settings/developers). If the secret was lost, generate a new one and update Vercel.
+
+### `unexpected "iss" (issuer) response parameter value`
+
+The GitHub provider needs an explicit `issuer` override for `oauth4webapi` v3 compatibility. This is already configured in `src/auth.ts`. If you see this error, ensure you're on the latest commit.
+
+### RLS (Row Level Security) blocking sign-in
+
+Supabase enables RLS by default on new tables. Auth.js needs write access to `user`, `account`, `session`, and `verification_token`. See [Supabase Database Setup](#supabase-database-setup) for the required SQL.
+
+### `drizzle-kit push` crashes on check constraints
+
+Known Drizzle Kit issue. Use `npx drizzle-kit generate` to create the migration SQL, then run it manually in the Supabase SQL Editor.
 
 ---
 
