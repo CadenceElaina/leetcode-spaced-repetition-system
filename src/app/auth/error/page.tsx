@@ -8,6 +8,11 @@ const errorMessages: Record<string, { title: string; description: string }> = {
     description:
       "The authentication provider is not configured correctly. If you're the site owner, check that AUTH_SECRET, AUTH_GITHUB_ID, and AUTH_GITHUB_SECRET environment variables are set.",
   },
+  DatabaseError: {
+    title: "Database Connection Error",
+    description:
+      "Unable to connect to the database. If you're the site owner, check that DATABASE_URL is set correctly and the database is reachable.",
+  },
   AccessDenied: {
     title: "Access Denied",
     description: "You do not have permission to sign in. If you believe this is a mistake, please contact the site owner.",
