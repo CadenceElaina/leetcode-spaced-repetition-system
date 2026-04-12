@@ -97,12 +97,6 @@ export function DrillClient({ categories, isDemo = false }: Props) {
         </div>
       )}
       {/* Demo banner */}
-      {isDemo && (
-        <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 flex items-center gap-2 text-sm">
-          <span className="text-xs font-medium text-accent">DEMO</span>
-          <span className="text-muted-foreground text-xs">Explore drill categories — sign in to practice and track retention</span>
-        </div>
-      )}
       {logModalProblem && !isDemo && (
         <LogAttemptModal
           problem={logModalProblem}

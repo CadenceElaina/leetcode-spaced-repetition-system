@@ -170,30 +170,34 @@ const newProblems = [
 
 // Completed problems (16 problems, correct DB ids from problems.json)
 // A&H: 7/9, Two Pointers: 3/5, Sliding Window: 2/6, Stack: 2/7, Binary Search: 2/7
+// Non-queue items reviewed in last 3 days (streak window). Queue items reviewed 5-12 days ago.
 const completedProblems = [
   { problemId: 1,  title: "Two Sum",                                  leetcodeNumber: 1,   difficulty: "Easy"   as const, category: "Arrays & Hashing",  totalAttempts: 3, retrievability: 0.45, stability: 12, lastReviewedAt: daysAgo(8),  daysUntilReview: null, isDue: true,  bestQuality: "optimal" },
-  { problemId: 5,  title: "Contains Duplicate",                       leetcodeNumber: 217, difficulty: "Easy"   as const, category: "Arrays & Hashing",  totalAttempts: 3, retrievability: 0.89, stability: 28, lastReviewedAt: daysAgo(3),  daysUntilReview: 8,    isDue: false, bestQuality: "optimal" },
-  { problemId: 7,  title: "Valid Anagram",                            leetcodeNumber: 242, difficulty: "Easy"   as const, category: "Arrays & Hashing",  totalAttempts: 4, retrievability: 0.94, stability: 45, lastReviewedAt: daysAgo(2),  daysUntilReview: 14,   isDue: false, bestQuality: "optimal" },
+  { problemId: 5,  title: "Contains Duplicate",                       leetcodeNumber: 217, difficulty: "Easy"   as const, category: "Arrays & Hashing",  totalAttempts: 3, retrievability: 0.99, stability: 28, lastReviewedAt: daysAgo(0),  daysUntilReview: 28,   isDue: false, bestQuality: "optimal" },
+  { problemId: 7,  title: "Valid Anagram",                            leetcodeNumber: 242, difficulty: "Easy"   as const, category: "Arrays & Hashing",  totalAttempts: 4, retrievability: 0.98, stability: 45, lastReviewedAt: daysAgo(1),  daysUntilReview: 44,   isDue: false, bestQuality: "optimal" },
   { problemId: 3,  title: "Group Anagrams",                           leetcodeNumber: 49,  difficulty: "Medium" as const, category: "Arrays & Hashing",  totalAttempts: 2, retrievability: 0.52, stability: 8,  lastReviewedAt: daysAgo(6),  daysUntilReview: null, isDue: true,  bestQuality: "optimal" },
-  { problemId: 9,  title: "Top K Frequent Elements",                  leetcodeNumber: 347, difficulty: "Medium" as const, category: "Arrays & Hashing",  totalAttempts: 2, retrievability: 0.71, stability: 15, lastReviewedAt: daysAgo(4),  daysUntilReview: 3,    isDue: false, bestQuality: "optimal" },
-  { problemId: 6,  title: "Product of Array Except Self",             leetcodeNumber: 238, difficulty: "Medium" as const, category: "Arrays & Hashing",  totalAttempts: 2, retrievability: 0.65, stability: 11, lastReviewedAt: daysAgo(5),  daysUntilReview: 2,    isDue: false, bestQuality: "optimal" },
-  { problemId: 4,  title: "Longest Consecutive Sequence",             leetcodeNumber: 128, difficulty: "Medium" as const, category: "Arrays & Hashing",  totalAttempts: 2, retrievability: 0.73, stability: 14, lastReviewedAt: daysAgo(4),  daysUntilReview: 4,    isDue: false, bestQuality: "optimal" },
+  { problemId: 9,  title: "Top K Frequent Elements",                  leetcodeNumber: 347, difficulty: "Medium" as const, category: "Arrays & Hashing",  totalAttempts: 2, retrievability: 0.97, stability: 15, lastReviewedAt: daysAgo(1),  daysUntilReview: 14,   isDue: false, bestQuality: "optimal" },
+  { problemId: 6,  title: "Product of Array Except Self",             leetcodeNumber: 238, difficulty: "Medium" as const, category: "Arrays & Hashing",  totalAttempts: 2, retrievability: 0.95, stability: 11, lastReviewedAt: daysAgo(2),  daysUntilReview: 9,    isDue: false, bestQuality: "optimal" },
+  { problemId: 4,  title: "Longest Consecutive Sequence",             leetcodeNumber: 128, difficulty: "Medium" as const, category: "Arrays & Hashing",  totalAttempts: 2, retrievability: 0.97, stability: 14, lastReviewedAt: daysAgo(1),  daysUntilReview: 13,   isDue: false, bestQuality: "optimal" },
   { problemId: 10, title: "Container With Most Water",                leetcodeNumber: 11,  difficulty: "Medium" as const, category: "Two Pointers",       totalAttempts: 2, retrievability: 0.38, stability: 7,  lastReviewedAt: daysAgo(10), daysUntilReview: null, isDue: true,  bestQuality: "brute_force" },
   { problemId: 12, title: "Trapping Rain Water",                      leetcodeNumber: 42,  difficulty: "Hard"   as const, category: "Two Pointers",       totalAttempts: 3, retrievability: 0.22, stability: 5,  lastReviewedAt: daysAgo(12), daysUntilReview: null, isDue: true,  bestQuality: "brute_force" },
   { problemId: 13, title: "Valid Palindrome",                         leetcodeNumber: 125, difficulty: "Easy"   as const, category: "Two Pointers",       totalAttempts: 2, retrievability: 0.61, stability: 9,  lastReviewedAt: daysAgo(5),  daysUntilReview: null, isDue: true,  bestQuality: "optimal" },
-  { problemId: 15, title: "Longest Substring Without Repeating Characters", leetcodeNumber: 3, difficulty: "Medium" as const, category: "Sliding Window", totalAttempts: 2, retrievability: 0.58, stability: 9,  lastReviewedAt: daysAgo(6),  daysUntilReview: 1,    isDue: false, bestQuality: "optimal" },
-  { problemId: 17, title: "Best Time to Buy And Sell Stock",          leetcodeNumber: 121, difficulty: "Easy"   as const, category: "Sliding Window",    totalAttempts: 3, retrievability: 0.82, stability: 22, lastReviewedAt: daysAgo(3),  daysUntilReview: 6,    isDue: false, bestQuality: "optimal" },
+  { problemId: 15, title: "Longest Substring Without Repeating Characters", leetcodeNumber: 3, difficulty: "Medium" as const, category: "Sliding Window", totalAttempts: 2, retrievability: 0.94, stability: 9,  lastReviewedAt: daysAgo(2),  daysUntilReview: 7,    isDue: false, bestQuality: "optimal" },
+  { problemId: 17, title: "Best Time to Buy And Sell Stock",          leetcodeNumber: 121, difficulty: "Easy"   as const, category: "Sliding Window",    totalAttempts: 3, retrievability: 0.99, stability: 22, lastReviewedAt: daysAgo(0),  daysUntilReview: 22,   isDue: false, bestQuality: "optimal" },
   { problemId: 24, title: "Evaluate Reverse Polish Notation",         leetcodeNumber: 150, difficulty: "Medium" as const, category: "Stack",             totalAttempts: 1, retrievability: 0.48, stability: 6,  lastReviewedAt: daysAgo(7),  daysUntilReview: null, isDue: true,  bestQuality: "optimal" },
   { problemId: 25, title: "Min Stack",                                leetcodeNumber: 155, difficulty: "Medium" as const, category: "Stack",             totalAttempts: 1, retrievability: 0.31, stability: 4,  lastReviewedAt: daysAgo(11), daysUntilReview: null, isDue: true,  bestQuality: "optimal" },
-  { problemId: 30, title: "Search a 2D Matrix",                       leetcodeNumber: 74,  difficulty: "Medium" as const, category: "Binary Search",     totalAttempts: 1, retrievability: 0.67, stability: 10, lastReviewedAt: daysAgo(4),  daysUntilReview: 2,    isDue: false, bestQuality: "optimal" },
+  { problemId: 30, title: "Search a 2D Matrix",                       leetcodeNumber: 74,  difficulty: "Medium" as const, category: "Binary Search",     totalAttempts: 1, retrievability: 0.95, stability: 10, lastReviewedAt: daysAgo(2),  daysUntilReview: 8,    isDue: false, bestQuality: "optimal" },
   { problemId: 32, title: "Binary Search",                            leetcodeNumber: 704, difficulty: "Easy"   as const, category: "Binary Search",     totalAttempts: 2, retrievability: 0.55, stability: 8,  lastReviewedAt: daysAgo(5),  daysUntilReview: null, isDue: true,  bestQuality: "optimal" },
 ];
 
 // Activity history (14 days)
+// Index 0 = today, 13 = 13 days ago.
+// Streak of 4: days 0-3 non-zero, day 4 = 0.
+// Best streak of 6: days 5-10 non-zero.
 const attemptHistory = Array.from({ length: 14 }, (_, i) => {
   const idx = 13 - i;
-  const counts = [2, 0, 3, 4, 2, 0, 5, 3, 4, 6, 3, 5, 4, 0];
-  const newCounts = [1, 0, 1, 2, 1, 0, 2, 1, 2, 3, 1, 2, 2, 0];
+  const counts    = [2, 3, 3, 4, 0, 5, 3, 4, 6, 3, 2, 0, 4, 0];
+  const newCounts = [0, 0, 1, 0, 0, 3, 1, 2, 3, 1, 1, 0, 2, 0];
   const c = counts[idx] ?? 0;
   const n = newCounts[idx] ?? 0;
   return { date: dateStr(idx), count: c, newCount: n, reviewCount: c - n };
@@ -322,55 +326,57 @@ export const DEMO_ACTIVITY_DATA = {
     date: dateStr(0),
     range: "day" as const,
     summary: {
-      total: 7,
+      total: 2,
       newCount: 0,
-      reviewCount: 7,
-      solvedCount: 5,
-      totalTime: 80,
-      avgConfidence: 3.6,
+      reviewCount: 2,
+      solvedCount: 2,
+      totalTime: 18,
+      avgConfidence: 4.5,
     },
     items: [
-      { attemptId: "demo-a1", problemId: 6,  title: "Product of Array Except Self",             leetcodeNumber: 238, difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 3, solveTimeMinutes: 8,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(0), isNew: false },
-      { attemptId: "demo-a2", problemId: 1,  title: "Two Sum",                                  leetcodeNumber: 1,   difficulty: "Easy"   as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 5, solveTimeMinutes: 15, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(0), isNew: false },
-      { attemptId: "demo-a3", problemId: 4,  title: "Longest Consecutive Sequence",             leetcodeNumber: 128, difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 4, solveTimeMinutes: 4,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(0), isNew: false },
-      { attemptId: "demo-a4", problemId: 7,  title: "Valid Anagram",                            leetcodeNumber: 242, difficulty: "Easy"   as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 3, solveTimeMinutes: 15, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(0), isNew: false },
-      { attemptId: "demo-a5", problemId: 9,  title: "Top K Frequent Elements",                  leetcodeNumber: 347, difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 3, solveTimeMinutes: 20, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: false, createdAt: daysAgo(0), isNew: false },
-      { attemptId: "demo-a6", problemId: 12, title: "Trapping Rain Water",                      leetcodeNumber: 42,  difficulty: "Hard"   as const, category: "Two Pointers",      solvedIndependently: "PARTIAL", solutionQuality: "BRUTE_FORCE", confidence: 3, solveTimeMinutes: 15, studyTimeMinutes: null, timeCorrect: false, spaceCorrect: false, createdAt: daysAgo(0), isNew: false },
-      { attemptId: "demo-a7", problemId: 10, title: "Container With Most Water",                leetcodeNumber: 11,  difficulty: "Medium" as const, category: "Two Pointers",      solvedIndependently: "PARTIAL", solutionQuality: "BRUTE_FORCE", confidence: 3, solveTimeMinutes: 3,  studyTimeMinutes: null, timeCorrect: false, spaceCorrect: false, createdAt: daysAgo(0), isNew: false },
+      { attemptId: "demo-a1", problemId: 5,  title: "Contains Duplicate",  leetcodeNumber: 217, difficulty: "Easy" as const, category: "Arrays & Hashing", solvedIndependently: "YES", solutionQuality: "OPTIMAL", confidence: 5, solveTimeMinutes: 3,  studyTimeMinutes: null, timeCorrect: true, spaceCorrect: true, createdAt: daysAgo(0), isNew: false },
+      { attemptId: "demo-a2", problemId: 17, title: "Best Time to Buy And Sell Stock", leetcodeNumber: 121, difficulty: "Easy" as const, category: "Sliding Window", solvedIndependently: "YES", solutionQuality: "OPTIMAL", confidence: 4, solveTimeMinutes: 15, studyTimeMinutes: null, timeCorrect: true, spaceCorrect: true, createdAt: daysAgo(0), isNew: false },
     ],
   },
   week: {
     date: dateStr(0),
     range: "week" as const,
     summary: {
-      total: 26,
-      newCount: 2,
-      reviewCount: 24,
-      solvedCount: 13,
-      totalTime: 403,
-      avgConfidence: 3.5,
+      total: 20,
+      newCount: 5,
+      reviewCount: 15,
+      solvedCount: 18,
+      totalTime: 210,
+      avgConfidence: 4.0,
     },
     items: [
-      // Wed - day -3
-      { attemptId: "demo-w1", problemId: 24, title: "Evaluate Reverse Polish Notation", leetcodeNumber: 150, difficulty: "Medium" as const, category: "Stack",             solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 4, solveTimeMinutes: 15, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(3), isNew: false },
-      { attemptId: "demo-w2", problemId: 25, title: "Min Stack",                        leetcodeNumber: 155, difficulty: "Medium" as const, category: "Stack",             solvedIndependently: "PARTIAL", solutionQuality: "BRUTE_FORCE", confidence: 4, solveTimeMinutes: 15, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(3), isNew: false },
-      { attemptId: "demo-w3", problemId: 17, title: "Best Time to Buy And Sell Stock",  leetcodeNumber: 121, difficulty: "Easy"   as const, category: "Sliding Window",    solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 5, solveTimeMinutes: 5,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(3), isNew: false },
-      // Thu - day -2
-      { attemptId: "demo-w4", problemId: 32, title: "Binary Search",                    leetcodeNumber: 704, difficulty: "Easy"   as const, category: "Binary Search",    solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 5, solveTimeMinutes: 5,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(2), isNew: false },
-      { attemptId: "demo-w5", problemId: 30, title: "Search a 2D Matrix",               leetcodeNumber: 74,  difficulty: "Medium" as const, category: "Binary Search",    solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 4, solveTimeMinutes: 10, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(2), isNew: true  },
-      { attemptId: "demo-w6", problemId: 5,  title: "Contains Duplicate",               leetcodeNumber: 217, difficulty: "Easy"   as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 5, solveTimeMinutes: 3,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(2), isNew: false },
-      { attemptId: "demo-w7", problemId: 3,  title: "Group Anagrams",                   leetcodeNumber: 49,  difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "PARTIAL", solutionQuality: "BRUTE_FORCE", confidence: 3, solveTimeMinutes: 20, studyTimeMinutes: null, timeCorrect: false, spaceCorrect: false, createdAt: daysAgo(2), isNew: false },
-      // Fri - day -1
-      { attemptId: "demo-w8", problemId: 15, title: "Longest Substring Without Repeating Characters", leetcodeNumber: 3, difficulty: "Medium" as const, category: "Sliding Window", solvedIndependently: "YES",     solutionQuality: "OPTIMAL", confidence: 3, solveTimeMinutes: 35, studyTimeMinutes: null, timeCorrect: true, spaceCorrect: true, createdAt: daysAgo(1), isNew: true  },
-      { attemptId: "demo-w9", problemId: 13, title: "Valid Palindrome",                 leetcodeNumber: 125, difficulty: "Easy"   as const, category: "Two Pointers",      solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 4, solveTimeMinutes: 8,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(1), isNew: false },
-      // Today
-      { attemptId: "demo-a1", problemId: 6,  title: "Product of Array Except Self",             leetcodeNumber: 238, difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 3, solveTimeMinutes: 8,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(0), isNew: false },
-      { attemptId: "demo-a2", problemId: 1,  title: "Two Sum",                                  leetcodeNumber: 1,   difficulty: "Easy"   as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 5, solveTimeMinutes: 15, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(0), isNew: false },
-      { attemptId: "demo-a3", problemId: 4,  title: "Longest Consecutive Sequence",             leetcodeNumber: 128, difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 4, solveTimeMinutes: 4,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(0), isNew: false },
-      { attemptId: "demo-a4", problemId: 7,  title: "Valid Anagram",                            leetcodeNumber: 242, difficulty: "Easy"   as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 3, solveTimeMinutes: 15, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(0), isNew: false },
-      { attemptId: "demo-a5", problemId: 9,  title: "Top K Frequent Elements",                  leetcodeNumber: 347, difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 3, solveTimeMinutes: 20, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: false, createdAt: daysAgo(0), isNew: false },
-      { attemptId: "demo-a6", problemId: 12, title: "Trapping Rain Water",                      leetcodeNumber: 42,  difficulty: "Hard"   as const, category: "Two Pointers",      solvedIndependently: "PARTIAL", solutionQuality: "BRUTE_FORCE", confidence: 3, solveTimeMinutes: 15, studyTimeMinutes: null, timeCorrect: false, spaceCorrect: false, createdAt: daysAgo(0), isNew: false },
-      { attemptId: "demo-a7", problemId: 10, title: "Container With Most Water",                leetcodeNumber: 11,  difficulty: "Medium" as const, category: "Two Pointers",      solvedIndependently: "PARTIAL", solutionQuality: "BRUTE_FORCE", confidence: 3, solveTimeMinutes: 3,  studyTimeMinutes: null, timeCorrect: false, spaceCorrect: false, createdAt: daysAgo(0), isNew: false },
+      // Day -6: 3 items (1 new + 2 reviews)
+      { attemptId: "demo-w0a", problemId: 5,  title: "Contains Duplicate",               leetcodeNumber: 217, difficulty: "Easy"   as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 4, solveTimeMinutes: 5,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(6), isNew: true  },
+      { attemptId: "demo-w0b", problemId: 3,  title: "Group Anagrams",                   leetcodeNumber: 49,  difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "PARTIAL", solutionQuality: "BRUTE_FORCE", confidence: 3, solveTimeMinutes: 20, studyTimeMinutes: null, timeCorrect: false, spaceCorrect: false, createdAt: daysAgo(6), isNew: false },
+      { attemptId: "demo-w0c", problemId: 7,  title: "Valid Anagram",                    leetcodeNumber: 242, difficulty: "Easy"   as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 5, solveTimeMinutes: 4,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(6), isNew: false },
+      // Day -5: 5 items (3 new + 2 reviews)
+      { attemptId: "demo-w1a", problemId: 6,  title: "Product of Array Except Self",     leetcodeNumber: 238, difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 3, solveTimeMinutes: 15, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(5), isNew: true  },
+      { attemptId: "demo-w1b", problemId: 9,  title: "Top K Frequent Elements",          leetcodeNumber: 347, difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 3, solveTimeMinutes: 15, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: false, createdAt: daysAgo(5), isNew: true  },
+      { attemptId: "demo-w1c", problemId: 4,  title: "Longest Consecutive Sequence",     leetcodeNumber: 128, difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 3, solveTimeMinutes: 12, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(5), isNew: true  },
+      { attemptId: "demo-w1d", problemId: 13, title: "Valid Palindrome",                 leetcodeNumber: 125, difficulty: "Easy"   as const, category: "Two Pointers",      solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 4, solveTimeMinutes: 8,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(5), isNew: false },
+      { attemptId: "demo-w1e", problemId: 32, title: "Binary Search",                    leetcodeNumber: 704, difficulty: "Easy"   as const, category: "Binary Search",    solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 5, solveTimeMinutes: 5,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(5), isNew: false },
+      // Day -4: 0 attempts (break)
+      // Day -3: 4 items (0 new + 4 reviews)
+      { attemptId: "demo-w2a", problemId: 5,  title: "Contains Duplicate",               leetcodeNumber: 217, difficulty: "Easy"   as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 5, solveTimeMinutes: 3,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(3), isNew: false },
+      { attemptId: "demo-w2b", problemId: 7,  title: "Valid Anagram",                    leetcodeNumber: 242, difficulty: "Easy"   as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 5, solveTimeMinutes: 4,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(3), isNew: false },
+      { attemptId: "demo-w2c", problemId: 17, title: "Best Time to Buy And Sell Stock",  leetcodeNumber: 121, difficulty: "Easy"   as const, category: "Sliding Window",    solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 4, solveTimeMinutes: 8,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(3), isNew: false },
+      { attemptId: "demo-w2d", problemId: 15, title: "Longest Substring Without Repeating Characters", leetcodeNumber: 3, difficulty: "Medium" as const, category: "Sliding Window", solvedIndependently: "YES", solutionQuality: "OPTIMAL", confidence: 3, solveTimeMinutes: 18, studyTimeMinutes: null, timeCorrect: true, spaceCorrect: true, createdAt: daysAgo(3), isNew: false },
+      // Day -2: 3 items (1 new + 2 reviews)
+      { attemptId: "demo-w3a", problemId: 6,  title: "Product of Array Except Self",     leetcodeNumber: 238, difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 4, solveTimeMinutes: 10, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(2), isNew: false },
+      { attemptId: "demo-w3b", problemId: 15, title: "Longest Substring Without Repeating Characters", leetcodeNumber: 3, difficulty: "Medium" as const, category: "Sliding Window", solvedIndependently: "YES", solutionQuality: "OPTIMAL", confidence: 4, solveTimeMinutes: 12, studyTimeMinutes: null, timeCorrect: true, spaceCorrect: true, createdAt: daysAgo(2), isNew: false },
+      { attemptId: "demo-w3c", problemId: 30, title: "Search a 2D Matrix",               leetcodeNumber: 74,  difficulty: "Medium" as const, category: "Binary Search",    solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 4, solveTimeMinutes: 10, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(2), isNew: true  },
+      // Day -1: 3 items (0 new + 3 reviews)
+      { attemptId: "demo-w4a", problemId: 7,  title: "Valid Anagram",                    leetcodeNumber: 242, difficulty: "Easy"   as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 5, solveTimeMinutes: 4,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(1), isNew: false },
+      { attemptId: "demo-w4b", problemId: 9,  title: "Top K Frequent Elements",          leetcodeNumber: 347, difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 4, solveTimeMinutes: 12, studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(1), isNew: false },
+      { attemptId: "demo-w4c", problemId: 4,  title: "Longest Consecutive Sequence",     leetcodeNumber: 128, difficulty: "Medium" as const, category: "Arrays & Hashing", solvedIndependently: "YES",     solutionQuality: "OPTIMAL",     confidence: 4, solveTimeMinutes: 8,  studyTimeMinutes: null, timeCorrect: true,  spaceCorrect: true,  createdAt: daysAgo(1), isNew: false },
+      // Today: 2 items (0 new + 2 reviews)
+      { attemptId: "demo-a1", problemId: 5,  title: "Contains Duplicate",  leetcodeNumber: 217, difficulty: "Easy" as const, category: "Arrays & Hashing", solvedIndependently: "YES", solutionQuality: "OPTIMAL", confidence: 5, solveTimeMinutes: 3,  studyTimeMinutes: null, timeCorrect: true, spaceCorrect: true, createdAt: daysAgo(0), isNew: false },
+      { attemptId: "demo-a2", problemId: 17, title: "Best Time to Buy And Sell Stock", leetcodeNumber: 121, difficulty: "Easy" as const, category: "Sliding Window", solvedIndependently: "YES", solutionQuality: "OPTIMAL", confidence: 4, solveTimeMinutes: 15, studyTimeMinutes: null, timeCorrect: true, spaceCorrect: true, createdAt: daysAgo(0), isNew: false },
     ],
   },
 };
@@ -395,7 +401,7 @@ export const DEMO_STATS_DATA = {
   difficultyBreakdown: difficultyBreakdown.map(d => ({ ...d })),
   attemptHistory: Array.from({ length: 30 }, (_, i) => {
     const idx = 29 - i;
-    const counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 3, 4, 2, 0, 5, 3, 4, 6, 3, 5, 4, 0];
+    const counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 3, 4, 0, 5, 3, 4, 6, 3, 2, 0, 4, 0];
     return { date: dateStr(idx), count: counts[idx] ?? 0 };
   }),
   qualityDistribution: [

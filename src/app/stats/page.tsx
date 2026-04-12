@@ -16,10 +16,6 @@ export default async function StatsPage() {
   if (!session?.user?.id) {
     return (
       <div className="space-y-6">
-        <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 flex items-center gap-2 text-sm">
-          <span className="text-xs font-medium text-accent">DEMO</span>
-          <span className="text-muted-foreground text-xs">Sample statistics — sign in to see your own data</span>
-        </div>
         <h1 className="text-2xl font-semibold">Stats</h1>
         <StatsCharts {...DEMO_STATS_DATA} />
       </div>

@@ -124,13 +124,6 @@ export function ActivityClient({ items, date, range, summary, isDemo = false }: 
 
   return (
     <div className="space-y-6">
-      {/* Demo banner */}
-      {isDemo && (
-        <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 flex items-center gap-2 text-sm">
-          <span className="text-xs font-medium text-accent">DEMO</span>
-          <span className="text-muted-foreground text-xs">This is sample activity data — sign in to track your own</span>
-        </div>
-      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

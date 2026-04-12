@@ -73,7 +73,7 @@ export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = f
             Sign out
           </button>
         ) : authConfigured ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {isDemo && !isLanding && (
               <span className="hidden sm:inline-flex items-center rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-xs font-medium text-accent">
                 DEMO
@@ -81,7 +81,7 @@ export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = f
             )}
             <Link
               href="/auth/signin"
-              className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm text-accent-foreground transition-all duration-150 hover:shadow-[0_0_12px_var(--glow)]"
+              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground transition-colors duration-150 hover:opacity-90"
             >
               Sign in
             </Link>
@@ -89,7 +89,7 @@ export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = f
         ) : (
           <Link
             href="/auth/error?error=Configuration"
-            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-xs text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
             title="Auth not configured — click for setup guide"
           >
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />

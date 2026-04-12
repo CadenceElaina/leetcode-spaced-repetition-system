@@ -492,13 +492,6 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
         </div>
       </div>
     )}
-    {/* Demo banner */}
-    {isDemo && (
-      <div className="mb-2 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 flex items-center text-sm shrink-0">
-        <span className="text-xs font-medium text-accent mr-2">DEMO</span>
-        <span className="text-muted-foreground text-xs">Explore everything — sign in to start tracking your own progress</span>
-      </div>
-    )}
     {/* Log Attempt Modal */}
     {logModalProblem && !isDemo && (
       <LogAttemptModal

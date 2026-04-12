@@ -87,12 +87,6 @@ export function MockInterviewClient({ problems, categories, weakCategories, isDe
   if (phase === "setup") {
     return (
       <div className="space-y-6">
-        {isDemo && (
-          <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 flex items-center gap-2 text-sm">
-            <span className="text-xs font-medium text-accent">DEMO</span>
-            <span className="text-muted-foreground text-xs">Try the mock interview timer — sign in to track results</span>
-          </div>
-        )}
         <h1 className="text-2xl font-semibold">Mock Interview</h1>
         <div className="rounded-lg border border-border bg-muted p-6 space-y-4 max-w-2xl">
           <p className="text-sm text-foreground">
