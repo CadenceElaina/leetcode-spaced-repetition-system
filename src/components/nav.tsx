@@ -13,9 +13,92 @@ const navLinks = [
   { href: "/info", label: "Info" },
 ];
 
-export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = false }: { isAuthenticated?: boolean; authConfigured?: boolean; isDemo?: boolean }) {
+/* ── Time-based greeting with localStorage persistence ── */
+const GREETING_KEY = "aurora_greeting";
+
+function pickGreeting(name?: string): string {
+  const hour = new Date().getHours();
+  const first = name?.split(" ")[0];
+
+  let opts: string[];
+  if (hour < 4) {
+    opts = first
+      ? [`Burning the midnight oil, ${first}?`, `Late night grind, ${first}.`, `Still at it, ${first}?`]
+      : ["Burning the midnight oil?", "Late night grind.", "Midnight session. Let's go."];
+  } else if (hour < 7) {
+    opts = first
+      ? [`Rise and grind, ${first}.`, `Early bird, ${first}.`, `Up before the sun, ${first}.`]
+      : ["Rise and grind.", "Early bird gets the offer.", "Up before the sun."];
+  } else if (hour < 12) {
+    opts = first
+      ? [`Good morning, ${first}.`, `Morning, ${first}.`, `Let's get it, ${first}.`]
+      : ["Good morning.", "Morning.", "Let's get it."];
+  } else if (hour < 17) {
+    opts = first
+      ? [`Good afternoon, ${first}.`, `Afternoon session, ${first}.`, `Welcome back, ${first}.`]
+      : ["Good afternoon.", "Afternoon session.", "Welcome back."];
+  } else if (hour < 21) {
+    opts = first
+      ? [`Good evening, ${first}.`, `Evening, ${first}.`, `Welcome back, ${first}.`]
+      : ["Good evening.", "Evening session.", "Welcome back."];
+  } else {
+    opts = first
+      ? [`Night owl, ${first}?`, `Late session, ${first}.`, `Winding down, ${first}?`]
+      : ["Night owl?", "Late session.", "Winding down?"];
+  }
+  return opts[Math.floor(Math.random() * opts.length)];
+}
+
+function getTimeSlot(): string {
+  const hour = new Date().getHours();
+  if (hour < 4) return "latenight";
+  if (hour < 7) return "earlyam";
+  if (hour < 12) return "morning";
+  if (hour < 17) return "afternoon";
+  if (hour < 21) return "evening";
+  return "night";
+}
+
+function useGreeting(userName?: string): string | null {
+  const [greeting, setGreeting] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userName) return;
+
+    const now = Date.now();
+    const today = new Date().toDateString();
+    const slot = getTimeSlot();
+
+    try {
+      const raw = localStorage.getItem(GREETING_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        const sameDay = saved.day === today;
+        const sameSlot = saved.slot === slot;
+        const recentActivity = now - (saved.lastActivity ?? 0) < 4 * 60 * 60 * 1000;
+
+        if (sameDay && sameSlot && recentActivity && saved.text) {
+          // Same day, same time slot, active recently — reuse
+          localStorage.setItem(GREETING_KEY, JSON.stringify({ ...saved, lastActivity: now }));
+          setGreeting(saved.text);
+          return;
+        }
+      }
+    } catch { /* ignore corrupted data */ }
+
+    // Generate fresh greeting
+    const text = pickGreeting(userName);
+    localStorage.setItem(GREETING_KEY, JSON.stringify({ text, day: today, slot, lastActivity: now }));
+    setGreeting(text);
+  }, [userName]);
+
+  return greeting;
+}
+
+export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = false, userName }: { isAuthenticated?: boolean; authConfigured?: boolean; isDemo?: boolean; userName?: string }) {
   const pathname = usePathname();
   const [logoHovered, setLogoHovered] = useState(false);
+  const greeting = useGreeting(isAuthenticated ? userName : undefined);
 
   // On the landing page, show a minimal nav
   const isLanding = pathname === "/";
@@ -64,6 +147,9 @@ export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = f
       <div className="flex items-center gap-2">
         {isAuthenticated && !isLanding && <GitHubSyncDropdown />}
         {isDemo && !isLanding && <DemoGitHubBadge />}
+        {greeting && !isLanding && (
+          <span className="hidden sm:inline text-sm text-muted-foreground">{greeting}</span>
+        )}
         {isAuthenticated ? (
           <button
             onClick={() => signOut({ callbackUrl: "/" })}

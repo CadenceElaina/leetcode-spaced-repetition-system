@@ -15,10 +15,12 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   let isAuthenticated = false;
+  let userName: string | undefined;
   if (isAuthConfigured) {
     try {
       const session = await auth();
       isAuthenticated = !!session?.user?.id;
+      userName = session?.user?.name ?? undefined;
     } catch {
       // Auth call failed — treat as unauthenticated
     }
@@ -28,7 +30,7 @@ export default async function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <ThemeProvider>
-          <Nav isAuthenticated={isAuthenticated} authConfigured={isAuthConfigured} isDemo={!isAuthenticated} />
+          <Nav isAuthenticated={isAuthenticated} authConfigured={isAuthConfigured} isDemo={!isAuthenticated} userName={userName} />
           <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
         </ThemeProvider>
       </body>

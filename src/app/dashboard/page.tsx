@@ -22,8 +22,6 @@ export default async function DashboardPage() {
     );
   }
 
-  const userName = session.user.name ?? undefined;
-
   const userId = session.user.id;
   const now = new Date();
   const todayStart = new Date();
@@ -410,7 +408,6 @@ export default async function DashboardPage() {
           detectedAt: p.detectedAt.toISOString(),
         })),
       }}
-      userName={userName}
     />
     </Suspense>
   );
