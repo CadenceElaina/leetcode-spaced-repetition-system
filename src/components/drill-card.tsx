@@ -131,6 +131,12 @@ export function DrillCard({ drill, onRate, position, total }: DrillCardProps) {
           rows={8}
           className="w-full font-mono text-sm bg-card border border-border rounded-lg p-3 text-foreground placeholder:text-muted-foreground/50 resize-y focus:outline-none focus:border-accent/50"
           readOnly={phase === "result"}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && e.ctrlKey && e.shiftKey && phase === "prompt") {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
         />
       </div>
 
@@ -144,6 +150,7 @@ export function DrillCard({ drill, onRate, position, total }: DrillCardProps) {
           >
             Check Answer
           </button>
+          <span className="text-[10px] text-muted-foreground">Ctrl+Shift+Enter</span>
         </div>
       )}
 

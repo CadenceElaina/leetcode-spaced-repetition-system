@@ -327,6 +327,9 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
   // Drill state
   const [drillSubTab, setDrillSubTab] = useState<"due" | "new" | "mastered">("due");
   const [drillSession, setDrillSession] = useState<{ active: boolean; drills: DemoDrill[]; current: number; results: DrillConfidence[] } | null>(null);
+  const [realDrills, setRealDrills] = useState<DemoDrill[] | null>(null);
+  const [realFluencyStats, setRealFluencyStats] = useState<{ overallTier: string; categories: DemoFluencyCategory[] } | null>(null);
+  const [drillsLoading, setDrillsLoading] = useState(false);
 
   const activityData = useMemo(() => {
     if (activityRange === "14d") return data.attemptHistory;
@@ -334,6 +337,63 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
     const days = activityRange === "30d" ? 30 : 90;
     return data.fullAttemptHistory.slice(-days);
   }, [activityRange, data.attemptHistory, data.fullAttemptHistory]);
+
+  // Fetch real drills + fluency stats for authenticated users
+  const fetchDrills = useCallback(async () => {
+    if (isDemo) return;
+    setDrillsLoading(true);
+    try {
+      const [drillsRes, statsRes] = await Promise.all([
+        fetch("/api/drills?filter=all"),
+        fetch("/api/drills/stats"),
+      ]);
+      if (drillsRes.ok) {
+        const { drills } = await drillsRes.json();
+        const now = new Date();
+        const mapped: DemoDrill[] = drills.map((d: { id: number; title: string; category: string; level: number; prompt: string; expectedCode: string; alternatives?: string[]; explanation: string; state: { stability: number; lastReviewedAt: string | null; nextReviewAt: string | null; totalAttempts: number; bestConfidence: number | null } | null }) => {
+          let dueStatus: "due" | "new" | "mastered" = "new";
+          if (d.state) {
+            if (d.state.stability > 21) dueStatus = "mastered";
+            else if (!d.state.nextReviewAt || new Date(d.state.nextReviewAt) <= now) dueStatus = "due";
+            else dueStatus = "mastered"; // reviewed but not yet due — treat as learning/mastered
+          }
+          return {
+            id: d.id,
+            title: d.title,
+            category: d.category,
+            level: d.level as DemoDrill["level"],
+            prompt: d.prompt,
+            expectedCode: d.expectedCode,
+            alternatives: d.alternatives,
+            explanation: d.explanation,
+            dueStatus,
+            totalAttempts: d.state?.totalAttempts ?? 0,
+            stability: d.state?.stability ?? 0,
+          };
+        });
+        setRealDrills(mapped);
+      }
+      if (statsRes.ok) {
+        const stats = await statsRes.json();
+        setRealFluencyStats({
+          overallTier: stats.overallTier,
+          categories: stats.categories.map((c: { name: string; fluency: number; drillsDue: number; totalDrills: number; mastered: number }) => ({
+            name: c.name,
+            fluency: c.fluency,
+            drillsDue: c.drillsDue,
+            totalDrills: c.totalDrills,
+            mastered: c.mastered,
+          })),
+        });
+      }
+    } catch {
+      // Silently fall back to demo data
+    } finally {
+      setDrillsLoading(false);
+    }
+  }, [isDemo]);
+
+  useEffect(() => { fetchDrills(); }, [fetchDrills]);
 
   function toggleWidget(key: string) {
     setCollapsedWidgets((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -519,12 +579,13 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
     );
   }, [sortedCompleted, queueSearch]);
 
-  // Drill data (demo mode uses static data; real mode would fetch from API)
-  const demoDrills = DEMO_DRILLS;
-  const dueDrills = useMemo(() => demoDrills.filter(d => d.dueStatus === "due"), [demoDrills]);
-  const newDrills = useMemo(() => demoDrills.filter(d => d.dueStatus === "new"), [demoDrills]);
-  const masteredDrills = useMemo(() => demoDrills.filter(d => d.dueStatus === "mastered"), [demoDrills]);
+  // Drill data — use real API data when authenticated, demo data as fallback
+  const allDrills = realDrills ?? DEMO_DRILLS;
+  const dueDrills = useMemo(() => allDrills.filter(d => d.dueStatus === "due"), [allDrills]);
+  const newDrills = useMemo(() => allDrills.filter(d => d.dueStatus === "new"), [allDrills]);
+  const masteredDrills = useMemo(() => allDrills.filter(d => d.dueStatus === "mastered"), [allDrills]);
   const activeDrillList = drillSubTab === "due" ? dueDrills : drillSubTab === "new" ? newDrills : masteredDrills;
+  const fluencyStats = realFluencyStats ?? DEMO_FLUENCY_STATS;
 
   function startDrillSession() {
     const sessionDrills = [...dueDrills, ...newDrills].slice(0, 8);
@@ -533,9 +594,25 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
     setListMode("drills");
   }
 
-  function handleDrillRate(confidence: DrillConfidence, _userCode: string) {
+  function handleDrillRate(confidence: DrillConfidence, userCode: string) {
     if (!drillSession) return;
+    const currentDrill = drillSession.drills[drillSession.current];
     const newResults = [...drillSession.results, confidence];
+
+    // POST attempt to API for authenticated users
+    if (!isDemo && currentDrill) {
+      fetch("/api/drills/attempt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          drillId: currentDrill.id,
+          userCode,
+          confidence,
+          sessionPosition: drillSession.current,
+        }),
+      }).then(() => fetchDrills()).catch(() => {});
+    }
+
     if (drillSession.current + 1 >= drillSession.drills.length) {
       // Session complete — show summary
       setDrillSession({ ...drillSession, results: newResults, active: false });
@@ -1058,7 +1135,11 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                   </button>
                 </div>
                 {/* Drill list */}
-                {activeDrillList.length === 0 ? (
+                {drillsLoading && !realDrills ? (
+                  <div className="rounded-lg border border-border bg-muted p-6 text-center">
+                    <p className="text-sm text-muted-foreground">Loading drills…</p>
+                  </div>
+                ) : activeDrillList.length === 0 ? (
                   <div className="rounded-lg border border-border bg-muted p-6 text-center">
                     <p className="text-sm text-muted-foreground">
                       {drillSubTab === "due" ? "No drills due — you're caught up!" : drillSubTab === "new" ? "All drills started!" : "No mastered drills yet."}
@@ -1113,7 +1194,7 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
       <div className="space-y-3 lg:col-span-6 overflow-y-auto min-h-0">
         {listMode === "drills" ? (
           /* ── Fluency Panel (shown when Drills tab active) ── */
-          <FluencyPanel stats={DEMO_FLUENCY_STATS} />
+          <FluencyPanel stats={fluencyStats} />
         ) : showStatsDetail ? (
           /* ── Stats Detail (back side) ── */
           <section className="rounded-lg border border-border bg-muted p-4 space-y-4">
