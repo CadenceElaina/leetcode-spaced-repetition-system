@@ -487,6 +487,266 @@ export const DEMO_DRILL_CATEGORIES = [
   { name: "Bit Manipulation",             total: 7,  attempted: 0, avgRetention: 0, problems: [] },
 ];
 
+/* ── Drill types & demo data ── */
+
+export type DrillLevel = 1 | 2 | 3 | 4;
+export type DrillConfidence = 1 | 2 | 3 | 4; // Again/Hard/Good/Easy
+
+export interface SyntaxDrill {
+  id: number;
+  title: string;
+  category: string;
+  level: DrillLevel;
+  language: string;
+  prompt: string;
+  expectedCode: string;
+  alternatives: string[];
+  explanation: string;
+  tags: string[];
+}
+
+export interface UserDrillState {
+  drillId: number;
+  stability: number;
+  lastReviewedAt: string | null;
+  nextReviewAt: string | null;
+  totalAttempts: number;
+  bestConfidence: DrillConfidence | null;
+}
+
+export interface DrillAttemptPayload {
+  drillId: number;
+  userCode: string;
+  confidence: DrillConfidence;
+  sessionPosition: number;
+  categoryStreak: number;
+}
+
+export type DemoDrillStatus = "due" | "new" | "mastered";
+
+export interface DemoDrill {
+  id: number;
+  title: string;
+  category: string;
+  level: DrillLevel;
+  prompt: string;
+  expectedCode: string;
+  explanation: string;
+  dueStatus: DemoDrillStatus;
+  totalAttempts: number;
+  stability: number;
+}
+
+export const DEMO_DRILLS: DemoDrill[] = [
+  {
+    id: 1,
+    title: "Build a frequency counter",
+    category: "Arrays & Hashing",
+    level: 1,
+    prompt: "Given an array `nums`, build a hash map that maps each number to how many times it appears.",
+    expectedCode: `freq = {}
+for n in nums:
+    freq[n] = freq.get(n, 0) + 1`,
+    explanation: "Use `dict.get(key, default)` to safely increment. This is the foundation of most hash map patterns — counting occurrences in O(n) time, O(n) space.",
+    dueStatus: "due",
+    totalAttempts: 3,
+    stability: 4,
+  },
+  {
+    id: 2,
+    title: "Two-pass hash map lookup",
+    category: "Arrays & Hashing",
+    level: 2,
+    prompt: "Given `nums` and a `target`, return indices of two numbers that add up to `target`. Use a hash map.",
+    expectedCode: `seen = {}
+for i, n in enumerate(nums):
+    comp = target - n
+    if comp in seen:
+        return [seen[comp], i]
+    seen[n] = i`,
+    explanation: "Store each number's index as you iterate. For each element, check if its complement (`target - n`) was already seen. One pass, O(n) time.",
+    dueStatus: "due",
+    totalAttempts: 2,
+    stability: 3,
+  },
+  {
+    id: 3,
+    title: "Opposite-end two pointers",
+    category: "Two Pointers",
+    level: 1,
+    prompt: "Write the two-pointer loop to check if a string `s` is a palindrome. Use `left` and `right` indices.",
+    expectedCode: `left, right = 0, len(s) - 1
+while left < right:
+    if s[left] != s[right]:
+        return False
+    left += 1
+    right -= 1
+return True`,
+    explanation: "Classic opposite-end pattern: start pointers at both ends, move inward. If characters ever mismatch, it's not a palindrome.",
+    dueStatus: "due",
+    totalAttempts: 4,
+    stability: 8,
+  },
+  {
+    id: 4,
+    title: "Container with most water",
+    category: "Two Pointers",
+    level: 3,
+    prompt: "Given `height` array, write the two-pointer approach to find max water area. Show the full loop with pointer movement logic.",
+    expectedCode: `left, right = 0, len(height) - 1
+max_area = 0
+while left < right:
+    area = min(height[left], height[right]) * (right - left)
+    max_area = max(max_area, area)
+    if height[left] < height[right]:
+        left += 1
+    else:
+        right -= 1
+return max_area`,
+    explanation: "Always move the shorter pointer inward — moving the taller one can never increase the area since width decreases. Greedy + two pointers.",
+    dueStatus: "new",
+    totalAttempts: 0,
+    stability: 0,
+  },
+  {
+    id: 5,
+    title: "Stack matching brackets",
+    category: "Stack",
+    level: 1,
+    prompt: "Write a function to check if a string of brackets `()[]{}` is valid using a stack.",
+    expectedCode: `stack = []
+pairs = {')': '(', ']': '[', '}': '{'}
+for ch in s:
+    if ch in pairs:
+        if not stack or stack[-1] != pairs[ch]:
+            return False
+        stack.pop()
+    else:
+        stack.append(ch)
+return len(stack) == 0`,
+    explanation: "Push opening brackets; on a closing bracket, check the stack top matches. If stack is empty at end, all brackets were matched.",
+    dueStatus: "due",
+    totalAttempts: 5,
+    stability: 12,
+  },
+  {
+    id: 6,
+    title: "Monotonic stack: next greater",
+    category: "Stack",
+    level: 3,
+    prompt: "Given `temperatures`, return an array where `ans[i]` is the number of days until a warmer temperature. Use a monotonic stack.",
+    expectedCode: `ans = [0] * len(temperatures)
+stack = []  # indices
+for i, t in enumerate(temperatures):
+    while stack and temperatures[stack[-1]] < t:
+        j = stack.pop()
+        ans[j] = i - j
+    stack.append(i)
+return ans`,
+    explanation: "Maintain a decreasing stack of indices. When a warmer temp appears, pop all cooler entries and record the distance. O(n) since each index is pushed/popped once.",
+    dueStatus: "new",
+    totalAttempts: 0,
+    stability: 0,
+  },
+  {
+    id: 7,
+    title: "DFS tree traversal",
+    category: "Trees",
+    level: 1,
+    prompt: "Write a recursive function to find the maximum depth of a binary tree. Each node has `.left` and `.right`.",
+    expectedCode: `def maxDepth(root):
+    if not root:
+        return 0
+    return 1 + max(maxDepth(root.left), maxDepth(root.right))`,
+    explanation: "Base case: null node has depth 0. Recursive case: depth is 1 plus the max of left and right subtree depths. Classic DFS post-order.",
+    dueStatus: "mastered",
+    totalAttempts: 6,
+    stability: 35,
+  },
+  {
+    id: 8,
+    title: "BFS level order traversal",
+    category: "Trees",
+    level: 2,
+    prompt: "Write BFS to return a list of lists, where each inner list contains node values at that level.",
+    expectedCode: `from collections import deque
+result = []
+queue = deque([root])
+while queue:
+    level = []
+    for _ in range(len(queue)):
+        node = queue.popleft()
+        level.append(node.val)
+        if node.left: queue.append(node.left)
+        if node.right: queue.append(node.right)
+    result.append(level)
+return result`,
+    explanation: "Process one level at a time by capturing `len(queue)` at the start of each iteration. This gives you clean level grouping with standard BFS.",
+    dueStatus: "due",
+    totalAttempts: 2,
+    stability: 5,
+  },
+  {
+    id: 9,
+    title: "Sliding window max length",
+    category: "Sliding Window",
+    level: 2,
+    prompt: "Write the sliding window template for longest substring without repeating characters. Use a set.",
+    expectedCode: `seen = set()
+left = 0
+max_len = 0
+for right in range(len(s)):
+    while s[right] in seen:
+        seen.remove(s[left])
+        left += 1
+    seen.add(s[right])
+    max_len = max(max_len, right - left + 1)
+return max_len`,
+    explanation: "Expand right pointer to grow window. When duplicate found, shrink from left until valid. Track max window size throughout.",
+    dueStatus: "new",
+    totalAttempts: 0,
+    stability: 0,
+  },
+  {
+    id: 10,
+    title: "Invert a binary tree",
+    category: "Trees",
+    level: 2,
+    prompt: "Write a recursive function to invert (mirror) a binary tree. Swap left and right children at every node.",
+    expectedCode: `def invertTree(root):
+    if not root:
+        return None
+    root.left, root.right = root.right, root.left
+    invertTree(root.left)
+    invertTree(root.right)
+    return root`,
+    explanation: "Swap children, then recurse on both. Pre-order traversal works naturally — swap first, then let recursion handle subtrees.",
+    dueStatus: "mastered",
+    totalAttempts: 5,
+    stability: 40,
+  },
+];
+
+export interface DemoFluencyCategory {
+  name: string;
+  fluency: number;
+  drillsDue: number;
+  totalDrills: number;
+  mastered: number;
+}
+
+export const DEMO_FLUENCY_STATS = {
+  overallTier: "C" as const,
+  categories: [
+    { name: "Arrays & Hashing", fluency: 0.68, drillsDue: 2, totalDrills: 12, mastered: 4 },
+    { name: "Two Pointers", fluency: 0.52, drillsDue: 1, totalDrills: 8, mastered: 2 },
+    { name: "Sliding Window", fluency: 0.30, drillsDue: 0, totalDrills: 6, mastered: 0 },
+    { name: "Stack", fluency: 0.61, drillsDue: 1, totalDrills: 8, mastered: 3 },
+    { name: "Trees", fluency: 0.55, drillsDue: 1, totalDrills: 10, mastered: 2 },
+    { name: "Binary Search", fluency: 0.20, drillsDue: 0, totalDrills: 6, mastered: 0 },
+  ] as DemoFluencyCategory[],
+};
+
 /* ── Demo data for Mock Interview page ── */
 
 export const DEMO_MOCK_INTERVIEW = {
