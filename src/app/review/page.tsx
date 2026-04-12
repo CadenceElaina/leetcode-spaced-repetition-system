@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { eq, asc, sql } from "drizzle-orm";
 import Link from "next/link";
 import { ReviewQueueClient } from "./review-client";
+import { DEMO_REVIEW_QUEUE } from "@/app/dashboard/demo-data";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Review — Aurora" };
@@ -12,12 +13,7 @@ export default async function ReviewPage() {
   const session = await auth();
 
   if (!session?.user?.id) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold">Review Queue</h1>
-        <p className="text-sm text-muted-foreground">Sign in to see your review queue.</p>
-      </div>
-    );
+    return <ReviewQueueClient initialQueue={DEMO_REVIEW_QUEUE} isDemo />;
   }
 
   const now = new Date();

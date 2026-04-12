@@ -3,6 +3,7 @@ import { attempts, problems, userProblemStates } from "@/db/schema";
 import { auth } from "@/auth";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { ActivityClient } from "./activity-client";
+import { DEMO_ACTIVITY_DATA } from "@/app/dashboard/demo-data";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Activity — Aurora" };
@@ -15,12 +16,10 @@ export default async function ActivityPage({
   const session = await auth();
 
   if (!session?.user?.id) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold">Activity</h1>
-        <p className="text-sm text-muted-foreground">Sign in to see your activity.</p>
-      </div>
-    );
+    const params = await searchParams;
+    const range = params.range === "week" ? "week" : "day";
+    const demoData = range === "week" ? DEMO_ACTIVITY_DATA.week : DEMO_ACTIVITY_DATA.day;
+    return <ActivityClient items={demoData.items} date={demoData.date} range={demoData.range} summary={demoData.summary} isDemo />;
   }
 
   const params = await searchParams;

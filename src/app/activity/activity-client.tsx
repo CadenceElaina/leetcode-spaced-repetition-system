@@ -37,6 +37,7 @@ type Props = {
   date: string;
   range: "day" | "week";
   summary: Summary;
+  isDemo?: boolean;
 };
 
 const QUALITY_LABELS: Record<string, { label: string; className: string }> = {
@@ -92,7 +93,7 @@ function navigateDate(dateStr: string, range: "day" | "week", direction: -1 | 1)
   return d.toISOString().slice(0, 10);
 }
 
-export function ActivityClient({ items, date, range, summary }: Props) {
+export function ActivityClient({ items, date, range, summary, isDemo = false }: Props) {
   const router = useRouter();
 
   function go(newDate: string, newRange: "day" | "week") {
@@ -123,6 +124,16 @@ export function ActivityClient({ items, date, range, summary }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Demo banner */}
+      {isDemo && (
+        <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-accent">DEMO</span>
+            <span className="text-muted-foreground text-xs">This is sample activity data — sign in to track your own</span>
+          </div>
+          <Link href="/auth/signin" className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-all duration-150 hover:opacity-90">Sign in</Link>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -216,18 +227,18 @@ export function ActivityClient({ items, date, range, summary }: Props) {
                   {dayItems.length} attempt{dayItems.length !== 1 ? "s" : ""}
                 </span>
               </h2>
-              <AttemptList items={dayItems} />
+              <AttemptList items={dayItems} isDemo={isDemo} />
             </div>
           ))}
         </div>
       ) : (
-        <AttemptList items={items} />
+        <AttemptList items={items} isDemo={isDemo} />
       )}
     </div>
   );
 }
 
-function AttemptList({ items: initialItems }: { items: ActivityItem[] }) {
+function AttemptList({ items: initialItems, isDemo = false }: { items: ActivityItem[]; isDemo?: boolean }) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -251,6 +262,7 @@ function AttemptList({ items: initialItems }: { items: ActivityItem[] }) {
   }
 
   async function handleDelete(attemptId: string) {
+    if (isDemo) return;
     setDeleting((prev) => new Set(prev).add(attemptId));
     try {
       const res = await fetch(`/api/attempts?id=${attemptId}`, { method: "DELETE" });

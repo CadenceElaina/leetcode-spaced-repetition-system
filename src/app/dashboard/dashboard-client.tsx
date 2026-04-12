@@ -461,22 +461,51 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
     router.refresh();
   }
 
+  // Demo sign-in prompt overlay
+  const [showDemoSignIn, setShowDemoSignIn] = useState(false);
+
+  function demoGuard(action: () => void) {
+    if (isDemo) {
+      setShowDemoSignIn(true);
+      return;
+    }
+    action();
+  }
+
   return (
     <div className="h-[calc(100dvh-120px)] relative">
-    {/* Demo overlay for signed-out users */}
-    {isDemo && (
-      <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none" style={{ background: "linear-gradient(to bottom, transparent 0%, rgba(12,10,20,0.6) 40%, rgba(12,10,20,0.92) 100%)" }}>
-        <div className="pointer-events-auto text-center space-y-4">
-          <h2 className="text-2xl font-bold text-foreground">Your dashboard awaits</h2>
-          <p className="text-sm text-muted-foreground max-w-xs mx-auto">Sign in to start tracking your progress with spaced repetition.</p>
-          <Link href="/auth/signin" className="inline-flex h-10 items-center rounded-md bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-[0_0_20px_var(--glow)] transition-all duration-150 hover:shadow-[0_0_32px_var(--glow)]">
-            Sign in with GitHub
-          </Link>
+    {/* Demo sign-in prompt */}
+    {showDemoSignIn && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowDemoSignIn(false)}>
+        <div className="rounded-lg border border-border bg-muted p-6 text-center space-y-3 max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+          <p className="text-sm text-muted-foreground">This is a demo preview</p>
+          <h3 className="text-lg font-semibold text-foreground">Sign in to track your progress</h3>
+          <p className="text-xs text-muted-foreground">All your data will be synced with spaced repetition scheduling.</p>
+          <div className="flex gap-2 justify-center pt-1">
+            <Link href="/auth/signin" className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-all duration-150 hover:shadow-[0_0_12px_var(--glow)]">
+              Sign in with GitHub
+            </Link>
+            <button onClick={() => setShowDemoSignIn(false)} className="inline-flex h-9 items-center rounded-md border border-border px-4 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Keep exploring
+            </button>
+          </div>
         </div>
       </div>
     )}
+    {/* Demo banner */}
+    {isDemo && (
+      <div className="mb-2 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 flex items-center justify-between text-sm shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-accent">DEMO</span>
+          <span className="text-muted-foreground text-xs">Explore everything — sign in to start tracking your own progress</span>
+        </div>
+        <Link href="/auth/signin" className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-all duration-150 hover:opacity-90">
+          Sign in
+        </Link>
+      </div>
+    )}
     {/* Log Attempt Modal */}
-    {logModalProblem && (
+    {logModalProblem && !isDemo && (
       <LogAttemptModal
         problem={logModalProblem}
         onClose={() => setLogModalProblem(null)}
@@ -500,7 +529,7 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
           <PendingBanner
             items={pendingItems}
             onConfirm={(item) => {
-              setLogModalProblem({
+              demoGuard(() => setLogModalProblem({
                 problemId: item.problemId,
                 title: item.problemTitle,
                 leetcodeNumber: item.leetcodeNumber,
@@ -509,9 +538,10 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                 attemptDate: item.detectedAt,
                 pendingId: item.id,
                 source: "github",
-              });
+              }));
             }}
             onDismiss={async (item) => {
+              if (isDemo) { setShowDemoSignIn(true); return; }
               await fetch("/api/pending", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -704,13 +734,13 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                           </span>
                           <DifficultyBadge difficulty={item.difficulty} />
                           <button
-                            onClick={() => setLogModalProblem({
+                            onClick={() => demoGuard(() => setLogModalProblem({
                               problemId: item.problemId,
                               title: item.title,
                               leetcodeNumber: item.leetcodeNumber,
                               difficulty: item.difficulty,
                               isReview: true,
-                            })}
+                            }))}
                             className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs text-accent-foreground transition-colors hover:opacity-90"
                           >
                             Log
@@ -757,13 +787,13 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                       <div className="flex items-center gap-1.5 shrink-0">
                         <DifficultyBadge difficulty={p.difficulty} />
                         <button
-                          onClick={() => setLogModalProblem({
+                          onClick={() => demoGuard(() => setLogModalProblem({
                             problemId: p.id,
                             title: p.title,
                             leetcodeNumber: p.leetcodeNumber,
                             difficulty: p.difficulty,
                             isReview: false,
-                          })}
+                          }))}
                           className="inline-flex h-7 items-center rounded-md border border-border px-3 text-xs text-foreground transition-colors hover:bg-muted"
                         >
                           Log

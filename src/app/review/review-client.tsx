@@ -19,6 +19,7 @@ type QueueItem = {
 
 type Props = {
   initialQueue: QueueItem[];
+  isDemo?: boolean;
 };
 
 const SKIP_REASONS = [
@@ -27,15 +28,22 @@ const SKIP_REASONS = [
   { value: "wrong_category", label: "Wrong category for today" },
 ] as const;
 
-export function ReviewQueueClient({ initialQueue }: Props) {
+export function ReviewQueueClient({ initialQueue, isDemo = false }: Props) {
   const router = useRouter();
   const [queue, setQueue] = useState(initialQueue);
   const [skippingId, setSkippingId] = useState<string | null>(null);
   const [feedbackId, setFeedbackId] = useState<string | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
   const [logModalProblem, setLogModalProblem] = useState<LogModalProblem | null>(null);
+  const [showDemoSignIn, setShowDemoSignIn] = useState(false);
+
+  function demoGuard(action: () => void) {
+    if (isDemo) { setShowDemoSignIn(true); return; }
+    action();
+  }
 
   async function handleSkip(problemId: number, stateId: string, reason: string) {
+    if (isDemo) { setShowDemoSignIn(true); return; }
     setLoading(stateId);
     const res = await fetch("/api/review", {
       method: "POST",
@@ -50,6 +58,7 @@ export function ReviewQueueClient({ initialQueue }: Props) {
   }
 
   async function handleFeedback(problemId: number, stateId: string, feedback: string) {
+    if (isDemo) { setShowDemoSignIn(true); return; }
     setLoading(stateId);
     const res = await fetch("/api/review", {
       method: "POST",
@@ -65,7 +74,30 @@ export function ReviewQueueClient({ initialQueue }: Props) {
 
   return (
     <div className="space-y-6">
-      {logModalProblem && (
+      {/* Demo sign-in prompt */}
+      {showDemoSignIn && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowDemoSignIn(false)}>
+          <div className="rounded-lg border border-border bg-muted p-6 text-center space-y-3 max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-foreground">Sign in to review problems</h3>
+            <p className="text-xs text-muted-foreground">This is a demo — sign in to start your own spaced repetition schedule.</p>
+            <div className="flex gap-2 justify-center pt-1">
+              <Link href="/auth/signin" className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-all duration-150 hover:shadow-[0_0_12px_var(--glow)]">Sign in with GitHub</Link>
+              <button onClick={() => setShowDemoSignIn(false)} className="inline-flex h-9 items-center rounded-md border border-border px-4 text-sm text-muted-foreground hover:text-foreground transition-colors">Keep exploring</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Demo banner */}
+      {isDemo && (
+        <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-accent">DEMO</span>
+            <span className="text-muted-foreground text-xs">Sample review queue — sign in to get your personalized schedule</span>
+          </div>
+          <Link href="/auth/signin" className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-all duration-150 hover:opacity-90">Sign in</Link>
+        </div>
+      )}
+      {logModalProblem && !isDemo && (
         <LogAttemptModal
           problem={logModalProblem}
           onClose={() => setLogModalProblem(null)}
@@ -132,13 +164,13 @@ export function ReviewQueueClient({ initialQueue }: Props) {
                   </button>
 
                   <button
-                    onClick={() => setLogModalProblem({
+                    onClick={() => demoGuard(() => setLogModalProblem({
                       problemId: item.problemId,
                       title: item.title,
                       leetcodeNumber: item.leetcodeNumber,
                       difficulty: item.difficulty,
                       isReview: true,
-                    })}
+                    }))}
                     className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm text-accent-foreground transition-colors duration-150 hover:opacity-90"
                   >
                     Review

@@ -28,6 +28,7 @@ type Category = {
 
 type Props = {
   categories: Category[];
+  isDemo?: boolean;
 };
 
 function retentionColor(r: number): string {
@@ -67,16 +68,45 @@ const PATTERN_HINTS: Record<string, string> = {
   "Bit Manipulation": "XOR for cancel-pairs, AND/OR for masks. Know: n & (n-1) clears lowest set bit, n & -n isolates it.",
 };
 
-export function DrillClient({ categories }: Props) {
+export function DrillClient({ categories, isDemo = false }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<string | null>(null);
   const [logModalProblem, setLogModalProblem] = useState<LogModalProblem | null>(null);
+  const [showDemoSignIn, setShowDemoSignIn] = useState(false);
+
+  function demoGuard(action: () => void) {
+    if (isDemo) { setShowDemoSignIn(true); return; }
+    action();
+  }
 
   const activeCategory = selected ? categories.find((c) => c.name === selected) : null;
 
   return (
     <div className="space-y-6">
-      {logModalProblem && (
+      {/* Demo sign-in prompt */}
+      {showDemoSignIn && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowDemoSignIn(false)}>
+          <div className="rounded-lg border border-border bg-muted p-6 text-center space-y-3 max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-foreground">Sign in to log attempts</h3>
+            <p className="text-xs text-muted-foreground">This is a demo — sign in to track your progress with spaced repetition.</p>
+            <div className="flex gap-2 justify-center pt-1">
+              <Link href="/auth/signin" className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground transition-all duration-150 hover:shadow-[0_0_12px_var(--glow)]">Sign in with GitHub</Link>
+              <button onClick={() => setShowDemoSignIn(false)} className="inline-flex h-9 items-center rounded-md border border-border px-4 text-sm text-muted-foreground hover:text-foreground transition-colors">Keep exploring</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Demo banner */}
+      {isDemo && (
+        <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-accent">DEMO</span>
+            <span className="text-muted-foreground text-xs">Explore drill categories — sign in to practice and track retention</span>
+          </div>
+          <Link href="/auth/signin" className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-all duration-150 hover:opacity-90">Sign in</Link>
+        </div>
+      )}
+      {logModalProblem && !isDemo && (
         <LogAttemptModal
           problem={logModalProblem}
           onClose={() => setLogModalProblem(null)}
@@ -190,13 +220,13 @@ export function DrillClient({ categories }: Props) {
                     LeetCode
                   </a>
                   <button
-                    onClick={() => setLogModalProblem({
+                    onClick={() => demoGuard(() => setLogModalProblem({
                       problemId: p.id,
                       title: p.title,
                       leetcodeNumber: p.leetcodeNumber,
                       difficulty: p.difficulty,
                       isReview: p.attempted,
-                    })}
+                    }))}
                     className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-xs text-accent-foreground transition-colors duration-150 hover:opacity-90"
                   >
                     Log Attempt

@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { ProblemsTable } from "./problems-table";
 import { auth } from "@/auth";
 import { computeRetrievability } from "@/lib/srs";
+import { DEMO_PROBLEM_STATES } from "@/app/dashboard/demo-data";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Problems — Aurora" };
@@ -21,6 +22,7 @@ export default async function ProblemsPage({
 
   const session = await auth();
   let problemStates: Record<number, { retention: number; totalAttempts: number; lastReviewed: string | null; bestQuality: string | null }> = {};
+  let isDemo = false;
 
   if (session?.user?.id) {
     const states = await db
@@ -40,10 +42,22 @@ export default async function ProblemsPage({
         bestQuality: s.bestSolutionQuality,
       };
     }
+  } else {
+    problemStates = DEMO_PROBLEM_STATES;
+    isDemo = true;
   }
 
   return (
     <div className="space-y-6">
+      {isDemo && (
+        <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-accent">DEMO</span>
+            <span className="text-muted-foreground text-xs">Showing sample progress — sign in to track your own</span>
+          </div>
+          <a href="/auth/signin" className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-all duration-150 hover:opacity-90">Sign in</a>
+        </div>
+      )}
       <h1 className="text-2xl font-semibold">Problems</h1>
       <ProblemsTable
         problems={allProblems}

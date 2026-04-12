@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { eq, sql } from "drizzle-orm";
 import { computeRetrievability } from "@/lib/srs";
 import { MockInterviewClient } from "./mock-interview-client";
+import { DEMO_MOCK_INTERVIEW } from "@/app/dashboard/demo-data";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Mock Interview — Aurora" };
@@ -22,27 +23,12 @@ export default async function MockInterviewPage() {
 
   if (!session?.user?.id) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold">Mock Interview</h1>
-        <div className="rounded-lg border border-border bg-muted p-6 space-y-4 max-w-2xl">
-          <p className="text-sm text-foreground">
-            Simulate a real coding interview with a 45-minute timer and problems selected from your weak areas.
-          </p>
-          <ul className="text-sm text-muted-foreground space-y-1 list-disc pl-5">
-            <li>Get 3 problems (medium + hard) targeting your weakest categories</li>
-            <li>45-minute countdown timer — just like a real interview</li>
-            <li>Log results and track improvement over time</li>
-          </ul>
-          <div className="pt-2">
-            <a
-              href="/auth/signin"
-              className="inline-flex h-9 items-center rounded-md bg-accent px-4 text-sm text-accent-foreground transition-colors duration-150 hover:opacity-90"
-            >
-              Sign in to start a mock interview
-            </a>
-          </div>
-        </div>
-      </div>
+      <MockInterviewClient
+        problems={DEMO_MOCK_INTERVIEW.problems}
+        categories={DEMO_MOCK_INTERVIEW.categories}
+        weakCategories={DEMO_MOCK_INTERVIEW.weakCategories}
+        isDemo
+      />
     );
   }
 
