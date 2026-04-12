@@ -7,6 +7,8 @@ import Link from "next/link";
 import { DifficultyBadge } from "@/components/difficulty-badge";
 import { ImportClient } from "@/app/import/import-client";
 import { LogAttemptModal, type LogModalProblem, type LogModalResult } from "@/components/log-attempt-modal";
+import { DrillCard } from "@/components/drill-card";
+import { DEMO_DRILLS, DEMO_FLUENCY_STATS, type DemoDrill, type DrillConfidence, type DemoFluencyCategory } from "@/app/dashboard/demo-data";
 
 /* ── Types ── */
 
@@ -39,7 +41,7 @@ type CompletedItem = {
   bestQuality: string | null;
 };
 
-type ListMode = "review" | "new" | "completed" | "import";
+type ListMode = "review" | "new" | "completed" | "import" | "drills";
 type ReviewSort = "overdue" | "difficulty" | "category";
 type NewSort = "curriculum" | "hardest";
 type CompletedSort = "retention" | "review-date" | "category";
@@ -322,6 +324,10 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
   const [showOverallPace, setShowOverallPace] = useState(false);
   const [activityRange, setActivityRange] = useState<"14d" | "30d" | "90d" | "all">("14d");
 
+  // Drill state
+  const [drillSubTab, setDrillSubTab] = useState<"due" | "new" | "mastered">("due");
+  const [drillSession, setDrillSession] = useState<{ active: boolean; drills: DemoDrill[]; current: number; results: DrillConfidence[] } | null>(null);
+
   const activityData = useMemo(() => {
     if (activityRange === "14d") return data.attemptHistory;
     if (activityRange === "all") return data.fullAttemptHistory;
@@ -513,6 +519,31 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
     );
   }, [sortedCompleted, queueSearch]);
 
+  // Drill data (demo mode uses static data; real mode would fetch from API)
+  const demoDrills = DEMO_DRILLS;
+  const dueDrills = useMemo(() => demoDrills.filter(d => d.dueStatus === "due"), [demoDrills]);
+  const newDrills = useMemo(() => demoDrills.filter(d => d.dueStatus === "new"), [demoDrills]);
+  const masteredDrills = useMemo(() => demoDrills.filter(d => d.dueStatus === "mastered"), [demoDrills]);
+  const activeDrillList = drillSubTab === "due" ? dueDrills : drillSubTab === "new" ? newDrills : masteredDrills;
+
+  function startDrillSession() {
+    const sessionDrills = [...dueDrills, ...newDrills].slice(0, 8);
+    if (sessionDrills.length === 0) return;
+    setDrillSession({ active: true, drills: sessionDrills, current: 0, results: [] });
+    setListMode("drills");
+  }
+
+  function handleDrillRate(confidence: DrillConfidence) {
+    if (!drillSession) return;
+    const newResults = [...drillSession.results, confidence];
+    if (drillSession.current + 1 >= drillSession.drills.length) {
+      // Session complete — show summary
+      setDrillSession({ ...drillSession, results: newResults, active: false });
+    } else {
+      setDrillSession({ ...drillSession, current: drillSession.current + 1, results: newResults });
+    }
+  }
+
   function handleLoggedFromModal(result: LogModalResult) {
     const problem = logModalProblem;
     setLogModalProblem(null);
@@ -658,10 +689,21 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                 >
                   Import
                 </button>
+                <button
+                  onClick={() => setListMode("drills")}
+                  className={`text-sm px-2.5 py-1 rounded transition-colors ${listMode === "drills" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  🧪 Drills
+                  {dueDrills.length > 0 && (
+                    <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${listMode === "drills" ? "bg-accent-foreground/20" : "bg-muted"}`}>
+                      {dueDrills.length}
+                    </span>
+                  )}
+                </button>
               </div>
               {/* Search + Browse — always visible */}
               <div className="flex items-center gap-1.5 shrink-0">
-                {listMode !== "import" && (
+                {listMode !== "import" && listMode !== "drills" && (
                   <input
                     type="text"
                     value={queueSearch}
@@ -925,12 +967,154 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
               todayAttemptedIds={data.importTodayAttemptedIds}
             />
           )}
+
+          {/* Drills tab */}
+          {listMode === "drills" && (
+            drillSession && drillSession.active ? (
+              /* Active drill session */
+              <div className="space-y-3 flex-1 flex flex-col min-h-0">
+                <div className="flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-foreground">Daily Drill</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">{drillSession.current + 1}/{drillSession.drills.length}</span>
+                  </div>
+                  <button
+                    onClick={() => setDrillSession(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Exit
+                  </button>
+                </div>
+                {/* Progress bar */}
+                <div className="h-1.5 overflow-hidden rounded-full bg-background shrink-0">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all duration-300"
+                    style={{ width: `${((drillSession.current + 1) / drillSession.drills.length) * 100}%` }}
+                  />
+                </div>
+                {drillSession.current >= 12 && (
+                  <p className="text-[10px] text-orange-500">🔥 Fatigue note: you&apos;ve done 12+ drills. Quality may decrease — consider stopping.</p>
+                )}
+                <div className="overflow-y-auto flex-1 min-h-0">
+                  <DrillCard
+                    key={drillSession.drills[drillSession.current].id}
+                    drill={drillSession.drills[drillSession.current]}
+                    onRate={handleDrillRate}
+                    position={drillSession.current + 1}
+                    total={drillSession.drills.length}
+                  />
+                </div>
+              </div>
+            ) : drillSession && !drillSession.active ? (
+              /* Session summary */
+              <div className="rounded-lg border border-border bg-muted p-4 space-y-3">
+                <h3 className="text-sm font-medium text-foreground">Session Complete!</h3>
+                <p className="text-xs text-muted-foreground">
+                  {drillSession.drills.length} drills finished
+                </p>
+                <div className="flex gap-3 text-xs">
+                  <span className="text-green-500">{drillSession.results.filter(r => r >= 3).length} Good/Easy</span>
+                  <span className="text-orange-500">{drillSession.results.filter(r => r === 2).length} Hard</span>
+                  <span className="text-red-500">{drillSession.results.filter(r => r === 1).length} Again</span>
+                </div>
+                <button
+                  onClick={() => setDrillSession(null)}
+                  className="inline-flex h-8 items-center rounded-md bg-accent px-4 text-xs font-medium text-accent-foreground transition-colors hover:opacity-90"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              /* Drill browse mode */
+              <div className="flex flex-col flex-1 min-h-0 space-y-2">
+                {/* Sub-tabs + Daily Drill button */}
+                <div className="flex items-center justify-between shrink-0">
+                  <div className="flex gap-0.5 rounded-md border border-border p-0.5">
+                    <button
+                      onClick={() => setDrillSubTab("due")}
+                      className={`text-xs px-2 py-0.5 rounded transition-colors ${drillSubTab === "due" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      Due {dueDrills.length > 0 && <span className="ml-0.5 text-[10px]">({dueDrills.length})</span>}
+                    </button>
+                    <button
+                      onClick={() => setDrillSubTab("new")}
+                      className={`text-xs px-2 py-0.5 rounded transition-colors ${drillSubTab === "new" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      New {newDrills.length > 0 && <span className="ml-0.5 text-[10px]">({newDrills.length})</span>}
+                    </button>
+                    <button
+                      onClick={() => setDrillSubTab("mastered")}
+                      className={`text-xs px-2 py-0.5 rounded transition-colors ${drillSubTab === "mastered" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      Mastered {masteredDrills.length > 0 && <span className="ml-0.5 text-[10px]">({masteredDrills.length})</span>}
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => demoGuard(startDrillSession)}
+                    className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-colors hover:opacity-90 gap-1"
+                  >
+                    <span>⚡</span> Daily Drill
+                    <span className="text-[10px] opacity-70">(~10 min)</span>
+                  </button>
+                </div>
+                {/* Drill list */}
+                {activeDrillList.length === 0 ? (
+                  <div className="rounded-lg border border-border bg-muted p-6 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      {drillSubTab === "due" ? "No drills due — you're caught up!" : drillSubTab === "new" ? "All drills started!" : "No mastered drills yet."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-border overflow-hidden flex-1 flex flex-col min-h-0">
+                    <div className="overflow-y-auto flex-1 min-h-0">
+                      {activeDrillList.map((drill) => (
+                        <div
+                          key={drill.id}
+                          className="flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-b-0 hover:bg-muted transition-colors duration-150"
+                        >
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                            drill.level === 1 ? "bg-muted text-muted-foreground" :
+                            drill.level === 2 ? "bg-accent/30 text-accent" :
+                            drill.level === 3 ? "bg-accent/60 text-white" :
+                            "bg-accent text-accent-foreground"
+                          }`}>
+                            L{drill.level}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-sm font-medium text-foreground truncate block">{drill.title}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {drill.category}
+                              {drill.totalAttempts > 0 && <> · {drill.totalAttempts} attempt{drill.totalAttempts !== 1 ? "s" : ""}</>}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {drill.dueStatus === "due" && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500 font-medium">Due</span>
+                            )}
+                            {drill.dueStatus === "new" && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/15 text-accent font-medium">New</span>
+                            )}
+                            {drill.dueStatus === "mastered" && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-500 font-medium">Mastered</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          )}
         </section>
       </div>
 
       {/* ── Right Column ── */}
       <div className="space-y-3 lg:col-span-6 overflow-y-auto min-h-0">
-        {showStatsDetail ? (
+        {listMode === "drills" ? (
+          /* ── Fluency Panel (shown when Drills tab active) ── */
+          <FluencyPanel stats={DEMO_FLUENCY_STATS} />
+        ) : showStatsDetail ? (
           /* ── Stats Detail (back side) ── */
           <section className="rounded-lg border border-border bg-muted p-4 space-y-4">
             <div className="flex items-center justify-between">
@@ -1868,6 +2052,108 @@ function SrsFeedbackBanner({
       </div>
       <button onClick={onUndo} className="text-orange-500 hover:text-orange-400 text-xs font-medium shrink-0">Undo</button>
       <button onClick={onDismiss} className="text-muted-foreground hover:text-foreground text-xs shrink-0">✕</button>
+    </div>
+  );
+}
+
+/* ── Fluency Panel (right column when Drills tab is active) ── */
+
+const FLUENCY_TIER_COLORS: Record<string, string> = {
+  S: "text-violet-400 border-violet-500/30 bg-violet-500/10",
+  A: "text-blue-400 border-blue-500/30 bg-blue-500/10",
+  B: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
+  C: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+  D: "text-zinc-400 border-zinc-500/30 bg-zinc-500/10",
+};
+
+function fluencyBarColor(f: number): string {
+  if (f >= 0.8) return "bg-green-500";
+  if (f >= 0.6) return "bg-emerald-400";
+  if (f >= 0.4) return "bg-amber-500";
+  if (f >= 0.2) return "bg-orange-500";
+  return "bg-red-500";
+}
+
+function FluencyPanel({ stats }: { stats: { overallTier: string; categories: DemoFluencyCategory[] } }) {
+  const weakest = [...stats.categories].sort((a, b) => a.fluency - b.fluency)[0];
+  const strongest = [...stats.categories].sort((a, b) => b.fluency - a.fluency)[0];
+  const totalDue = stats.categories.reduce((sum, c) => sum + c.drillsDue, 0);
+  const totalMastered = stats.categories.reduce((sum, c) => sum + c.mastered, 0);
+  const totalDrills = stats.categories.reduce((sum, c) => sum + c.totalDrills, 0);
+
+  return (
+    <div className="space-y-3">
+      {/* Overall Tier */}
+      <section className="rounded-lg border border-border bg-muted p-4">
+        <p className="text-xs font-medium text-muted-foreground mb-3">Syntax Fluency</p>
+        <div className="flex items-center gap-4">
+          <div className={`h-16 w-16 rounded-xl border-2 flex items-center justify-center text-3xl font-bold ${FLUENCY_TIER_COLORS[stats.overallTier] || FLUENCY_TIER_COLORS.D}`}>
+            {stats.overallTier}
+          </div>
+          <div className="space-y-1">
+            <div className="flex gap-4 text-xs">
+              <div>
+                <span className="text-lg font-bold tabular-nums text-foreground">{totalDue}</span>
+                <span className="text-muted-foreground ml-1">due</span>
+              </div>
+              <div>
+                <span className="text-lg font-bold tabular-nums text-green-500">{totalMastered}</span>
+                <span className="text-muted-foreground ml-1">mastered</span>
+              </div>
+              <div>
+                <span className="text-lg font-bold tabular-nums text-foreground">{totalDrills}</span>
+                <span className="text-muted-foreground ml-1">total</span>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              S ≥ 90% · A ≥ 75% · B ≥ 55% · C ≥ 35% · D &lt; 35%
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Per-category fluency bars */}
+      <section className="rounded-lg border border-border bg-muted p-4">
+        <p className="text-xs font-medium text-muted-foreground mb-2">Category Fluency</p>
+        <div className="space-y-2">
+          {stats.categories.map((cat) => (
+            <div key={cat.name} className="flex items-center gap-2">
+              <span className="text-[11px] w-28 shrink-0 truncate" title={cat.name}>{cat.name}</span>
+              <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${fluencyBarColor(cat.fluency)}`}
+                  style={{ width: `${Math.round(cat.fluency * 100)}%` }}
+                />
+              </div>
+              <span className="text-[11px] w-8 text-right shrink-0 tabular-nums text-muted-foreground">{Math.round(cat.fluency * 100)}%</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Weakest / Strongest */}
+      <section className="rounded-lg border border-border bg-muted p-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Weakest</p>
+            {weakest && (
+              <div>
+                <p className="text-sm font-medium text-orange-500">{weakest.name}</p>
+                <p className="text-xs text-muted-foreground">{Math.round(weakest.fluency * 100)}% · {weakest.drillsDue} due</p>
+              </div>
+            )}
+          </div>
+          <div>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Strongest</p>
+            {strongest && (
+              <div>
+                <p className="text-sm font-medium text-green-500">{strongest.name}</p>
+                <p className="text-xs text-muted-foreground">{Math.round(strongest.fluency * 100)}% · {strongest.mastered} mastered</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
