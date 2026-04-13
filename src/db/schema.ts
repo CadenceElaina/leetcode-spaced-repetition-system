@@ -10,6 +10,7 @@ import {
   timestamp,
   date,
   serial,
+  jsonb,
   pgEnum,
 } from "drizzle-orm/pg-core";
 
@@ -192,7 +193,7 @@ export const pendingSubmissions = pgTable("pending_submission", {
 
 /* ── Enums (Drills) ── */
 
-export const drillLevelEnum = pgEnum("drill_level", ["1", "2", "3", "4"]);
+export const drillLevelEnum = pgEnum("drill_level", ["1", "2", "3", "4", "5"]);
 
 export const drillConfidenceEnum = pgEnum("drill_confidence", [
   "1",
@@ -207,13 +208,15 @@ export const syntaxDrills = pgTable("syntax_drill", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull().unique(),
   category: varchar("category", { length: 100 }).notNull(),
-  level: smallint("level").notNull(), // 1-4
+  level: smallint("level").notNull(), // 1-5
   language: varchar("language", { length: 20 }).notNull().default("python"),
   prompt: text("prompt").notNull(),
   expectedCode: text("expected_code").notNull(),
   alternatives: text("alternatives").array(),
   explanation: text("explanation").notNull(),
   tags: text("tags").array(),
+  promptVariants: text("prompt_variants").array(),
+  testCases: jsonb("test_cases"),
 });
 
 /* ── User Drill State (SRS state per drill per user) ── */

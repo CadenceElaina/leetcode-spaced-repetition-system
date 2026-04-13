@@ -11,6 +11,7 @@ const LEVEL_UNLOCK_STABILITY: Record<number, number> = {
   1: 7,  // L1 avg stability > 7d → unlocks L2
   2: 14, // L2 avg stability > 14d → unlocks L3
   3: 21, // L3 avg stability > 21d → unlocks L4
+  4: 28, // L4 avg stability > 28d → unlocks L5
 };
 
 /** Compute the max unlocked drill level per category for a user. L1 is always available. */
@@ -34,7 +35,7 @@ function computeCategoryUnlocks(
     const catMap = catLevelStabilities.get(cat);
     let maxLevel = 1; // L1 always available
 
-    for (let level = 1; level <= 3; level++) {
+    for (let level = 1; level <= 4; level++) {
       const stabs = catMap?.get(level) ?? [];
       if (stabs.length === 0) break; // no reviewed drills at this level — stop here
       const avgStability = stabs.reduce((a, b) => a + b, 0) / stabs.length;
@@ -80,27 +81,37 @@ export async function GET(req: NextRequest) {
 
   const totalInDb = rows.length;
 
-  let drills = rows.map((row) => ({
-    id: row.drill.id,
-    title: row.drill.title,
-    category: row.drill.category,
-    level: row.drill.level,
-    language: row.drill.language,
-    prompt: row.drill.prompt,
-    expectedCode: row.drill.expectedCode,
-    alternatives: row.drill.alternatives ?? [],
-    explanation: row.drill.explanation,
-    tags: row.drill.tags ?? [],
-    state: row.state
-      ? {
-          stability: row.state.stability,
-          lastReviewedAt: row.state.lastReviewedAt?.toISOString() ?? null,
-          nextReviewAt: row.state.nextReviewAt?.toISOString() ?? null,
-          totalAttempts: row.state.totalAttempts,
-          bestConfidence: row.state.bestConfidence,
-        }
-      : null,
-  }));
+  let drills = rows.map((row) => {
+    // If promptVariants are available, randomly pick one instead of the static prompt
+    const variants = row.drill.promptVariants as string[] | null;
+    const prompt =
+      variants && variants.length > 0
+        ? variants[Math.floor(Math.random() * variants.length)]!
+        : row.drill.prompt;
+
+    return {
+      id: row.drill.id,
+      title: row.drill.title,
+      category: row.drill.category,
+      level: row.drill.level,
+      language: row.drill.language,
+      prompt,
+      expectedCode: row.drill.expectedCode,
+      alternatives: row.drill.alternatives ?? [],
+      explanation: row.drill.explanation,
+      tags: row.drill.tags ?? [],
+      testCases: (row.drill.testCases as Array<{ input: string; expected: string }>) ?? [],
+      state: row.state
+        ? {
+            stability: row.state.stability,
+            lastReviewedAt: row.state.lastReviewedAt?.toISOString() ?? null,
+            nextReviewAt: row.state.nextReviewAt?.toISOString() ?? null,
+            totalAttempts: row.state.totalAttempts,
+            bestConfidence: row.state.bestConfidence,
+          }
+        : null,
+    };
+  });
 
   // Apply level gating
   const categoryUnlocks = computeCategoryUnlocks(drills);

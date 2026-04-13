@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from "react";
-import type { DrillConfidence, DrillLevel, DemoDrill } from "@/app/dashboard/demo-data";
+import type { DrillConfidence, DrillLevel, DrillTestCase, DemoDrill } from "@/app/dashboard/demo-data";
 import { playSound } from "@/lib/sounds";
+import { getPyodide, passRateToConfidence, type TestCaseResult } from "@/lib/pyodide";
 
-type DrillCardPhase = "prompt" | "retry" | "result";
+type DrillCardPhase = "prompt" | "retry" | "result" | "self-rate" | "running-tests";
 
 const LEVEL_BADGE: Record<DrillLevel, string> = {
   1: "bg-muted text-muted-foreground",
   2: "bg-accent/30 text-accent",
   3: "bg-accent/60 text-white",
   4: "bg-accent text-accent-foreground",
+  5: "bg-purple-600 text-white",
 };
 
 /** Render text with `backtick` spans as inline <code> elements */
@@ -177,6 +179,9 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
   const [textareaAnimClass, setTextareaAnimClass] = useState("");
   const autoContinueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // L5 Pyodide test results
+  const [testResults, setTestResults] = useState<TestCaseResult[] | null>(null);
+
   // Shuffled MC options — stable per drill id
   const mcOptions = useMemo(
     () => shuffle([drill.expectedCode, ...(drill.alternatives ?? [])]),
@@ -237,6 +242,38 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
 
   /** First attempt submit (prompt phase) */
   const handleSubmit = useCallback(() => {
+    // L5: try Pyodide auto-grading, fall back to self-rate
+    if (drill.level === 5) {
+      const pyodide = getPyodide();
+      if (pyodide.isReady() && drill.testCases && drill.testCases.length > 0) {
+        // Run tests via Pyodide
+        setPhase("running-tests");
+        pyodide
+          .runTests(userCode, drill.testCases)
+          .then((results) => {
+            setTestResults(results);
+            const passed = results.filter((r) => r.passed).length;
+            const confidence = passRateToConfidence(passed, results.length);
+            enterResult(
+              {
+                verdict: confidence >= 3 ? "correct" : confidence === 2 ? "close" : "incorrect",
+                similarity: passed / results.length,
+                confidence,
+              },
+              userCode,
+            );
+          })
+          .catch(() => {
+            // Pyodide failed — fall back to self-rate
+            setPhase("self-rate");
+          });
+        return;
+      }
+      // Pyodide not ready — self-rate
+      setPhase("self-rate");
+      return;
+    }
+
     const match = checkCode(userCode, drill.expectedCode, drill.alternatives ?? [], drill.level);
 
     if (match.confidence < 4) {
@@ -271,6 +308,22 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
     const capped = { ...match, confidence: cappedConfidence };
     enterResult(capped, retryCode);
   }, [retryCode, drill, enterResult]);
+
+  /** Self-rate handler (L5 — user rates after seeing reference solution) */
+  const handleSelfRate = useCallback(
+    (confidence: DrillConfidence) => {
+      const labelMap: Record<DrillConfidence, "correct" | "close" | "incorrect"> = {
+        4: "correct", 3: "correct", 2: "close", 1: "incorrect",
+      };
+      const match: MatchResult = {
+        verdict: labelMap[confidence],
+        similarity: confidence >= 3 ? 1 : confidence === 2 ? 0.7 : 0,
+        confidence,
+      };
+      enterResult(match, userCode);
+    },
+    [userCode, enterResult],
+  );
 
   const handleNext = useCallback(() => {
     if (autoContinueTimerRef.current) {
@@ -485,6 +538,82 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
         </div>
       )}
 
+      {/* ── RUNNING TESTS PHASE — L5: Pyodide executing ── */}
+      {phase === "running-tests" && (
+        <div className="rounded-lg border border-border bg-card p-4 flex items-center gap-3">
+          <div className="h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm text-muted-foreground">Running Python tests…</span>
+        </div>
+      )}
+
+      {/* ── SELF-RATE PHASE — L5: show reference + test cases, user self-rates ── */}
+      {phase === "self-rate" && (
+        <div className="space-y-3">
+          {/* User's code — read-only */}
+          <div className="rounded-lg border border-border/50 bg-card/50 p-3">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Your code</p>
+            <pre className="font-mono text-sm text-foreground/70 whitespace-pre-wrap">{userCode}</pre>
+          </div>
+
+          {/* Reference solution */}
+          <div className="rounded-lg border border-border bg-card p-3">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Reference solution</p>
+            <pre className="font-mono text-sm text-foreground whitespace-pre-wrap">{drill.expectedCode}</pre>
+          </div>
+
+          {/* Test cases */}
+          {drill.testCases && drill.testCases.length > 0 && (
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Test cases</p>
+              <div className="space-y-1.5">
+                {drill.testCases.map((tc: DrillTestCase, i: number) => (
+                  <div key={i} className="flex gap-2 text-xs font-mono">
+                    <span className="text-muted-foreground shrink-0">#{i + 1}</span>
+                    <span className="text-foreground/70">Input: {tc.input}</span>
+                    <span className="text-accent/70">→ {tc.expected}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Explanation */}
+          <div className="rounded-lg border border-border bg-card p-3">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Why</p>
+            <div className="text-xs text-muted-foreground leading-relaxed space-y-1.5">
+              {drill.explanation.split("\n\n").map((paragraph, i) => (
+                <p key={i} className="whitespace-pre-wrap">{renderInlineCode(paragraph)}</p>
+              ))}
+            </div>
+          </div>
+
+          {/* Self-rate buttons */}
+          <div>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-2">How did you do?</p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleSelfRate(4)}
+                className="inline-flex h-8 items-center rounded-md bg-green-600/20 border border-green-500/30 px-3 text-xs font-medium text-green-500 transition-colors hover:bg-green-600/30"
+              >
+                Got it
+              </button>
+              <button
+                onClick={() => handleSelfRate(2)}
+                className="inline-flex h-8 items-center rounded-md bg-amber-600/20 border border-amber-500/30 px-3 text-xs font-medium text-amber-500 transition-colors hover:bg-amber-600/30"
+              >
+                Partially
+              </button>
+              <button
+                onClick={() => handleSelfRate(1)}
+                className="inline-flex h-8 items-center rounded-md bg-red-600/20 border border-red-500/30 px-3 text-xs font-medium text-red-500 transition-colors hover:bg-red-600/30"
+              >
+                Missed it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── RESULT PHASE — verdict + expected + explanation + next ── */}
       {phase === "result" && result && verdict && (
         <div className="space-y-3">
@@ -506,6 +635,35 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
               <span className="text-[10px] text-green-500/70 ml-auto">auto-advancing…</span>
             )}
           </div>
+
+          {/* Pyodide test results (L5 auto-graded path) */}
+          {testResults && testResults.length > 0 && (
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+                Test results — {testResults.filter((r) => r.passed).length}/{testResults.length} passed
+              </p>
+              <div className="space-y-1.5">
+                {testResults.map((tr, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs font-mono">
+                    <span className={tr.passed ? "text-green-500" : "text-red-500"}>
+                      {tr.passed ? "✓" : "✗"}
+                    </span>
+                    <div className="min-w-0">
+                      <span className="text-muted-foreground">Input: {tr.input}</span>
+                      {!tr.passed && (
+                        <>
+                          <br />
+                          <span className="text-red-400">Got: {tr.actual}</span>
+                          <br />
+                          <span className="text-green-400">Expected: {tr.expected}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Expected code — always shown */}
           <div className="rounded-lg border border-border bg-card p-3">

@@ -12,6 +12,7 @@ import { SessionHeader } from "@/components/session-header";
 import { SessionSummary } from "@/components/session-summary";
 import { DrillTour, shouldShowTour } from "@/components/drill-tour";
 import { getMutedPref, setMutedPref, playSound } from "@/lib/sounds";
+import { getPyodide } from "@/lib/pyodide";
 import { DEMO_DRILLS, DEMO_FLUENCY_STATS, type DemoDrill, type DrillConfidence, type DemoFluencyCategory } from "@/app/dashboard/demo-data";
 
 /* ── Types ── */
@@ -419,6 +420,13 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
   }, [isDemo]);
 
   useEffect(() => { fetchDrills(); }, [fetchDrills]);
+
+  // Pre-warm Pyodide when entering drill mode (background download)
+  useEffect(() => {
+    if (listMode === "drills") {
+      getPyodide().init();
+    }
+  }, [listMode]);
 
   function toggleWidget(key: string) {
     setCollapsedWidgets((prev) => ({ ...prev, [key]: !prev[key] }));

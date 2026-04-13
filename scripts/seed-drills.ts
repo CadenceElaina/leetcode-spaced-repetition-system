@@ -15,6 +15,11 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { syntaxDrills } from "../src/db/schema";
 import { sql } from "drizzle-orm";
 
+interface DrillTestCase {
+  input: string;
+  expected: string;
+}
+
 interface SeedDrill {
   title: string;
   category: string;
@@ -24,6 +29,8 @@ interface SeedDrill {
   alternatives: string[];
   explanation: string;
   tags: string[];
+  promptVariants?: string[];
+  testCases?: DrillTestCase[];
 }
 
 async function main() {
@@ -48,6 +55,8 @@ async function main() {
         alternatives: d.alternatives,
         explanation: d.explanation,
         tags: d.tags,
+        promptVariants: d.promptVariants ?? [],
+        testCases: d.testCases ?? null,
       })
       .onConflictDoNothing();
   }

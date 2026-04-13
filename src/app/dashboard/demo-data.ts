@@ -489,8 +489,13 @@ export const DEMO_DRILL_CATEGORIES = [
 
 /* ── Drill types & demo data ── */
 
-export type DrillLevel = 1 | 2 | 3 | 4;
+export type DrillLevel = 1 | 2 | 3 | 4 | 5;
 export type DrillConfidence = 1 | 2 | 3 | 4; // Again/Hard/Good/Easy
+
+export interface DrillTestCase {
+  input: string;
+  expected: string;
+}
 
 export interface SyntaxDrill {
   id: number;
@@ -503,6 +508,8 @@ export interface SyntaxDrill {
   alternatives: string[];
   explanation: string;
   tags: string[];
+  promptVariants?: string[];
+  testCases?: DrillTestCase[];
 }
 
 export interface UserDrillState {
@@ -536,6 +543,7 @@ export interface DemoDrill {
   dueStatus: DemoDrillStatus;
   totalAttempts: number;
   stability: number;
+  testCases?: DrillTestCase[];
 }
 
 export const DEMO_DRILLS: DemoDrill[] = [
