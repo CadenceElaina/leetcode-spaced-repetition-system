@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, type ReactNode } from "react";
 import type { DrillConfidence, DrillLevel, DemoDrill } from "@/app/dashboard/demo-data";
 
 type DrillCardPhase = "prompt" | "result";
@@ -11,6 +11,38 @@ const LEVEL_BADGE: Record<DrillLevel, string> = {
   3: "bg-accent/60 text-white",
   4: "bg-accent text-accent-foreground",
 };
+
+/** Render text with `backtick` spans as inline <code> elements */
+function renderInlineCode(text: string): ReactNode[] {
+  const parts = text.split(/(`[^`]+`)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={i} className="font-mono text-[0.9em] bg-card border border-border rounded px-1 py-0.5 text-accent">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+/** Infer a return type hint from expectedCode */
+function inferReturnHint(code: string): string | null {
+  // Check for common Python patterns
+  if (/\bCounter\(/.test(code)) return "→ Counter (dict-like)";
+  if (/\bdefaultdict\(/.test(code)) return "→ defaultdict";
+  if (/\bdict\(/.test(code) || /\bzip\(/.test(code) && /\bdict\(/.test(code)) return "→ dict";
+  if (/\{[^}]*:/.test(code) && !/\bfor\b/.test(code.split("\n")[0] ?? "")) return "→ dict";
+  if (/\{.*\bfor\b/.test(code)) return "→ dict / set (comprehension)";
+  if (/\bset\(/.test(code)) return "→ set";
+  if (/\bsorted\(/.test(code)) return "→ list";
+  if (/\bTrue\b|\bFalse\b|\breturn\s+(True|False)/.test(code)) return "→ bool";
+  if (/\.append\(/.test(code) || /\bresult\s*=\s*\[/.test(code)) return "→ list";
+  if (/\bheapq\./.test(code)) return "→ heap (list)";
+  if (/\bdeque\(/.test(code)) return "→ deque";
+  return null;
+}
 
 /* ── Code normalization for comparison ── */
 
@@ -97,6 +129,7 @@ export function DrillCard({ drill, onRate, position, total }: DrillCardProps) {
   }, [result, userCode, onRate]);
 
   const verdict = result ? VERDICT_STYLES[result.verdict] : null;
+  const returnHint = inferReturnHint(drill.expectedCode);
 
   return (
     <div className="rounded-lg border border-border bg-muted p-4 space-y-3">
@@ -118,7 +151,12 @@ export function DrillCard({ drill, onRate, position, total }: DrillCardProps) {
       {/* Title & Prompt */}
       <div>
         <h3 className="text-sm font-medium text-foreground">{drill.title}</h3>
-        <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{drill.prompt}</p>
+        <p className="text-[13px] text-muted-foreground mt-1.5 leading-relaxed">
+          {renderInlineCode(drill.prompt)}
+        </p>
+        {returnHint && (
+          <p className="text-[11px] text-accent/70 font-mono mt-1">{returnHint}</p>
+        )}
       </div>
 
       {/* Code Input */}
@@ -177,7 +215,11 @@ export function DrillCard({ drill, onRate, position, total }: DrillCardProps) {
           {/* Explanation */}
           <div className="rounded-lg border border-border bg-card p-3">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Why</p>
-            <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">{drill.explanation}</p>
+            <div className="text-xs text-muted-foreground leading-relaxed space-y-1.5">
+              {drill.explanation.split("\n\n").map((paragraph, i) => (
+                <p key={i} className="whitespace-pre-wrap">{renderInlineCode(paragraph)}</p>
+              ))}
+            </div>
           </div>
 
           {/* Next button — auto-rated, shows what confidence was assigned */}
