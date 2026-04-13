@@ -366,11 +366,17 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
       const target = e.target as HTMLElement;
       const inTextarea = target.tagName === "TEXTAREA";
 
-      // Ctrl+Shift+Enter — submit MC selection
-      if (e.ctrlKey && e.shiftKey && e.key === "Enter" && phase === "prompt" && isL1Mc && selectedMcOption) {
-        e.preventDefault();
-        handleMcSubmit();
-        return;
+      // Ctrl+Shift+Enter — submit MC selection or typed code
+      if (e.ctrlKey && e.shiftKey && e.key === "Enter" && phase === "prompt" && isL1Mc) {
+        if (selectedMcOption) {
+          e.preventDefault();
+          handleMcSubmit();
+          return;
+        } else if (userCode.trim()) {
+          e.preventDefault();
+          handleSubmit();
+          return;
+        }
       }
 
       if (e.ctrlKey && !e.shiftKey && e.key === ".") {
@@ -392,7 +398,7 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [phase, result, userCode, handleNext, onRate, onPrevious, isL1Mc, selectedMcOption, handleMcSubmit]);
+  }, [phase, result, userCode, handleNext, onRate, onPrevious, isL1Mc, selectedMcOption, handleMcSubmit, handleSubmit]);
 
   return (
     <div className="rounded-lg border border-border bg-muted p-4 space-y-3">
@@ -426,8 +432,8 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
       {phase === "prompt" && (
         <>
           {isL1Mc ? (
-            /* L1 MC path */
-            <div className="space-y-2">
+            /* L1: MC options + type-it textarea together */
+            <div className="space-y-3">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
                 Select the correct code
               </p>
@@ -446,26 +452,40 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-2">
+              {/* Always-visible type-it textarea */}
+              <div>
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Or type it</p>
+                <textarea
+                  value={userCode}
+                  onChange={(e) => { handleCodeChange(e.target.value); setSelectedMcOption(null); }}
+                  placeholder="Write your code here…"
+                  rows={3}
+                  autoFocus
+                  className={`w-full font-mono text-sm bg-card border border-border rounded-lg p-3 text-foreground placeholder:text-muted-foreground/50 resize-y focus:outline-none focus:border-accent/50 ${textareaAnimClass}`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.ctrlKey && e.shiftKey) {
+                      e.preventDefault();
+                      if (selectedMcOption || userCode.trim()) {
+                        selectedMcOption ? handleMcSubmit() : handleSubmit();
+                      }
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <span className="text-[10px] text-muted-foreground">Ctrl+Shift+Enter</span>
                 <button
-                  onClick={handleMcSubmit}
-                  disabled={!selectedMcOption}
+                  onClick={() => selectedMcOption ? handleMcSubmit() : handleSubmit()}
+                  disabled={!selectedMcOption && !userCode.trim()}
                   className="inline-flex h-8 items-center rounded-md bg-accent px-4 text-xs font-medium text-accent-foreground transition-colors hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Check Answer
                 </button>
-                <span className="text-[10px] text-muted-foreground">Ctrl+Shift+Enter</span>
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                Tab to switch to free-type mode
-              </p>
             </div>
           ) : (
-            /* Free-type path (L2+ always, L1 after Tab) */
+            /* Free-type path (L2+) */
             <div>
-              {drill.level === 1 && (
-                <p className="text-[10px] text-accent/70 mb-1">Type-it mode</p>
-              )}
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Your code</p>
               <textarea
                 value={userCode}
