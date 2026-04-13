@@ -326,11 +326,15 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
 
   // Drill state
   const [drillSubTab, setDrillSubTab] = useState<"due" | "new" | "mastered">("due");
-  const [drillSession, setDrillSession] = useState<{ active: boolean; drills: DemoDrill[]; current: number; results: DrillConfidence[] } | null>(null);
+  const [drillSession, setDrillSession] = useState<{ active: boolean; drills: DemoDrill[]; current: number; results: DrillConfidence[]; categoryLabel?: string } | null>(null);
   const [realDrills, setRealDrills] = useState<DemoDrill[] | null>(null);
   const [realFluencyStats, setRealFluencyStats] = useState<{ overallTier: string; categories: DemoFluencyCategory[] } | null>(null);
   const [drillsLoading, setDrillsLoading] = useState(false);
   const [drillsError, setDrillsError] = useState<string | null>(null);
+  const [categoryUnlocks, setCategoryUnlocks] = useState<Record<string, number>>({});
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [singleDrill, setSingleDrill] = useState<DemoDrill | null>(null);
+  const [showDrillOnboarding, setShowDrillOnboarding] = useState(true);
 
   const activityData = useMemo(() => {
     if (activityRange === "14d") return data.attemptHistory;
@@ -355,8 +359,9 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
       } else {
         const data = await drillsRes.json();
         const { drills, _meta } = data;
-        if (process.env.NODE_ENV !== "production" && _meta) {
-          console.debug("[drills] meta:", _meta);
+        if (_meta) {
+          if (process.env.NODE_ENV !== "production") console.debug("[drills] meta:", _meta);
+          if (_meta.categoryUnlocks) setCategoryUnlocks(_meta.categoryUnlocks);
         }
         const now = new Date();
         const mapped: DemoDrill[] = drills.map((d: { id: number; title: string; category: string; level: number; prompt: string; expectedCode: string; alternatives?: string[]; explanation: string; state: { stability: number; lastReviewedAt: string | null; nextReviewAt: string | null; totalAttempts: number; bestConfidence: number | null } | null }) => {
@@ -596,11 +601,60 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
   const activeDrillList = drillSubTab === "due" ? dueDrills : drillSubTab === "new" ? newDrills : masteredDrills;
   const fluencyStats = isDemo ? DEMO_FLUENCY_STATS : (realFluencyStats ?? DEMO_FLUENCY_STATS);
 
-  function startDrillSession() {
-    const sessionDrills = [...dueDrills, ...newDrills].slice(0, 8);
+  // Category summary for grid view
+  const drillCategories = useMemo(() => {
+    const catMap = new Map<string, { drills: DemoDrill[]; due: number; new_: number; mastered: number }>();
+    for (const d of allDrills) {
+      if (!catMap.has(d.category)) catMap.set(d.category, { drills: [], due: 0, new_: 0, mastered: 0 });
+      const cat = catMap.get(d.category)!;
+      cat.drills.push(d);
+      if (d.dueStatus === "due") cat.due++;
+      else if (d.dueStatus === "new") cat.new_++;
+      else cat.mastered++;
+    }
+    return catMap;
+  }, [allDrills]);
+
+  // Drills for selected category grouped by level
+  const selectedCategoryDrills = useMemo(() => {
+    if (!selectedCategory) return null;
+    const catDrills = allDrills.filter(d => d.category === selectedCategory);
+    const levels = new Map<number, DemoDrill[]>();
+    for (const d of catDrills) {
+      if (!levels.has(d.level)) levels.set(d.level, []);
+      levels.get(d.level)!.push(d);
+    }
+    return levels;
+  }, [selectedCategory, allDrills]);
+
+  function startDrillSession(categoryFilter?: string) {
+    const pool = categoryFilter
+      ? allDrills.filter(d => d.category === categoryFilter)
+      : allDrills;
+    const sessionDrills = [...pool.filter(d => d.dueStatus === "due"), ...pool.filter(d => d.dueStatus === "new")].slice(0, 8);
     if (sessionDrills.length === 0) return;
-    setDrillSession({ active: true, drills: sessionDrills, current: 0, results: [] });
+    setDrillSession({ active: true, drills: sessionDrills, current: 0, results: [], categoryLabel: categoryFilter });
+    setSelectedCategory(null);
+    setSingleDrill(null);
     setListMode("drills");
+  }
+
+  function handleSingleDrillRate(confidence: DrillConfidence, userCode: string) {
+    if (!singleDrill) return;
+    if (!isDemo) {
+      fetch("/api/drills/attempt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          drillId: singleDrill.id,
+          userCode,
+          confidence,
+          sessionPosition: 1,
+          categoryStreak: 1,
+        }),
+      }).then(() => fetchDrills()).catch(() => {});
+    }
+    setSingleDrill(null);
   }
 
   function computeCategoryStreak(drills: DemoDrill[], currentIndex: number): number {
@@ -1070,12 +1124,33 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
 
           {/* Drills tab */}
           {listMode === "drills" && (
-            drillSession && drillSession.active ? (
+            /* ── Single drill practice ── */
+            singleDrill ? (
+              <div className="space-y-3 flex-1 flex flex-col min-h-0">
+                <div className="flex items-center justify-between shrink-0">
+                  <button
+                    onClick={() => setSingleDrill(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    ← Back
+                  </button>
+                </div>
+                <div className="overflow-y-auto flex-1 min-h-0">
+                  <DrillCard
+                    key={singleDrill.id}
+                    drill={singleDrill}
+                    onRate={handleSingleDrillRate}
+                  />
+                </div>
+              </div>
+            ) : drillSession && drillSession.active ? (
               /* Active drill session */
               <div className="space-y-3 flex-1 flex flex-col min-h-0">
                 <div className="flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-foreground">Daily Drill</span>
+                    <span className="text-xs font-medium text-foreground">
+                      {drillSession.categoryLabel ? `${drillSession.categoryLabel} Practice` : "Daily Drill"}
+                    </span>
                     <span className="text-xs text-muted-foreground tabular-nums">{drillSession.current + 1}/{drillSession.drills.length}</span>
                   </div>
                   <button
@@ -1093,7 +1168,7 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                   />
                 </div>
                 {drillSession.current >= 12 && (
-                  <p className="text-[10px] text-orange-500">🔥 Fatigue note: you&apos;ve done 12+ drills. Quality may decrease — consider stopping.</p>
+                  <p className="text-[10px] text-orange-500">Fatigue note: you&apos;ve done 12+ drills. Quality may decrease — consider stopping.</p>
                 )}
                 <div className="overflow-y-auto flex-1 min-h-0">
                   <DrillCard
@@ -1111,6 +1186,7 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                 <h3 className="text-sm font-medium text-foreground">Session Complete!</h3>
                 <p className="text-xs text-muted-foreground">
                   {drillSession.drills.length} drills finished
+                  {drillSession.categoryLabel && <> in {drillSession.categoryLabel}</>}
                 </p>
                 <div className="flex gap-3 text-xs">
                   <span className="text-green-500">{drillSession.results.filter(r => r >= 3).length} Good/Easy</span>
@@ -1124,10 +1200,101 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                   Done
                 </button>
               </div>
-            ) : (
-              /* Drill browse mode */
+            ) : selectedCategory && selectedCategoryDrills ? (
+              /* ── Category detail view ── */
               <div className="flex flex-col flex-1 min-h-0 space-y-2">
-                {/* Sub-tabs + Daily Drill button */}
+                <div className="flex items-center justify-between shrink-0">
+                  <button
+                    onClick={() => setSelectedCategory(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    ← All Categories
+                  </button>
+                  <button
+                    onClick={() => demoGuard(() => startDrillSession(selectedCategory))}
+                    className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-colors hover:opacity-90 gap-1"
+                  >
+                    Practice {selectedCategory.length > 20 ? selectedCategory.slice(0, 18) + "…" : selectedCategory}
+                  </button>
+                </div>
+                {/* Level unlock chain */}
+                <div className="flex items-center gap-1 shrink-0 px-1">
+                  {[1, 2, 3, 4].map((level) => {
+                    const maxLevel = categoryUnlocks[selectedCategory] ?? 1;
+                    const unlocked = level <= maxLevel;
+                    const hasLevelDrills = selectedCategoryDrills.has(level);
+                    return (
+                      <div key={level} className="flex items-center gap-1">
+                        {level > 1 && <span className="text-[10px] text-muted-foreground/40">→</span>}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          unlocked
+                            ? "bg-accent/20 text-accent"
+                            : "bg-muted text-muted-foreground/40"
+                        }`}>
+                          L{level} {unlocked ? (hasLevelDrills ? "✓" : "") : "🔒"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <span className="text-[10px] text-muted-foreground ml-1">
+                    Master L{Math.min((categoryUnlocks[selectedCategory] ?? 1), 3)} to unlock L{Math.min((categoryUnlocks[selectedCategory] ?? 1) + 1, 4)}
+                  </span>
+                </div>
+                {/* Drills grouped by level */}
+                <div className="overflow-y-auto flex-1 min-h-0 space-y-3">
+                  {[1, 2, 3, 4].map((level) => {
+                    const levelDrills = selectedCategoryDrills.get(level);
+                    if (!levelDrills) return null;
+                    const LEVEL_LABELS: Record<number, string> = { 1: "Syntax", 2: "Variations", 3: "When & Why", 4: "Combine" };
+                    return (
+                      <div key={level}>
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1 px-1">
+                          L{level}: {LEVEL_LABELS[level] ?? ""}
+                        </p>
+                        <div className="rounded-lg border border-border overflow-hidden">
+                          {levelDrills.map((drill) => (
+                            <button
+                              key={drill.id}
+                              onClick={() => demoGuard(() => setSingleDrill(drill))}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-b-0 hover:bg-muted/80 transition-colors duration-150 text-left"
+                            >
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                drill.level === 1 ? "bg-muted text-muted-foreground" :
+                                drill.level === 2 ? "bg-accent/30 text-accent" :
+                                drill.level === 3 ? "bg-accent/60 text-white" :
+                                "bg-accent text-accent-foreground"
+                              }`}>
+                                L{drill.level}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <span className="text-sm font-medium text-foreground truncate block">{drill.title}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {drill.totalAttempts > 0 ? `${drill.totalAttempts} attempt${drill.totalAttempts !== 1 ? "s" : ""}` : "Not started"}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {drill.dueStatus === "due" && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500 font-medium">Due</span>
+                                )}
+                                {drill.dueStatus === "new" && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/15 text-accent font-medium">New</span>
+                                )}
+                                {drill.dueStatus === "mastered" && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-500 font-medium">✓</span>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              /* ── Category grid browse ── */
+              <div className="flex flex-col flex-1 min-h-0 space-y-2">
+                {/* Header: Daily Drill + filter tabs */}
                 <div className="flex items-center justify-between shrink-0">
                   <div className="flex gap-0.5 rounded-md border border-border p-0.5">
                     <button
@@ -1146,75 +1313,114 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                       onClick={() => setDrillSubTab("mastered")}
                       className={`text-xs px-2 py-0.5 rounded transition-colors ${drillSubTab === "mastered" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                     >
-                      Mastered {masteredDrills.length > 0 && <span className="ml-0.5 text-[10px]">({masteredDrills.length})</span>}
+                      Mastered
                     </button>
                   </div>
                   <button
-                    onClick={() => demoGuard(startDrillSession)}
+                    onClick={() => demoGuard(() => startDrillSession())}
                     className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground transition-colors hover:opacity-90 gap-1"
                   >
                     <span>⚡</span> Daily Drill
                     <span className="text-[10px] opacity-70">(~10 min)</span>
                   </button>
                 </div>
-                {/* Drill list */}
+
+                {/* Onboarding card */}
+                {showDrillOnboarding && (
+                  <div className="rounded-lg border border-accent/20 bg-accent/5 p-3 shrink-0">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1 pr-4">
+                        <p className="text-xs font-medium text-foreground">Build Python syntax muscle memory</p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          Each category has 4 levels — basic syntax → variations → when/why → combining patterns.
+                          The SRS system schedules reviews as you progress. <strong>Daily Drill</strong> picks the best 8 drills for today,
+                          or click a category to practice a specific topic.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowDrillOnboarding(false)}
+                        className="text-muted-foreground hover:text-foreground text-xs shrink-0 mt-0.5"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error / Loading states */}
                 {drillsError ? (
-                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 space-y-1">
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 space-y-1 shrink-0">
                     <p className="text-sm font-medium text-red-500">Could not load drills</p>
                     <p className="text-xs text-muted-foreground font-mono">{drillsError}</p>
-                    <button
-                      onClick={fetchDrills}
-                      className="text-xs text-accent hover:underline mt-1"
-                    >
-                      Retry
-                    </button>
+                    <button onClick={fetchDrills} className="text-xs text-accent hover:underline mt-1">Retry</button>
                   </div>
                 ) : drillsLoading && !realDrills ? (
-                  <div className="rounded-lg border border-border bg-muted p-6 text-center">
+                  <div className="rounded-lg border border-border bg-muted p-6 text-center shrink-0">
                     <p className="text-sm text-muted-foreground">Loading drills…</p>
                   </div>
-                ) : activeDrillList.length === 0 ? (
-                  <div className="rounded-lg border border-border bg-muted p-6 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      {drillSubTab === "due" ? "No drills due — you're caught up!" : drillSubTab === "new" ? "All drills started!" : "No mastered drills yet."}
-                    </p>
+                ) : allDrills.length === 0 ? (
+                  <div className="rounded-lg border border-border bg-muted p-6 text-center shrink-0">
+                    <p className="text-sm text-muted-foreground">No drills available.</p>
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-border overflow-hidden flex-1 flex flex-col min-h-0">
-                    <div className="overflow-y-auto flex-1 min-h-0">
-                      {activeDrillList.map((drill) => (
-                        <div
-                          key={drill.id}
-                          className="flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-b-0 hover:bg-muted transition-colors duration-150"
-                        >
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                            drill.level === 1 ? "bg-muted text-muted-foreground" :
-                            drill.level === 2 ? "bg-accent/30 text-accent" :
-                            drill.level === 3 ? "bg-accent/60 text-white" :
-                            "bg-accent text-accent-foreground"
-                          }`}>
-                            L{drill.level}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <span className="text-sm font-medium text-foreground truncate block">{drill.title}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {drill.category}
-                              {drill.totalAttempts > 0 && <> · {drill.totalAttempts} attempt{drill.totalAttempts !== 1 ? "s" : ""}</>}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {drill.dueStatus === "due" && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500 font-medium">Due</span>
+                  /* Category grid */
+                  <div className="overflow-y-auto flex-1 min-h-0">
+                    <div className="grid grid-cols-2 gap-2">
+                      {[...drillCategories.entries()].map(([catName, cat]) => {
+                        const maxLevel = categoryUnlocks[catName] ?? 1;
+                        const total = cat.drills.length;
+                        const reviewed = cat.drills.filter(d => d.totalAttempts > 0).length;
+                        const fluencyCat = fluencyStats.categories.find(c => c.name === catName);
+                        const fluency = fluencyCat?.fluency ?? 0;
+                        const hasDue = cat.due > 0;
+                        // Filter by sub-tab
+                        const relevantCount = drillSubTab === "due" ? cat.due : drillSubTab === "new" ? cat.new_ : cat.mastered;
+
+                        return (
+                          <button
+                            key={catName}
+                            onClick={() => setSelectedCategory(catName)}
+                            className={`rounded-lg border p-3 text-left transition-all duration-150 hover:border-accent/40 hover:bg-muted/80 ${
+                              hasDue && drillSubTab === "due" ? "border-orange-500/20 bg-orange-500/5" : "border-border bg-muted"
+                            } ${relevantCount === 0 && drillSubTab !== "due" ? "opacity-50" : ""}`}
+                          >
+                            <div className="flex items-start justify-between mb-1.5">
+                              <span className="text-xs font-medium text-foreground leading-tight">{catName}</span>
+                              <span className={`text-[10px] px-1 py-0.5 rounded font-medium ${
+                                fluency >= 0.75 ? "bg-green-500/15 text-green-500" :
+                                fluency >= 0.5 ? "bg-emerald-500/15 text-emerald-400" :
+                                fluency >= 0.25 ? "bg-amber-500/15 text-amber-500" :
+                                "bg-zinc-500/15 text-muted-foreground"
+                              }`}>
+                                {Math.round(fluency * 100)}%
+                              </span>
+                            </div>
+                            {/* Progress bar */}
+                            <div className="h-1 overflow-hidden rounded-full bg-background mb-1.5">
+                              <div
+                                className={`h-full rounded-full transition-all duration-300 ${fluencyBarColor(fluency)}`}
+                                style={{ width: `${Math.max(Math.round(fluency * 100), 2)}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-muted-foreground">
+                                {reviewed}/{total} reviewed
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {/* Level dots */}
+                                {[1, 2, 3, 4].map((lvl) => (
+                                  <span key={lvl} className={`h-1.5 w-1.5 rounded-full ${
+                                    lvl <= maxLevel ? "bg-accent" : "bg-muted-foreground/20"
+                                  }`} title={`L${lvl} ${lvl <= maxLevel ? "unlocked" : "locked"}`} />
+                                ))}
+                              </div>
+                            </div>
+                            {hasDue && (
+                              <span className="text-[10px] text-orange-500 font-medium mt-1 block">{cat.due} due</span>
                             )}
-                            {drill.dueStatus === "new" && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/15 text-accent font-medium">New</span>
-                            )}
-                            {drill.dueStatus === "mastered" && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-500 font-medium">Mastered</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1228,7 +1434,7 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
       <div className="space-y-3 lg:col-span-6 overflow-y-auto min-h-0">
         {listMode === "drills" ? (
           /* ── Fluency Panel (shown when Drills tab active) ── */
-          <FluencyPanel stats={fluencyStats} />
+          <FluencyPanel stats={fluencyStats} allDrills={allDrills} categoryUnlocks={categoryUnlocks} onSelectCategory={(cat) => { setSelectedCategory(cat); }} />
         ) : showStatsDetail ? (
           /* ── Stats Detail (back side) ── */
           <section className="rounded-lg border border-border bg-muted p-4 space-y-4">
@@ -2189,12 +2395,35 @@ function fluencyBarColor(f: number): string {
   return "bg-red-500";
 }
 
-function FluencyPanel({ stats }: { stats: { overallTier: string; categories: DemoFluencyCategory[] } }) {
+function FluencyPanel({ stats, allDrills, categoryUnlocks, onSelectCategory }: {
+  stats: { overallTier: string; categories: DemoFluencyCategory[] };
+  allDrills: DemoDrill[];
+  categoryUnlocks: Record<string, number>;
+  onSelectCategory: (cat: string) => void;
+}) {
   const weakest = [...stats.categories].sort((a, b) => a.fluency - b.fluency)[0];
   const strongest = [...stats.categories].sort((a, b) => b.fluency - a.fluency)[0];
   const totalDue = stats.categories.reduce((sum, c) => sum + c.drillsDue, 0);
   const totalMastered = stats.categories.reduce((sum, c) => sum + c.mastered, 0);
   const totalDrills = stats.categories.reduce((sum, c) => sum + c.totalDrills, 0);
+
+  // Compute actionable next steps
+  const actions: { text: string; cat: string; priority: number }[] = [];
+  for (const cat of stats.categories) {
+    if (cat.drillsDue > 0) {
+      actions.push({ text: `${cat.drillsDue} due in ${cat.name}`, cat: cat.name, priority: 3 });
+    }
+    const maxLevel = categoryUnlocks[cat.name] ?? 1;
+    if (maxLevel < 4) {
+      const catDrills = allDrills.filter(d => d.category === cat.name && d.level === maxLevel);
+      const unreviewed = catDrills.filter(d => d.totalAttempts === 0).length;
+      if (unreviewed > 0 && cat.fluency < 0.5) {
+        actions.push({ text: `${cat.name}: ${unreviewed} L${maxLevel} drills to start`, cat: cat.name, priority: 2 });
+      }
+    }
+  }
+  actions.sort((a, b) => b.priority - a.priority);
+  const topActions = actions.slice(0, 3);
 
   return (
     <div className="space-y-3">
@@ -2227,13 +2456,36 @@ function FluencyPanel({ stats }: { stats: { overallTier: string; categories: Dem
         </div>
       </section>
 
+      {/* Actionable next steps */}
+      {topActions.length > 0 && (
+        <section className="rounded-lg border border-accent/20 bg-accent/5 p-3">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Next Steps</p>
+          <div className="space-y-1.5">
+            {topActions.map((action, i) => (
+              <button
+                key={i}
+                onClick={() => onSelectCategory(action.cat)}
+                className="w-full text-left text-xs text-foreground hover:text-accent transition-colors flex items-center gap-2"
+              >
+                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${action.priority >= 3 ? "bg-orange-500" : "bg-accent"}`} />
+                {action.text}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Per-category fluency bars */}
       <section className="rounded-lg border border-border bg-muted p-4">
         <p className="text-xs font-medium text-muted-foreground mb-2">Category Fluency</p>
         <div className="space-y-2">
           {stats.categories.map((cat) => (
-            <div key={cat.name} className="flex items-center gap-2">
-              <span className="text-[11px] w-28 shrink-0 truncate" title={cat.name}>{cat.name}</span>
+            <button
+              key={cat.name}
+              onClick={() => onSelectCategory(cat.name)}
+              className="w-full flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
+              <span className="text-[11px] w-28 shrink-0 truncate text-left" title={cat.name}>{cat.name}</span>
               <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${fluencyBarColor(cat.fluency)}`}
@@ -2241,7 +2493,7 @@ function FluencyPanel({ stats }: { stats: { overallTier: string; categories: Dem
                 />
               </div>
               <span className="text-[11px] w-8 text-right shrink-0 tabular-nums text-muted-foreground">{Math.round(cat.fluency * 100)}%</span>
-            </div>
+            </button>
           ))}
         </div>
       </section>
@@ -2252,19 +2504,19 @@ function FluencyPanel({ stats }: { stats: { overallTier: string; categories: Dem
           <div>
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Weakest</p>
             {weakest && (
-              <div>
+              <button onClick={() => onSelectCategory(weakest.name)} className="text-left hover:opacity-80 transition-opacity">
                 <p className="text-sm font-medium text-orange-500">{weakest.name}</p>
                 <p className="text-xs text-muted-foreground">{Math.round(weakest.fluency * 100)}% · {weakest.drillsDue} due</p>
-              </div>
+              </button>
             )}
           </div>
           <div>
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Strongest</p>
             {strongest && (
-              <div>
+              <button onClick={() => onSelectCategory(strongest.name)} className="text-left hover:opacity-80 transition-opacity">
                 <p className="text-sm font-medium text-green-500">{strongest.name}</p>
                 <p className="text-xs text-muted-foreground">{Math.round(strongest.fluency * 100)}% · {strongest.mastered} mastered</p>
-              </div>
+              </button>
             )}
           </div>
         </div>
