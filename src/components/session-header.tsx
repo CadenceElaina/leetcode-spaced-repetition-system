@@ -18,6 +18,11 @@ interface SessionHeaderProps {
   categoryLabel?: string;
 }
 
+/** Shared class for all right-side control buttons */
+const CTRL = "inline-flex h-7 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors";
+const CTRL_ON  = "border-accent/30 bg-accent/15 text-accent hover:bg-accent/20";
+const CTRL_OFF = "border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80";
+
 export function SessionHeader({
   current,
   total,
@@ -37,95 +42,83 @@ export function SessionHeader({
   const scored = results.length;
 
   return (
-    <div className="flex items-center justify-between shrink-0 py-1">
-      {/* Left: back button + label + dot pips */}
-      <div className="flex items-center gap-3">
-        {onPrevious ? (
-          <button
-            onClick={onPrevious}
-            title="Previous drill (Ctrl+,)"
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors px-1"
-          >
-            ‹ prev
-          </button>
-        ) : (
-          <span className="text-xs text-muted-foreground/30 px-1 select-none">‹ prev</span>
-        )}
+    <div className="flex items-center justify-between shrink-0 py-1 gap-2">
+      {/* Left: back + label + pips + score + combo */}
+      <div className="flex items-center gap-2 min-w-0">
+        <button
+          onClick={onPrevious ?? undefined}
+          disabled={!onPrevious}
+          title="Previous drill (Ctrl+,)"
+          className={`${CTRL} ${onPrevious ? CTRL_OFF : "border-transparent bg-transparent text-muted-foreground/25 cursor-default"}`}
+        >
+          ‹ prev
+        </button>
 
-        <span className="text-xs font-medium text-foreground">
+        <span className="text-xs font-medium text-foreground whitespace-nowrap">
           {categoryLabel ? `${categoryLabel} Practice` : "Daily Drill"}
         </span>
 
         {/* Dot pips */}
-        <div className="flex items-center gap-1" aria-label={`Drill ${current + 1} of ${total}`}>
+        <div className="flex items-center gap-1 shrink-0" aria-label={`Drill ${current + 1} of ${total}`}>
           {Array.from({ length: total }).map((_, i) => (
             <span
               key={i}
               className={`inline-block rounded-full transition-colors duration-200 ${
-                i < current
-                  ? "w-2 h-2 bg-accent/60"          // completed
-                  : i === current
-                  ? "w-2 h-2 bg-accent"              // current
-                  : "w-2 h-2 bg-border"              // upcoming
+                i < current  ? "w-2 h-2 bg-accent/60" :
+                i === current ? "w-2 h-2 bg-accent"    :
+                                "w-2 h-2 bg-border"
               }`}
             />
           ))}
         </div>
 
-        {/* Score */}
+        {/* Running score */}
         {scored > 0 && (
-          <span className="tabular-nums text-[10px] text-muted-foreground">
-            <span className="text-green-500 font-medium">{correctCount}</span>/{scored} correct
+          <span className="tabular-nums text-[11px] text-muted-foreground whitespace-nowrap">
+            <span className="text-green-500 font-semibold">{correctCount}</span>/{scored}
           </span>
         )}
 
-        {/* Combo badge — only after ≥4 consecutive correct */}
+        {/* Combo badge — appears only at ≥4 */}
         {combo >= 4 && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400">
-            🔥 {combo} in a row
+          <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400 whitespace-nowrap">
+            🔥 {combo}
           </span>
         )}
       </div>
 
-      {/* Right: auto-continue toggle + mute + exit */}
-      <div className="flex items-center gap-2">
+      {/* Right: uniform control buttons */}
+      <div className="flex items-center gap-1.5 shrink-0">
         <button
           onClick={onToggleAutoContinue}
-          title={autoContinue ? "Auto-continue on" : "Auto-continue off"}
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors ${
-            autoContinue
-              ? "bg-accent/20 text-accent"
-              : "bg-muted-foreground/10 text-muted-foreground hover:text-foreground"
-          }`}
+          title={autoContinue ? "Auto-continue on — click to disable" : "Auto-continue off — click to enable"}
+          className={`${CTRL} ${autoContinue ? CTRL_ON : CTRL_OFF}`}
         >
           auto {autoContinue ? "▶" : "▷"}
         </button>
 
         <button
           onClick={onToggleSyntaxRef}
-          title={syntaxRefEnabled ? "Syntax ref on" : "Syntax ref off"}
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors ${
-            syntaxRefEnabled
-              ? "bg-accent/20 text-accent"
-              : "bg-muted-foreground/10 text-muted-foreground hover:text-foreground"
-          }`}
+          title={syntaxRefEnabled ? "Syntax ref on — click to hide" : "Syntax ref off — click to show"}
+          className={`${CTRL} ${syntaxRefEnabled ? CTRL_ON : CTRL_OFF}`}
         >
-          ref {syntaxRefEnabled ? "📖" : "📕"}
+          ref {syntaxRefEnabled ? "on" : "off"}
         </button>
 
         <button
           onClick={onToggleMute}
           title={muted ? "Unmute sounds" : "Mute sounds"}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className={`${CTRL} ${muted ? CTRL_OFF : CTRL_ON}`}
         >
-          {muted ? "🔇" : "🔊"}
+          {muted ? "muted" : "sound"}
         </button>
 
         <button
           onClick={onExit}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          title="End session"
+          className={`${CTRL} border-border bg-card text-muted-foreground hover:border-red-500/40 hover:text-red-400`}
         >
-          Exit
+          exit
         </button>
       </div>
     </div>

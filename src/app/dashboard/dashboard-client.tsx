@@ -1513,16 +1513,16 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
           /* ── Right panel when Drills tab active: toggle between Fluency stats and Syntax reference ── */
           <div className="space-y-3">
             {/* Toggle */}
-            <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-1 w-fit">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => { setRightPanelView("stats"); try { localStorage.setItem("aurora-right-panel", "stats"); } catch { /* ok */ } }}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${rightPanelView === "stats" ? "bg-accent/20 text-accent" : "text-muted-foreground hover:text-foreground"}`}
+                className={`inline-flex h-7 items-center rounded-md border px-2.5 text-xs font-medium transition-colors ${rightPanelView === "stats" ? "border-accent/30 bg-accent/15 text-accent" : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80"}`}
               >
                 Fluency Stats
               </button>
               <button
                 onClick={() => { setRightPanelView("syntax"); try { localStorage.setItem("aurora-right-panel", "syntax"); } catch { /* ok */ } }}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${rightPanelView === "syntax" ? "bg-accent/20 text-accent" : "text-muted-foreground hover:text-foreground"}`}
+                className={`inline-flex h-7 items-center rounded-md border px-2.5 text-xs font-medium transition-colors ${rightPanelView === "syntax" ? "border-accent/30 bg-accent/15 text-accent" : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80"}`}
               >
                 Syntax Ref
               </button>
