@@ -1,7 +1,7 @@
 # Aurora Drill System — Finalized Plan v2
 
 > Date: April 13, 2026
-> Status: **All decisions locked**
+> Status: **Phase 1 + 2 complete. Phase 3 in progress.**
 > Supersedes: `2026-04-12-syntax-drills.md` (original planning doc — kept for history)
 
 ---
@@ -10,12 +10,14 @@
 
 | Level | Name | Mode | Example |
 |-------|------|------|---------|
-| **L1** | Atom recognition | MC by default, optional type-it via Tab | `ord(c) - ord('a')` |
-| **L2** | Atom in context | Free-form textarea, one step of a real solution inside a scaffold | `for c in word: freq[...] += 1` |
+| **L1** | Atom recall | Editor (same as all levels) | `ord(c) - ord('a')` |
+| **L2** | Atom in context | Editor, one step of a real solution inside a scaffold | `for c in word: freq[...] += 1` |
 | **L3** | Composition | Multi-atom, build the key mechanism, recall-biased token scoring | `freq=[0]*26 → tuple(freq)` |
 | **L4** | Full solution | Complete implementation + language-agnostic "why" explanation | `groupAnagrams` full impl |
 | **L5** | Apply to variant | Unseen problem, same atoms. Pyodide test-case execution or self-rated reveal | group by digit freq / vowels only |
 | **Future** | Reverse drill | Given code → explain what it does and when to use it | conceptual layer |
+
+**Design decision (April 2026):** All levels use the CodeEditor (CodeMirror + Python syntax highlighting). MC selection was removed — retrieval practice (typing from memory) is strictly more effective than recognition. The `distractors` field on drill records is kept in the data model for potential future use but no longer drives any UI.
 
 ### Language-portable explanations on every drill
 
@@ -27,222 +29,194 @@ Every L4 problem maps to a set of atoms drillable at L1–L3. Atoms recur across
 
 ---
 
-## 2. L1 Interaction Model — Decided
+## 2. Interaction Model (All Levels)
 
-> **MC by default.** Tabbing to the textarea activates type-it mode. Both paths surface explanation + Next →.
+> **Editor-first.** All levels render a CodeMirror editor. No MC mode.
 
-### MC path (default)
-User clicks an option → immediate green/red highlight → explanation appears below → Next → or auto-continue. No submit button. No keyboard shortcut needed for selection.
-
-### Type-it path (opt-in via Tab)
-Tab focuses the textarea. MC options dim but stay visible (reference only, no longer clickable). `Ctrl+Shift+Enter` or submit button checks the typed answer. Scored against expectedCode + alternatives via recall-biased token check.
-
-### Navigation shortcuts
-- `Ctrl+.` advance · `Ctrl+,` previous
-- If textarea is dirty on advance: inline "discard and skip?" prompt (not a modal)
-- Draft saved to sessionStorage keyed by drillId so `Ctrl+,` restores it
-
-### Auto-continue toggle
-Lives in the session header bar as a small toggleable "auto ▶" pill. Per-session preference, not global settings. Off by default — user must explicitly enable. When on: after correct MC click, advances after 800ms with a brief green flash.
+- `Ctrl+Shift+Enter` or submit button checks the typed answer
+- `Ctrl+.` advance (or skip with inline discard prompt if editor is dirty)
+- `Ctrl+,` previous drill
+- Draft saved to `sessionStorage` keyed by `drill-${id}` — restores on Ctrl+,
+- Auto-continue toggle in session header: off by default. When on, advances 800ms after a correct result.
 
 ---
 
-## 3. Scoring — Recall-Biased Token Coverage — Decided
+## 3. Scoring — Recall-Biased Token Coverage
 
-> **Replace Jaccard with recall-biased coverage.**
-> `Score = matching_tokens / expected_tokens`. Doesn't punish extra tokens (variable name choices, preamble lines). Punishes missing expected tokens.
+> `Score = matching_tokens / expected_tokens`. Doesn't punish extra tokens. Punishes missing expected tokens.
 
 ```
 coverage = intersection(user_tokens, expected_tokens) / len(expected_tokens)
   ≥ 0.85 → correct    confidence 4
-  ≥ 0.65 → partial    confidence 2 or 3 (see below)
-  < 0.65 → incorrect  confidence 1
+  0.75–0.84 → good    confidence 3
+  0.65–0.74 → hard    confidence 2
+  < 0.65  → incorrect  confidence 1
 ```
 
-### Partial splits into confidence 2 vs 3
-- Coverage 0.65–0.74 → confidence 2 (Hard)
-- Coverage 0.75–0.84 → confidence 3 (Good)
-
 ### L1/L2 — exact match only, no fuzzy
-Expressions are short. "Close but wrong" at L1 is almost always a wrong concept. Check exact normalized match against expectedCode + all alternatives. No token scoring at L1/L2.
+
+Expressions are short. "Close but wrong" at L1 is almost always a wrong concept. Exact normalized match against `expectedCode` + all `alternatives`. No token scoring at L1/L2.
 
 ### Alternatives list covers equivalent approaches
-`ord(c) - 97` ≡ `ord(c) - ord('a')`. Seed alternatives for every drill at authoring time. Reasonable alternative = correct concept, different style. Not: different algorithm that happens to share tokens.
 
-### Implementation change to checkCode
-Replace `intersection.size / union.size` (Jaccard) with `intersection.size / expectedTokens.size`. Single line change to existing `checkCode` in DrillCard. Thresholds shift accordingly.
+`ord(c) - 97` ≡ `ord(c) - ord('a')`. Alternatives field seeded at authoring time.
 
 ---
 
 ## 4. Partial Credit & Retry Flow
 
 ```
-Submit → Score vs expected + alternatives → Below threshold
-  → Wrong code shown read-only above → Fresh blank editor below → Resubmit
-    → Correct/close → confidence 2
-    → Wrong again → confidence 1, show solution
+Submit → Score → Below threshold
+  → Verdict banner (close/incorrect)
+  → If INCORRECT: show expected answer immediately (user was lost, needs anchor)
+  → If CLOSE: hide expected (user almost had it, force recall)
+  → Dimmed first attempt above → Fresh editor below → Resubmit
+    → Correct/close → confidence capped at 2
+    → Wrong again → confidence 1
 ```
 
-### Wrong code outside editor — forces fresh recall
-Dimmed read-only panel above the fresh textarea. Label: "Your attempt" above the panel, "Write it from scratch" above the textarea. User cannot edit the wrong answer into a right one — must recall cold.
-
-### Wrong again → show solution, move on
-Don't loop. Two attempts max. Confidence 1 feeds SRS to reschedule quickly (1 day). Explanation is always shown after second wrong attempt. User can still advance.
+Two attempts max. Explanation always shown in result phase.
 
 ---
 
-## 5. L5 Checking — Pyodide or Self-Rated — Decided
+## 5. L5 Checking — Pyodide or Self-Rated
 
-> **No AI API for L5.** Primary path: Pyodide (CPython in browser via WASM) running test cases client-side. Free, zero latency after first load, tests actual correctness not similarity. Fallback: self-rated reveal.
+> **No AI API for L5.** Primary: Pyodide (CPython in WASM) running test cases client-side. Fallback: self-rated reveal.
 
-### Pyodide approach
-~10MB first load, caches after. Each L5 drill gets a `testCases: [{input, expected}]` field in the schema. User's function wrapped and executed in the Pyodide sandbox. Results: ≥4/5 pass → confidence 4, ≥3/5 → 3, ≥2/5 → 2, <2/5 → 1.
-
-### Pyodide loading strategy — Decided
-- User navigates to Drills → Pyodide starts downloading in a background worker (no blocking, no UI indicator)
-- By the time they finish L1–L4, it's almost certainly loaded
-- If somehow they reach L5 before it finishes, show a small "preparing Python runtime..." message
-- Never blocks the drill session, never adds to initial page load
-
-### Self-rated fallback (ship first if Pyodide deferred)
-Show expected output + reference solution after submit. User clicks "Got it" / "Partially" / "Missed it" → maps to confidence 4/2/1. Zero complexity, ships immediately.
-
-### Schema addition for L5
-Add `testCases` array to `syntaxDrills` table. Nullable — only L5 drills have it. Existing L1–L4 drills unaffected.
+- Pyodide pre-warms in a background worker when user enters drill mode
+- If L5 reached before Pyodide ready: show self-rate flow
+- Pass rate → confidence: ≥4/5 → 4, ≥3/5 → 3, ≥2/5 → 2, <2/5 → 1
 
 ---
 
-## 6. Session Header Bar & UX Chrome — Decided
-
-> **Persistent header above DrillCard.** All session-level state (progress, combo, mute, auto-continue) lives in a header bar. DrillCard stays stateless with respect to session.
+## 6. Session Header Bar
 
 ```
-●●●●○○○○ 4/8    🔥 3 in a row    auto ▶    🔊
+‹ prev   Daily Drill  ●●●●○○○○   3/5 correct   🔥 5 in a row   auto ▶   🔊   Exit
 ```
 
-### Progress display — dot pips
-Filling dot pips (●●●●○○○○) showing position in session. "Daily Drill" = fixed 8. When all 8 complete, triggers session summary modal. Open practice = shows X/queue-size.
-
-### Combo badge — appears after 4 consecutive correct
-Small animated badge. "3 in a row" updates live. Resets on wrong or partial. Does not appear until streak ≥ 4.
-
-### Session summary — modal overlay on session end
-Triggered when drill 8 completes and user clicks Next →. Shows: correct / partial / wrong counts, streak. Each stat counts up on mount. "Done for today" closes, "Keep going" enters open practice mode. No XP system — raw counts + streak only.
+- `‹ prev` button — dimmed/disabled on drill 1
+- Dot pips — filled accent = completed, accent = current, border = upcoming
+- Score — `N/M correct` (green N) — appears after first drill scored
+- Combo badge — appears only at streak ≥ 4
+- Auto-continue toggle — pill, off by default
+- Mute button — emoji, persists in `localStorage`
 
 ---
 
-## 7. Sounds & Animations — Decided
+## 7. Sounds — Web Audio API Synthesis
 
-> **On by default.** First-visit tour surfaces the toggle.
+> **No static files.** All sounds synthesized via Web Audio API. `sounds.ts` exports `playSound(name, muted)` — async, awaits `ctx.resume()` before scheduling oscillators (critical for gesture-gated AudioContext).
 
-| State | Sound | Animation |
-|-------|-------|-----------|
-| **Correct** | Ascending chime, short | Green flash + pop scale on ✓ (1→1.2→1, 200ms). Textarea border glows green 300ms |
-| **Partial** | Neutral curious tone | Amber shimmer across verdict panel. Not punishing |
-| **Wrong** | Descending sympathetic tone | Horizontal shake on textarea (3 shifts, 200ms total) |
-
-### Streak milestone sound (5, 10, 25 in session)
-Distinct celebratory sound — different from per-drill correct. Fires at combo milestones within a session.
-
-### Pre-load all assets on mount
-`new Audio('/sounds/correct.mp3')` etc. at component mount. `currentTime = 0` before each play call. Any perceptible lag kills the reward loop entirely.
-
-### Opt-in time pressure for L1/L2 (future)
-Optional 60s countdown gives bonus XP. Never forced. Ship after core loop is stable.
+| State | Sound |
+|-------|-------|
+| Correct | Ascending two-tone chime (C5 → E5) |
+| Partial | Single neutral tone (A4) |
+| Wrong | Descending two-tone (G4 → E4) |
+| Milestone (5/10/25 combo) | Three-tone fanfare (C5 → E5 → G5) |
 
 ---
 
-## 8. First-Visit Onboarding Tour — Decided
+## 8. Animations
 
-> Tour triggers when `localStorage.getItem('drills-onboarded')` is null. Closing the X without checking "got it" does not set the flag — reappears next visit. Only the primary CTA or "don't show again" checkbox sets the flag.
+Defined as CSS `@keyframes` in `globals.css`, applied as single-shot class strings via state (cleared after duration to allow re-trigger):
 
-### Tour covers in one screen (no carousel)
-Level system (L1–L5 briefly), sounds on by default with mute toggle shown, keyboard shortcuts (`Ctrl+Shift+Enter` submit · `Ctrl+.` next · `Ctrl+,` prev · Tab for type-it mode), Daily Drill (8 fixed) vs open practice.
-
-### Mute toggle accessible from tour and always from session header
-Tour highlights the mute button location. Users can toggle sounds in the tour itself before dismissing.
-
----
-
-## 9. Drill → Problem → Mastery Loop
-
-### Full loop
-L1 recognition → L2 recall → L3 composition → L4 full solution → Problem attempt → (if stuck: targeted drill remediation → re-attempt) → (if solved: SRS credits + schedules review) → L5 variant → mastery
-
-### Pattern → problem linking via tags
-Every drill tagged with which problems use its atoms. Before attempting: "you haven't drilled monotonic stack yet." After failing: "you got stuck on deque usage — here's the L2 drill for that." Tags field already exists in schema.
-
-### Anti-memorization via prompt rotation + interleaving
-Each drill gets 3–4 prompt phrasings in a `promptVariants[]` field. Server picks randomly on load. Daily queue interleaves categories via SRS — no category batching within a session. L5 is the main anti-memorization layer at mastery level.
+| Trigger | Class | Effect |
+|---------|-------|--------|
+| Correct result | `drill-anim-correct-glow` | Green border glow on verdict banner |
+| Correct icon | `drill-anim-correct-pop` | Scale 1→1.2→1 on ✓ |
+| Close result | `drill-anim-partial` | Amber shimmer on verdict banner |
+| Wrong result | `drill-anim-wrong-shake` | Horizontal shake on editor wrapper div |
 
 ---
 
-## 10. Content Strategy & Schema
+## 9. Syntax Reference Panel
 
-### Build Group Anagrams atom chain first
-Complete L1→L5 for one problem. Validates full pipeline before scaling. Atoms: `ord(c)-ord('a')`, `[0]*26`, char freq loop, `tuple(freq)`, `defaultdict(list)`, `.values()`, `list()` wrap. These atoms recur across 10+ problems.
+Right column when Drills tab is active has a two-way toggle (persisted in `localStorage` as `aurora-right-panel`):
 
-### Schema additions needed
-Add to `syntaxDrills`: `promptVariants text[]` (rotation phrasings), `testCases jsonb` (L5 Pyodide inputs/outputs). Existing fields sufficient for L1–L4. `tags[]` already present for problem linking.
+- **Fluency Stats** — existing FluencyPanel with tier, category bars, weakest/strongest
+- **Syntax Ref** — searchable quick-reference panel
 
-### L5 variants — 3–5 per concept, built lazily
-Don't block on content completeness. Ship L1–L4 first. Same-pattern/different-key, constraint variant, output variant, different-data-type variant. Each tagged back to the L4 it extends.
+### Syntax Ref design
+
+- Search bar (name + summary)
+- Category filter pills
+- Each entry: name, category badge, one-line summary → click to expand
+- Expanded: syntax (read-only CodeEditor), variants list, minimal example (read-only CodeEditor), scratch pad (editable CodeEditor)
+- Target: ~80–100 entries covering all patterns in NeetCode 150
+- Accessible during L1–L4 drill sessions; availability during L5/capstone TBD (user preference)
+
+### Component
+
+`src/components/syntax-reference-panel.tsx` — `SYNTAX_ENTRIES: SyntaxEntry[]` content array is the only thing that needs filling out. See agent 2 handoff for content spec.
 
 ---
 
-## 11. Build Order
+## 10. Onboarding Tour
 
-### Phase 1 — Foundation (Ship-able Loop)
+`src/components/drill-tour.tsx` — triggers when `localStorage.getItem('drills-onboarded') === null`. X without checkbox = reappears. "Got it" or checkbox = sets flag. Covers: 5 levels, shortcuts, session types, sounds toggle.
 
-- [ ] Seed Group Anagrams L1–L4 atom chain in drills.json
-  - Validate full drill → check → explanation → SRS pipeline with real content
-- [ ] Replace Jaccard with recall-biased coverage in checkCode
-  - `intersection.size / expected_tokens.size` · thresholds: 0.85/0.65
-- [ ] L1 MC variant in DrillCard
-  - Detect level === 1, render options from alternatives[]. Tab activates textarea type-it mode.
-- [ ] Partial credit retry flow
-  - Wrong code read-only panel above + fresh textarea below. Two attempts max.
-- [ ] Ctrl+. / Ctrl+, navigation + dirty-state guard
-  - sessionStorage draft save. Inline discard prompt (not modal) on dirty advance.
+---
 
-### Phase 2 — Session UX
+## 11. Drill → Problem → Mastery Loop
 
-- [ ] Session header bar
-  - Progress pips + combo badge + auto-continue toggle + mute button
-- [ ] Sound system — pre-load all assets on mount
-  - correct / partial / wrong / streak-milestone. Mute → localStorage.
-- [ ] Verdict animations
-  - Green pop, amber shimmer, wrong shake. CSS @keyframes only.
-- [ ] Session summary modal
-  - Triggers after drill 8. Counting stat animation. Done / Keep going CTA.
-- [ ] First-visit onboarding tour
-  - localStorage flag. One screen. Covers levels, sounds, shortcuts. X without checkbox = reappears.
+L1 recall → L2 recall in context → L3 composition → L4 full → Problem attempt → (if stuck: drill remediation) → (if solved: SRS credits) → L5 variant → mastery
 
-### Phase 3 — L5 + Anti-Memorization
+Pattern → problem linking via tags (Phase 3): every drill tagged with which problems use its atoms.
 
+---
+
+## 12. Content Strategy
+
+117 drills seeded across 18 NeetCode 150 categories (L1–L4). Group Anagrams has a complete L1–L4 atom chain. Remaining categories need depth (more L1/L2 atoms per category).
+
+Anti-memorization via `promptVariants[]` field (Phase 3): 3–4 phrasings per drill. Server picks randomly on load.
+
+---
+
+## 13. Build Order
+
+### Phase 1 — Foundation ✅
+- [x] Recall-biased coverage scoring in `checkCode`
+- [x] L1/L2 exact-match-only logic
+- [x] Partial credit retry flow (two attempts, dimmed first attempt)
+- [x] `Ctrl+.` / `Ctrl+,` navigation + dirty-state guard + sessionStorage draft
+- [x] Group Anagrams L1–L4 atom chain content (117 drills total)
+
+### Phase 2 — Session UX ✅
+- [x] Session header bar (progress pips, combo badge, score, back button, auto-continue, mute)
+- [x] Sound system (Web Audio API synthesis — no static files)
+- [x] Verdict animations (CSS keyframes)
+- [x] Session summary modal (counting animation, Done / Keep going)
+- [x] First-visit onboarding tour
+- [x] CodeEditor (CodeMirror) replacing plain textarea
+- [x] Editor-first design (MC removed)
+- [x] Retry phase shows expected code when verdict is "incorrect"
+- [x] Syntax reference panel toggle (stats ↔ syntax ref)
+
+### Phase 3 — L5 + Content + Syntax Panel
+- [ ] `SyntaxReferencePanel` full content (~80–100 entries) — see agent 2 handoff
+- [ ] Run button in CodeEditor via Pyodide (general execution, not just L5 test grading)
+- [ ] Syntax panel accessibility control (available L1–L4, user-toggleable for L5)
 - [ ] `promptVariants[]` schema addition + random server-side selection
-  - 3–4 phrasings per drill. Prevents prompt-matching.
-- [ ] L5 drill content — Group Anagrams variants (start with self-rated reveal)
-  - 3 variants minimum. testCases field seeded. Upgrade to Pyodide in phase 4.
-- [ ] Pyodide integration for L5 auto-grading
-  - Lazy-load on first L5 drill. Pre-warm in background worker on drill mode entry. Run user code against testCases. Map pass rate to confidence 1–4.
+- [ ] L5 drill content — Group Anagrams variants (3+ with `testCases`)
 - [ ] Problem → drill tag linking in UI
-  - "Before you attempt this problem, drill these atoms" surface on problem page.
 
 ### Phase 4 — Scale
-
-- [ ] Scale atom content to full NeetCode 150
-  - Identify atoms per problem. Group Anagrams chain is the template.
+- [ ] Scale atom content to full NeetCode 150 (audit depth per category)
 - [ ] Opt-in time pressure mode for L1/L2
-  - 60s countdown, bonus XP. Session header toggle. Never forced.
 
 ---
 
-## 12. Closed Questions
+## 14. Closed Questions
 
 | Question | Decision |
 |----------|----------|
-| Progress display: arc SVG or dot pips? | **Dot pips.** Simple, clear, easy to animate. Arc as polish upgrade later. |
-| Combo threshold: 4 or 3? | **4.** Feels earned. Easy to lower later. |
-| Session summary XP? | **No XP system.** Show correct/partial/wrong counts + streak. Plug in gamification later if wanted. |
-| Pyodide loading: lazy or pre-load? | **Background pre-warm** on drill mode entry. Lazy indicator if L5 reached before ready. |
+| Progress display | Dot pips |
+| Combo threshold | 4 |
+| Session summary XP | No XP — raw counts + streak |
+| Pyodide loading | Background pre-warm on drill mode entry |
+| MC for L1 | Removed — editor-first all levels |
+| Sound system | Web Audio API synthesis, no static files |
+| Right panel | Toggle: Fluency Stats ↔ Syntax Ref (localStorage persisted) |
+| Retry: show answer? | Incorrect verdict → show expected; Close verdict → hide (force recall) |

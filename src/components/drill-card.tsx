@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from "react";
+import { useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import type { DrillConfidence, DrillLevel, DrillTestCase, DemoDrill } from "@/app/dashboard/demo-data";
 import { playSound } from "@/lib/sounds";
 import { getPyodide, passRateToConfidence, type TestCaseResult } from "@/lib/pyodide";
@@ -35,7 +35,7 @@ function renderInlineCode(text: string): ReactNode[] {
 function inferReturnHint(code: string): string | null {
   if (/\bCounter\(/.test(code)) return "→ Counter (dict-like)";
   if (/\bdefaultdict\(/.test(code)) return "→ defaultdict";
-  if (/\bdict\(/.test(code) || /\bzip\(/.test(code) && /\bdict\(/.test(code)) return "→ dict";
+  if (/\bdict\(/.test(code) || (/\bzip\(/.test(code) && /\bdict\(/.test(code))) return "→ dict";
   if (/\{[^}]*:/.test(code) && !/\bfor\b/.test(code.split("\n")[0] ?? "")) return "→ dict";
   if (/\{.*\bfor\b/.test(code)) return "→ dict / set (comprehension)";
   if (/\bset\(/.test(code)) return "→ set";
@@ -125,20 +125,10 @@ function checkCode(
   return { verdict: "incorrect", similarity: bestCoverage, confidence: 1 };
 }
 
-/** Fisher-Yates shuffle (returns new array) */
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j]!, a[i]!];
-  }
-  return a;
-}
-
 const VERDICT_STYLES = {
-  correct: { border: "border-green-500/40", bg: "bg-green-500/10", text: "text-green-500", label: "Correct!", icon: "✓" },
-  close: { border: "border-amber-500/40", bg: "bg-amber-500/10", text: "text-amber-500", label: "Close — review the differences", icon: "≈" },
-  incorrect: { border: "border-red-500/40", bg: "bg-red-500/10", text: "text-red-500", label: "Not quite — study the expected answer", icon: "✗" },
+  correct:   { border: "border-green-500/40", bg: "bg-green-500/10", text: "text-green-500", label: "Correct!", icon: "✓" },
+  close:     { border: "border-amber-500/40", bg: "bg-amber-500/10", text: "text-amber-500", label: "Close — review the differences", icon: "≈" },
+  incorrect: { border: "border-red-500/40",   bg: "bg-red-500/10",   text: "text-red-500",   label: "Not quite — study the expected answer", icon: "✗" },
 };
 
 interface DrillCardProps {
@@ -163,35 +153,25 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
     }
   });
 
-  // Type-it mode: L1 starts in MC mode (typeitMode = false); L2+ start in textarea mode
-  const [typeitMode, setTypeitMode] = useState<boolean>(drill.level !== 1);
-
   const [result, setResult] = useState<MatchResult | null>(null);
 
   // Retry flow state
   const [firstAttemptCode, setFirstAttemptCode] = useState<string | null>(null);
   const [retryCode, setRetryCode] = useState("");
 
-  // Inline discard prompt (shown when Ctrl+. is pressed with dirty textarea)
+  // Inline discard prompt (shown when Ctrl+. is pressed with dirty editor)
   const [showDiscardPrompt, setShowDiscardPrompt] = useState(false);
 
-  // Verdict animation class — applied once on result entry, then cleared to allow re-trigger
+  // Verdict animation — applied to verdict banner on result entry
   const [verdictAnimClass, setVerdictAnimClass] = useState("");
-  const [textareaAnimClass, setTextareaAnimClass] = useState("");
+  // Editor shake animation — wraps CodeEditor on wrong answer in prompt phase
+  const [editorAnimClass, setEditorAnimClass] = useState("");
   const autoContinueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // L5 Pyodide test results
   const [testResults, setTestResults] = useState<TestCaseResult[] | null>(null);
 
-  // MC selected option (click to select, submit button to confirm)
-  const [selectedMcOption, setSelectedMcOption] = useState<string | null>(null);
-
-  // Shuffled MC options: 1 correct answer + distractors (wrong answers)
-  const mcOptions = useMemo(
-    () => shuffle([drill.expectedCode, ...(drill.distractors ?? [])]),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [drill.id],
-  );
+  const returnHint = inferReturnHint(drill.expectedCode);
 
   const handleCodeChange = useCallback(
     (value: string) => {
@@ -230,8 +210,8 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
         setVerdictAnimClass("drill-anim-partial");
         setTimeout(() => setVerdictAnimClass(""), 450);
       } else {
-        setTextareaAnimClass("drill-anim-wrong-shake");
-        setTimeout(() => setTextareaAnimClass(""), 260);
+        setEditorAnimClass("drill-anim-wrong-shake");
+        setTimeout(() => setEditorAnimClass(""), 260);
       }
 
       // Auto-continue: only on clean correct (conf 4), 800ms delay
@@ -244,13 +224,12 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
     [drill.id, muted, autoContinue, onRate],
   );
 
-  /** First attempt submit (prompt phase) */
+  /** First attempt submit */
   const handleSubmit = useCallback(() => {
     // L5: try Pyodide auto-grading, fall back to self-rate
     if (drill.level === 5) {
       const pyodide = getPyodide();
       if (pyodide.isReady() && drill.testCases && drill.testCases.length > 0) {
-        // Run tests via Pyodide
         setPhase("running-tests");
         pyodide
           .runTests(userCode, drill.testCases)
@@ -268,7 +247,6 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
             );
           })
           .catch(() => {
-            // Pyodide failed — fall back to self-rate
             setPhase("self-rate");
           });
         return;
@@ -286,36 +264,18 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
       setRetryCode("");
       setResult(match);
       setPhase("retry");
-      // Wrong sound on first failed attempt
       playSound(match.confidence >= 2 ? "partial" : "wrong", muted);
     } else {
       enterResult(match, userCode);
     }
   }, [userCode, drill, muted, enterResult]);
 
-  /** MC option click — select only, don't submit */
-  const handleMcClick = useCallback(
-    (option: string) => {
-      setSelectedMcOption(option);
-    },
-    [],
-  );
-
-  /** MC submit — check selected option */
-  const handleMcSubmit = useCallback(() => {
-    if (!selectedMcOption) return;
-    const match = checkCode(selectedMcOption, drill.expectedCode, drill.alternatives ?? [], drill.level);
-    setUserCode(selectedMcOption);
-    enterResult(match, selectedMcOption);
-  }, [selectedMcOption, drill, enterResult]);
-
   /** Second attempt submit (retry phase) */
   const handleRetrySubmit = useCallback(() => {
     const match = checkCode(retryCode, drill.expectedCode, drill.alternatives ?? [], drill.level);
     // Second attempt: correct/close → cap at conf 2; wrong → conf 1
     const cappedConfidence: DrillConfidence = match.confidence >= 2 ? 2 : 1;
-    const capped = { ...match, confidence: cappedConfidence };
-    enterResult(capped, retryCode);
+    enterResult({ ...match, confidence: cappedConfidence }, retryCode);
   }, [retryCode, drill, enterResult]);
 
   /** Self-rate handler (L5 — user rates after seeing reference solution) */
@@ -324,12 +284,7 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
       const labelMap: Record<DrillConfidence, "correct" | "close" | "incorrect"> = {
         4: "correct", 3: "correct", 2: "close", 1: "incorrect",
       };
-      const match: MatchResult = {
-        verdict: labelMap[confidence],
-        similarity: confidence >= 3 ? 1 : confidence === 2 ? 0.7 : 0,
-        confidence,
-      };
-      enterResult(match, userCode);
+      enterResult({ verdict: labelMap[confidence], similarity: confidence >= 3 ? 1 : confidence === 2 ? 0.7 : 0, confidence }, userCode);
     },
     [userCode, enterResult],
   );
@@ -339,46 +294,17 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
       clearTimeout(autoContinueTimerRef.current);
       autoContinueTimerRef.current = null;
     }
-    if (result) {
-      onRate(result.confidence, userCode);
-    }
+    if (result) onRate(result.confidence, userCode);
   }, [result, userCode, onRate]);
 
   const verdict = result ? VERDICT_STYLES[result.verdict] : null;
-  const isL1Mc = drill.level === 1 && !typeitMode;
-  const returnHint = inferReturnHint(drill.expectedCode);
 
-  // Tab → switch L1 from MC mode to type-it mode
-  useEffect(() => {
-    if (!isL1Mc) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Tab") {
-        e.preventDefault();
-        setTypeitMode(true);
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [isL1Mc]);
-
-  // Keyboard shortcuts: Ctrl+. (advance) · Ctrl+, (previous) · Ctrl+Shift+Enter (submit)
+  // Keyboard shortcuts: Ctrl+. (advance/skip) · Ctrl+, (previous)
+  // Note: Ctrl+Shift+Enter submit is handled inside CodeEditor via onSubmit prop.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const inEditor = target.closest(".cm-editor") !== null;
-
-      // Ctrl+Shift+Enter — submit MC selection or typed code
-      if (e.ctrlKey && e.shiftKey && e.key === "Enter" && phase === "prompt" && isL1Mc) {
-        if (selectedMcOption) {
-          e.preventDefault();
-          handleMcSubmit();
-          return;
-        } else if (userCode.trim()) {
-          e.preventDefault();
-          handleSubmit();
-          return;
-        }
-      }
 
       if (e.ctrlKey && !e.shiftKey && e.key === ".") {
         e.preventDefault();
@@ -387,7 +313,6 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
         } else if (phase === "prompt" && userCode.trim() && !inEditor) {
           setShowDiscardPrompt(true);
         } else if (phase === "prompt" && !userCode.trim()) {
-          // Empty textarea — skip with lowest confidence
           onRate(1, "");
         }
       }
@@ -399,7 +324,7 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [phase, result, userCode, handleNext, onRate, onPrevious, isL1Mc, selectedMcOption, handleMcSubmit, handleSubmit]);
+  }, [phase, result, userCode, handleNext, onRate, onPrevious]);
 
   return (
     <div className="rounded-lg border border-border bg-muted p-4 space-y-3">
@@ -432,72 +357,26 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
       {/* ── PROMPT PHASE ── */}
       {phase === "prompt" && (
         <>
-          {isL1Mc ? (
-            /* L1: MC options + type-it textarea together */
-            <div className="space-y-3">
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                Select the correct code
-              </p>
-              <div className="grid gap-2">
-                {mcOptions.map((opt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleMcClick(opt)}
-                    className={`w-full text-left rounded-lg border px-3 py-2 font-mono text-sm text-foreground transition-colors ${
-                      selectedMcOption === opt
-                        ? "border-accent bg-accent/10"
-                        : "border-border bg-card hover:border-accent/50 hover:bg-accent/5"
-                    }`}
-                  >
-                    <pre className="whitespace-pre-wrap">{opt}</pre>
-                  </button>
-                ))}
-              </div>
-              {/* Always-visible type-it editor */}
-              <div>
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Or type it</p>
-                <CodeEditor
-                  value={userCode}
-                  onChange={(val) => { handleCodeChange(val); setSelectedMcOption(null); }}
-                  placeholder="Write your code here…"
-                  minHeight="80px"
-                  autoFocus
-                  onSubmit={() => { if (selectedMcOption) handleMcSubmit(); else if (userCode.trim()) handleSubmit(); }}
-                />
-              </div>
-              <div className="flex items-center justify-end gap-2">
-                <span className="text-[10px] text-muted-foreground">Ctrl+Shift+Enter</span>
-                <button
-                  onClick={() => selectedMcOption ? handleMcSubmit() : handleSubmit()}
-                  disabled={!selectedMcOption && !userCode.trim()}
-                  className="inline-flex h-8 items-center rounded-md bg-accent px-4 text-xs font-medium text-accent-foreground transition-colors hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Check Answer
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Free-type path (L2+) */
-            <div>
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Your code</p>
+          <div>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Your code</p>
+            {/* Wrapper captures the shake animation since CodeEditor doesn't accept className */}
+            <div className={editorAnimClass}>
               <CodeEditor
                 value={userCode}
-                onChange={(val) => handleCodeChange(val)}
+                onChange={handleCodeChange}
                 placeholder="Write your code here…"
                 minHeight="120px"
-                autoFocus={drill.level !== 1}
+                autoFocus
                 onSubmit={() => { if (userCode.trim()) handleSubmit(); }}
               />
             </div>
-          )}
+          </div>
 
-
-          {/* Discard prompt */}
           {showDiscardPrompt && (
             <div className="rounded-md border border-border/50 bg-background px-3 py-2 flex items-center gap-3">
               <span className="text-xs text-muted-foreground">Discard draft and skip?</span>
               <button
-                onClick={() => { onRate(1, ""); }}
+                onClick={() => onRate(1, "")}
                 className="text-xs text-red-500 hover:text-red-400 font-medium"
               >
                 Skip
@@ -511,27 +390,24 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
             </div>
           )}
 
-          {/* Submit button (type-it path only) */}
-          {!isL1Mc && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleSubmit}
-                disabled={userCode.trim().length === 0}
-                className="inline-flex h-8 items-center rounded-md bg-accent px-4 text-xs font-medium text-accent-foreground transition-colors hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Check Answer
-              </button>
-              <span className="text-[10px] text-muted-foreground">Ctrl+Shift+Enter</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSubmit}
+              disabled={userCode.trim().length === 0}
+              className="inline-flex h-8 items-center rounded-md bg-accent px-4 text-xs font-medium text-accent-foreground transition-colors hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Check Answer
+            </button>
+            <span className="text-[10px] text-muted-foreground">Ctrl+Shift+Enter</span>
+          </div>
         </>
       )}
 
-      {/* ── RETRY PHASE — wrong code read-only above, fresh textarea below ── */}
-      {phase === "retry" && (
+      {/* ── RETRY PHASE ── */}
+      {phase === "retry" && result && (
         <div className="space-y-3">
-          {/* Verdict banner — tells user why they're retrying */}
-          {result && (() => {
+          {/* Verdict banner */}
+          {(() => {
             const v = VERDICT_STYLES[result.verdict];
             return (
               <div className={`rounded-lg border ${v.border} ${v.bg} px-3 py-2 flex items-center gap-2`}>
@@ -542,6 +418,14 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
               </div>
             );
           })()}
+
+          {/* When fully incorrect, show expected code so they can study before retrying */}
+          {result.verdict === "incorrect" && (
+            <div>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Expected answer</p>
+              <CodeEditor value={drill.expectedCode} onChange={() => {}} readOnly minHeight="auto" />
+            </div>
+          )}
 
           {/* First attempt — read-only, dimmed */}
           <div className="opacity-60">
@@ -590,19 +474,16 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
       {/* ── SELF-RATE PHASE — L5: show reference + test cases, user self-rates ── */}
       {phase === "self-rate" && (
         <div className="space-y-3">
-          {/* User's code — read-only */}
           <div className="opacity-70">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Your code</p>
             <CodeEditor value={userCode} onChange={() => {}} readOnly minHeight="auto" />
           </div>
 
-          {/* Reference solution */}
           <div>
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Reference solution</p>
             <CodeEditor value={drill.expectedCode} onChange={() => {}} readOnly minHeight="auto" />
           </div>
 
-          {/* Test cases */}
           {drill.testCases && drill.testCases.length > 0 && (
             <div className="rounded-lg border border-border bg-card p-3">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Test cases</p>
@@ -618,7 +499,6 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
             </div>
           )}
 
-          {/* Explanation */}
           <div className="rounded-lg border border-border bg-card p-3">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Why</p>
             <div className="text-xs text-muted-foreground leading-relaxed space-y-1.5">
@@ -628,26 +508,16 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
             </div>
           </div>
 
-          {/* Self-rate buttons */}
           <div>
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-2">How did you do?</p>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleSelfRate(4)}
-                className="inline-flex h-8 items-center rounded-md bg-green-600/20 border border-green-500/30 px-3 text-xs font-medium text-green-500 transition-colors hover:bg-green-600/30"
-              >
+              <button onClick={() => handleSelfRate(4)} className="inline-flex h-8 items-center rounded-md bg-green-600/20 border border-green-500/30 px-3 text-xs font-medium text-green-500 transition-colors hover:bg-green-600/30">
                 Got it
               </button>
-              <button
-                onClick={() => handleSelfRate(2)}
-                className="inline-flex h-8 items-center rounded-md bg-amber-600/20 border border-amber-500/30 px-3 text-xs font-medium text-amber-500 transition-colors hover:bg-amber-600/30"
-              >
+              <button onClick={() => handleSelfRate(2)} className="inline-flex h-8 items-center rounded-md bg-amber-600/20 border border-amber-500/30 px-3 text-xs font-medium text-amber-500 transition-colors hover:bg-amber-600/30">
                 Partially
               </button>
-              <button
-                onClick={() => handleSelfRate(1)}
-                className="inline-flex h-8 items-center rounded-md bg-red-600/20 border border-red-500/30 px-3 text-xs font-medium text-red-500 transition-colors hover:bg-red-600/30"
-              >
+              <button onClick={() => handleSelfRate(1)} className="inline-flex h-8 items-center rounded-md bg-red-600/20 border border-red-500/30 px-3 text-xs font-medium text-red-500 transition-colors hover:bg-red-600/30">
                 Missed it
               </button>
             </div>
@@ -655,7 +525,7 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
         </div>
       )}
 
-      {/* ── RESULT PHASE — verdict + expected + explanation + next ── */}
+      {/* ── RESULT PHASE ── */}
       {phase === "result" && result && verdict && (
         <div className="space-y-3">
           {/* Verdict banner — animated on entry */}
@@ -706,7 +576,7 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
             </div>
           )}
 
-          {/* Expected code — always shown, syntax-highlighted */}
+          {/* Expected code */}
           <div>
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Expected</p>
             <CodeEditor value={drill.expectedCode} onChange={() => {}} readOnly minHeight="auto" />
@@ -725,7 +595,8 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
           {/* Next button — sticky so it stays visible on long explanations */}
           <div className="sticky bottom-0 bg-muted pt-2 pb-1 flex items-center justify-between border-t border-border/40 mt-1">
             <span className="text-[10px] text-muted-foreground">
-              Auto-rated: <span className={
+              Auto-rated:{" "}
+              <span className={
                 result.confidence === 4 ? "text-green-500 font-medium" :
                 result.confidence === 3 ? "text-accent font-medium" :
                 result.confidence === 2 ? "text-orange-500 font-medium" :
@@ -736,7 +607,7 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
               {" — SRS scheduling based on your accuracy"}
             </span>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground opacity-50">Ctrl+. next · Ctrl+, previous</span>
+              <span className="text-[10px] text-muted-foreground opacity-50">Ctrl+. next · Ctrl+, prev</span>
               <button
                 onClick={handleNext}
                 className="inline-flex h-8 items-center rounded-md bg-accent px-4 text-xs font-medium text-accent-foreground transition-colors hover:opacity-90"

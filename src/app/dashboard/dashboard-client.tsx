@@ -11,6 +11,7 @@ import { DrillCard } from "@/components/drill-card";
 import { SessionHeader } from "@/components/session-header";
 import { SessionSummary } from "@/components/session-summary";
 import { DrillTour, shouldShowTour } from "@/components/drill-tour";
+import { SyntaxReferencePanel } from "@/components/syntax-reference-panel";
 import { getMutedPref, setMutedPref, playSound } from "@/lib/sounds";
 import { getPyodide } from "@/lib/pyodide";
 import { DEMO_DRILLS, DEMO_FLUENCY_STATS, type DemoDrill, type DrillConfidence, type DemoFluencyCategory } from "@/app/dashboard/demo-data";
@@ -360,6 +361,9 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
   const [drillAutoContinue, setDrillAutoContinue] = useState(false);
   const [drillCombo, setDrillCombo] = useState(0);
   const [showDrillTour, setShowDrillTour] = useState(false);
+  const [rightPanelView, setRightPanelView] = useState<"stats" | "syntax">(() => {
+    try { return (localStorage.getItem("aurora-right-panel") as "stats" | "syntax") ?? "stats"; } catch { return "stats"; }
+  });
 
 
   const activityData = useMemo(() => {
@@ -1501,8 +1505,29 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
       {/* ── Right Column ── */}
       <div className="space-y-3 lg:col-span-6 overflow-y-auto min-h-0">
         {listMode === "drills" ? (
-          /* ── Fluency Panel (shown when Drills tab active) ── */
-          <FluencyPanel stats={fluencyStats} allDrills={allDrills} categoryUnlocks={categoryUnlocks} onSelectCategory={(cat) => { setSelectedCategory(cat); }} />
+          /* ── Right panel when Drills tab active: toggle between Fluency stats and Syntax reference ── */
+          <div className="space-y-3">
+            {/* Toggle */}
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-1 w-fit">
+              <button
+                onClick={() => { setRightPanelView("stats"); try { localStorage.setItem("aurora-right-panel", "stats"); } catch { /* ok */ } }}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${rightPanelView === "stats" ? "bg-accent/20 text-accent" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Fluency Stats
+              </button>
+              <button
+                onClick={() => { setRightPanelView("syntax"); try { localStorage.setItem("aurora-right-panel", "syntax"); } catch { /* ok */ } }}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${rightPanelView === "syntax" ? "bg-accent/20 text-accent" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Syntax Ref
+              </button>
+            </div>
+            {rightPanelView === "syntax" ? (
+              <SyntaxReferencePanel />
+            ) : (
+              <FluencyPanel stats={fluencyStats} allDrills={allDrills} categoryUnlocks={categoryUnlocks} onSelectCategory={(cat) => { setSelectedCategory(cat); }} />
+            )}
+          </div>
         ) : showStatsDetail ? (
           /* ── Stats Detail (back side) ── */
           <section className="rounded-lg border border-border bg-muted p-4 space-y-4">

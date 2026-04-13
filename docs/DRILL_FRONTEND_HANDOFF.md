@@ -1,5 +1,11 @@
 # Drill Frontend Handoff — Other Machine
 
+> **SUPERSEDED** — This document describes the original two-machine split from April 2026. Both branches have been merged. All described work is complete.
+> For current implementation state see: `docs/decisions/2026-04-13-drill-system-v2-plan.md`
+> For active agent work see: `docs/decisions/2026-04-13-syntax-panel-agent2-handoff.md`
+
+---
+
 > Branch from: `main` at `234f0fe`
 > Branch name: `feat/drill-frontend`
 > Design doc: `docs/decisions/2026-04-12-syntax-drills.md`
