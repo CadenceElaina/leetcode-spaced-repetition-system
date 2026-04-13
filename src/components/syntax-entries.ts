@@ -104,6 +104,22 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
       "fs & fs2, fs | fs2   # set operations return frozenset",
     ],
   },
+  // ── Functional ─ lambda ─────────────────────────────────────────
+  {
+    id: "lambda",
+    name: "lambda",
+    category: "Functional",
+    summary: "Anonymous one-liner function — use as sort keys, map/filter callbacks, and defaultdict factories.",
+    syntax: "lambda args: expression",
+    example:
+      "# As a sort key\npoints = [(1, 3), (4, 1), (2, 2)]\npoints.sort(key=lambda p: p[1])\nprint(points)  # [(4, 1), (2, 2), (1, 3)]\n\n# As a defaultdict factory\nfrom collections import defaultdict\nd = defaultdict(lambda: float('inf'))\nprint(d['missing'])  # inf\n\n# Multi-key sort (y asc, x desc)\npoints.sort(key=lambda p: (p[1], -p[0]))",
+    variants: [
+      "lambda x: x                    # identity",
+      "lambda x, y: x + y             # two args",
+      "lambda p: (p[1], -p[0])        # multi-key sort",
+      "lambda: float('inf')           # zero-arg factory for defaultdict",
+    ],
+  },
   // ── Sorting ─────────────────────────────────────────────────────
   {
     id: "sorted-builtin",
@@ -503,9 +519,9 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
     example:
       "def max_sum_subarray(nums, k):\n    window_sum = 0\n    max_sum = float('-inf')\n    for i in range(len(nums)):\n        window_sum += nums[i]\n        if i >= k:\n            window_sum -= nums[i - k]\n        if i >= k - 1:\n            max_sum = max(max_sum, window_sum)\n    return max_sum\n\nprint(max_sum_subarray([1, 3, -1, 5, 2], 3))  # 6",
     variants: [
-      "window of sums  # running total",
-      "window of counts  # frequency in window",
-      "deque for min/max  # sliding window min/max",
+      "window_sum += arr[i]; window_sum -= arr[i - k]  # sum window",
+      "window[arr[i]] += 1; window[arr[i-k]] -= 1      # count window",
+      "# Min/max window:\nfrom collections import deque; dq = deque()  # monotonic deque",
     ],
   },
   {
@@ -517,8 +533,9 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
     example:
       "def longest_unique_substring(s):\n    seen = set()\n    left = 0\n    best = 0\n    for right in range(len(s)):\n        while s[right] in seen:\n            seen.remove(s[left])\n            left += 1\n        seen.add(s[right])\n        best = max(best, right - left + 1)\n    return best\n\nprint(longest_unique_substring('abcabcbb'))  # 3",
     variants: [
-      "while invalid: shrink left   # max window",
-      "while valid: shrink left      # min window",
+      "while len(window) > k: window.remove(arr[left]); left += 1  # max window",
+      "while valid(window): update_ans(); left += 1                 # min window",
+      "window[arr[right]] = window.get(arr[right], 0) + 1          # freq count",
     ],
   },
   // ── Binary Search ───────────────────────────────────────────────
@@ -575,9 +592,9 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
     example:
       "# Next greater element for each position\ndef next_greater(nums):\n    result = [-1] * len(nums)\n    stack = []  # decreasing stack of indices\n    for i, val in enumerate(nums):\n        while stack and nums[stack[-1]] < val:\n            idx = stack.pop()\n            result[idx] = val\n        stack.append(i)\n    return result\n\nprint(next_greater([2, 1, 4, 3]))  # [4, 4, -1, -1]",
     variants: [
-      "decreasing stack: pop when val > top  # next greater",
-      "increasing stack: pop when val < top  # next smaller",
-      "store indices for position-based problems",
+      "while stack and nums[stack[-1]] < val: stack.pop()  # decreasing → next greater",
+      "while stack and nums[stack[-1]] > val: stack.pop()  # increasing → next smaller",
+      "result[stack.pop()] = i - stack[-1]  # index diff for span problems",
     ],
   },
   // ── Graph ───────────────────────────────────────────────────────
@@ -619,9 +636,9 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
     example:
       "# Count connected components\ndef count_components(n, edges):\n    from collections import defaultdict\n    graph = defaultdict(list)\n    for u, v in edges:\n        graph[u].append(v)\n        graph[v].append(u)\n\n    visited = set()\n    count = 0\n    for i in range(n):\n        if i not in visited:\n            count += 1\n            stack = [i]\n            while stack:\n                node = stack.pop()\n                if node in visited:\n                    continue\n                visited.add(node)\n                stack.extend(graph[node])\n    return count",
     variants: [
-      "Recursive: natural for trees, backtracking",
-      "Iterative: safer for large graphs (no stack overflow)",
-      "visited.add() BEFORE recursing to avoid cycles",
+      "visited.add(node)  # mark BEFORE recursing to avoid cycles",
+      "stack = [start]; visited = {start}  # iterative: use explicit stack",
+      "import sys; sys.setrecursionlimit(10**6)  # raise limit for deep graphs",
     ],
   },
   {
@@ -633,8 +650,9 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
     example:
       "from collections import deque, defaultdict\n\ndef topo_sort(n, prerequisites):\n    graph = defaultdict(list)\n    in_degree = [0] * n\n    for course, prereq in prerequisites:\n        graph[prereq].append(course)\n        in_degree[course] += 1\n\n    q = deque(i for i in range(n) if in_degree[i] == 0)\n    order = []\n    while q:\n        node = q.popleft()\n        order.append(node)\n        for nei in graph[node]:\n            in_degree[nei] -= 1\n            if in_degree[nei] == 0:\n                q.append(nei)\n    return order if len(order) == n else []  # empty = cycle",
     variants: [
-      "Detect cycle: len(order) < n",
-      "DFS variant: post-order reversed",
+      "q = deque(i for i in range(n) if in_degree[i] == 0)  # seed BFS",
+      "in_degree[nei] -= 1\nif in_degree[nei] == 0: q.append(nei)  # decrement + enqueue",
+      "return order if len(order) == n else []  # empty = cycle",
     ],
   },
   // ── Tree ────────────────────────────────────────────────────────
@@ -661,9 +679,9 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
     example:
       "# Max depth of binary tree\ndef max_depth(node):\n    if not node:\n        return 0\n    return 1 + max(max_depth(node.left), max_depth(node.right))\n\n# Invert binary tree\ndef invert(node):\n    if not node:\n        return None\n    node.left, node.right = invert(node.right), invert(node.left)\n    return node",
     variants: [
-      "Preorder:  process → left → right",
-      "Inorder:   left → process → right (BST sorted order)",
-      "Postorder: left → right → process",
+      "# Preorder:\nvisit(n.val); dfs(n.left); dfs(n.right)",
+      "# Inorder (BST sorted):\ndfs(n.left); visit(n.val); dfs(n.right)",
+      "# Postorder:\ndfs(n.left); dfs(n.right); visit(n.val)",
     ],
   },
   {
@@ -675,9 +693,9 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
     example:
       "from collections import deque\n\ndef level_order(root):\n    if not root:\n        return []\n    result = []\n    q = deque([root])\n    while q:\n        level = []\n        for _ in range(len(q)):\n            node = q.popleft()\n            level.append(node.val)\n            if node.left:  q.append(node.left)\n            if node.right: q.append(node.right)\n        result.append(level)\n    return result",
     variants: [
-      "Level-order: process len(q) nodes per loop",
-      "Zigzag: alternate append/appendleft per level",
-      "Right-side view: take last node of each level",
+      "for _ in range(len(q)): node = q.popleft()  # level snapshot",
+      "if level % 2 == 1: level_vals.reverse()     # zigzag",
+      "if not q: result.append(node.val)           # right-side view",
     ],
   },
   // ── Intervals ───────────────────────────────────────────────────
@@ -952,10 +970,10 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
     example:
       "# Generate all subsets\ndef subsets(nums):\n    result = []\n    def backtrack(start, path):\n        result.append(path[:])\n        for i in range(start, len(nums)):\n            path.append(nums[i])\n            backtrack(i + 1, path)\n            path.pop()\n    backtrack(0, [])\n    return result\n\nprint(subsets([1, 2, 3]))\n# [[], [1], [1,2], [1,2,3], [1,3], [2], [2,3], [3]]",
     variants: [
-      "path.append() + path.pop()   # standard backtrack",
-      "start=i+1 for combinations (no reuse)",
-      "start=i for combinations with reuse",
-      "skip duplicates: if i > start and nums[i] == nums[i-1]: continue",
+      "path.append(x); backtrack(next); path.pop()     # add → recurse → undo",
+      "for i in range(start, len(nums)): backtrack(i + 1, ...)  # combinations (no reuse)",
+      "for i in range(start, len(nums)): backtrack(i, ...)      # with reuse",
+      "if i > start and nums[i] == nums[i-1]: continue          # skip duplicates",
     ],
   },
   {
@@ -967,9 +985,9 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
     example:
       "def permute(nums):\n    result = []\n    def backtrack(path, used):\n        if len(path) == len(nums):\n            result.append(path[:])\n            return\n        for i in range(len(nums)):\n            if i in used:\n                continue\n            used.add(i)\n            path.append(nums[i])\n            backtrack(path, used)\n            path.pop()\n            used.remove(i)\n    backtrack([], set())\n    return result\n\nprint(permute([1, 2, 3]))\n# [[1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1]]",
     variants: [
-      "used set: track indices, skip visited",
-      "swap method: swap nums[i] with nums[start]",
-      "Skip duplicates with sorted input + nums[i] == nums[i-1]",
+      "used.add(i); path.append(nums[i]); backtrack(); path.pop(); used.remove(i)",
+      "nums[start], nums[i] = nums[i], nums[start]; backtrack(start+1)  # swap method",
+      "if i > 0 and nums[i] == nums[i-1] and (i-1) not in used: continue  # skip dups",
     ],
   },
   // ── Dynamic Programming ─────────────────────────────────────────
@@ -996,9 +1014,9 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
     example:
       "# Climbing stairs — n steps, 1 or 2 at a time\ndef climb_stairs(n):\n    if n <= 2:\n        return n\n    dp = [0] * (n + 1)\n    dp[1] = 1\n    dp[2] = 2\n    for i in range(3, n + 1):\n        dp[i] = dp[i-1] + dp[i-2]\n    return dp[n]\n\nprint(climb_stairs(10))  # 89",
     variants: [
-      "1D: dp[i] = f(dp[i-1], dp[i-2])",
-      "2D: dp[i][j] = f(dp[i-1][j], dp[i][j-1])",
-      "Space optimise: keep only prev row/two variables",
+      "dp[i] = dp[i-1] + dp[i-2]                        # 1D fibonacci-style",
+      "dp[i][j] = dp[i-1][j] + dp[i][j-1]               # 2D grid paths",
+      "a, b = b, a + b                                    # space-optimise to O(1)",
     ],
   },
   // ── Bit Manipulation ────────────────────────────────────────────
@@ -1041,9 +1059,9 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
     example:
       "def count_components(n, edges):\n    parent = list(range(n))\n    rank = [0] * n\n\n    def find(x):\n        if parent[x] != x:\n            parent[x] = find(parent[x])\n        return parent[x]\n\n    def union(x, y):\n        px, py = find(x), find(y)\n        if px == py: return False\n        if rank[px] < rank[py]: px, py = py, px\n        parent[py] = px\n        if rank[px] == rank[py]: rank[px] += 1\n        return True\n\n    components = n\n    for u, v in edges:\n        if union(u, v):\n            components -= 1\n    return components",
     variants: [
-      "Path compression: parent[x] = find(parent[x])",
-      "Union by rank: attach smaller tree to larger",
-      "Both together: nearly O(1) amortised per operation",
+      "parent[x] = find(parent[x])                       # path compression",
+      "if rank[px] < rank[py]: px, py = py, px           # union by rank",
+      "components -= 1  # when union(u, v) returns True  # track component count",
     ],
   },
   // ── Trie ────────────────────────────────────────────────────────
@@ -1071,9 +1089,10 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
     example:
       "# BFS on grid (e.g., number of islands)\nfrom collections import deque\n\ndef bfs_grid(grid, start_r, start_c):\n    rows, cols = len(grid), len(grid[0])\n    dirs = [(0, 1), (0, -1), (1, 0), (-1, 0)]\n    q = deque([(start_r, start_c)])\n    grid[start_r][start_c] = '0'  # mark visited\n    while q:\n        r, c = q.popleft()\n        for dr, dc in dirs:\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == '1':\n                grid[nr][nc] = '0'\n                q.append((nr, nc))",
     variants: [
-      "4-way: up, down, left, right",
-      "8-way: includes diagonals",
-      "Bounds check: 0 <= nr < rows and 0 <= nc < cols",
+      "dirs = [(0,1),(0,-1),(1,0),(-1,0)]                # 4-directional",
+      "dirs8 = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]  # 8-way",
+      "if 0 <= nr < rows and 0 <= nc < cols:             # bounds check",
+      "nr, nc = r + dr, c + dc                           # next cell",
     ],
   },
   {
@@ -1132,6 +1151,190 @@ export const SYNTAX_ENTRIES: SyntaxEntry[] = [
       "(r, c) as key       # grid coordinates",
       "tuple(lst) as key   # list → hashable",
       "(i, j, state)       # multi-dimensional memo key",
+    ],
+  },
+  // ── New high-value entries ───────────────────────────────────────
+  {
+    id: "f-string",
+    name: "f-string",
+    category: "String",
+    summary: "Embed expressions directly in string literals — the modern Python way to format output.",
+    syntax: 'f"text {expression}"\nf"{value:.2f}"   # format spec after colon',
+    example:
+      "name = 'Alice'\nage = 30\nprint(f'{name} is {age}')        # Alice is 30\nprint(f'{100 / 3:.1f}%')         # 33.3%\nprint(f'{name!r}')                # 'Alice'  (repr)\nprint(f'{2**10:,}')               # 1,024  (thousands sep)\nprint(f'{42:0>5}')                # 00042  (zero-pad width 5)",
+    variants: [
+      "f'{val}'                       # basic interpolation",
+      "f'{val:.2f}'                   # float, 2 decimal places",
+      "f'{val:0>5}'                   # right-align, zero-pad to width 5",
+      "f'{val:,}'                     # thousands separator",
+    ],
+  },
+  {
+    id: "ternary",
+    name: "Conditional expression",
+    category: "Patterns",
+    summary: "Single-line if/else — pick one of two values based on a condition without a full if block.",
+    syntax: "value = x if condition else y",
+    example:
+      "a, b = 5, 10\nbigger = a if a > b else b\nprint(bigger)  # 10\n\n# Inside list comprehension\nnums = [1, -2, 3, -4]\nabs_vals = [x if x > 0 else -x for x in nums]\nprint(abs_vals)  # [1, 2, 3, 4]\n\n# Return one-liner\ndef sign(n):\n    return 1 if n > 0 else (-1 if n < 0 else 0)",
+    variants: [
+      "x if cond else y                  # basic",
+      "a if a > b else b                 # same as max(a, b)",
+      "[f(x) if cond else g(x) for x in lst]  # in comprehension",
+      "return 'yes' if flag else 'no'    # in return statement",
+    ],
+  },
+  {
+    id: "prefix-sum",
+    name: "Prefix sum",
+    category: "Patterns",
+    summary: "Precompute cumulative sums so any subarray sum is O(1): sum(i..j) = prefix[j+1] - prefix[i].",
+    syntax:
+      "prefix = [0] * (len(nums) + 1)\nfor i, x in enumerate(nums):\n    prefix[i + 1] = prefix[i] + x\n\n# Subarray sum [i, j] inclusive:\ntotal = prefix[j + 1] - prefix[i]",
+    example:
+      "nums = [1, 2, 3, 4, 5]\nprefix = [0] * (len(nums) + 1)\nfor i, x in enumerate(nums):\n    prefix[i + 1] = prefix[i] + x\nprint(prefix)  # [0, 1, 3, 6, 10, 15]\n\n# Sum of index 1..3 (inclusive)\nprint(prefix[4] - prefix[1])  # 9  (2+3+4)\n\n# Using itertools.accumulate\nfrom itertools import accumulate\nprefix2 = [0] + list(accumulate(nums))\nprint(prefix2)  # [0, 1, 3, 6, 10, 15]",
+    variants: [
+      "prefix[i+1] = prefix[i] + nums[i]       # build O(n)",
+      "prefix[j+1] - prefix[i]                 # range sum [i..j] O(1)",
+      "[0] + list(accumulate(nums))             # one-liner via itertools",
+      "prefix[i] - prefix[i - k]               # last k elements sum",
+    ],
+  },
+  {
+    id: "kadanes-algorithm",
+    name: "Kadane's algorithm",
+    category: "Patterns",
+    summary: "Maximum subarray sum in O(n) — extend current window or restart at each element.",
+    syntax:
+      "max_sum = current = nums[0]\nfor x in nums[1:]:\n    current = max(x, current + x)  # extend or restart\n    max_sum = max(max_sum, current)",
+    example:
+      "def max_subarray(nums):\n    max_sum = current = nums[0]\n    for x in nums[1:]:\n        current = max(x, current + x)\n        max_sum = max(max_sum, current)\n    return max_sum\n\nprint(max_subarray([-2, 1, -3, 4, -1, 2, 1, -5, 4]))  # 6\n# Optimal subarray: [4, -1, 2, 1]",
+    variants: [
+      "current = max(x, current + x)         # restart if current goes negative",
+      "max_sum = max(max_sum, current)        # update global max each step",
+      "# Min subarray: negate → run Kadane's → negate result",
+    ],
+  },
+  {
+    id: "two-sum-hash",
+    name: "Two-sum (hash map)",
+    category: "Patterns",
+    summary: "For each element check if its complement (target - x) was already seen. O(n) time, O(n) space.",
+    syntax:
+      "seen = {}  # val → index\nfor i, x in enumerate(nums):\n    if target - x in seen:\n        return [seen[target - x], i]\n    seen[x] = i",
+    example:
+      "def two_sum(nums, target):\n    seen = {}  # value → index\n    for i, x in enumerate(nums):\n        complement = target - x\n        if complement in seen:\n            return [seen[complement], i]\n        seen[x] = i\n    return []\n\nprint(two_sum([2, 7, 11, 15], 9))  # [0, 1]",
+    variants: [
+      "target - x in seen                    # check complement first, then store",
+      "seen = set(); seen.add(x)             # set variant (existence only)",
+      "# 3Sum: fix one, run two-sum on rest with two pointers",
+    ],
+  },
+  {
+    id: "reverse-linked-list",
+    name: "Reverse linked list",
+    category: "Linked List",
+    summary: "Reverse a singly linked list in-place using three pointers — O(n) time, O(1) space.",
+    syntax:
+      "prev, curr = None, head\nwhile curr:\n    nxt = curr.next\n    curr.next = prev\n    prev = curr\n    curr = nxt\nreturn prev  # new head",
+    example:
+      "def reverse_list(head):\n    prev, curr = None, head\n    while curr:\n        nxt = curr.next   # save next\n        curr.next = prev  # reverse link\n        prev = curr       # advance prev\n        curr = nxt        # advance curr\n    return prev  # new head is old tail\n\n# 1 → 2 → 3 → None  becomes  3 → 2 → 1 → None",
+    variants: [
+      "prev, curr = None, head               # iterative (standard)",
+      "# Recursive: rev(curr, prev=None)\nnxt = curr.next; curr.next = prev; return rev(nxt, curr)",
+      "# Reverse sublist: advance to start, reverse for (r-l) steps",
+    ],
+  },
+  {
+    id: "itertools-combinations",
+    name: "combinations / permutations",
+    category: "Iteration",
+    summary: "Generate all r-length combos or permutations without writing backtracking from scratch.",
+    syntax:
+      "from itertools import combinations, permutations\ncombinations(iterable, r)   # C(n,r) — no repeats, unordered\npermutations(iterable, r)   # P(n,r) — no repeats, ordered",
+    example:
+      "from itertools import combinations, permutations\n\nnums = [1, 2, 3]\nprint(list(combinations(nums, 2)))\n# [(1, 2), (1, 3), (2, 3)]\n\nprint(list(permutations(nums, 2)))\n# [(1, 2), (1, 3), (2, 1), (2, 3), (3, 1), (3, 2)]\n\nfrom itertools import combinations_with_replacement\nprint(list(combinations_with_replacement([1, 2], 2)))\n# [(1, 1), (1, 2), (2, 2)]",
+    variants: [
+      "combinations(lst, 2)                      # all pairs, no repeats",
+      "permutations(lst)                          # all orderings of full list",
+      "combinations_with_replacement(lst, r)      # can reuse elements",
+      "list(permutations(lst, 2))                 # all ordered pairs",
+    ],
+  },
+  {
+    id: "itertools-product",
+    name: "itertools.product",
+    category: "Iteration",
+    summary: "Cartesian product — replaces nested for loops. product(repeat=n) generates n-dimensional grid.",
+    syntax:
+      "from itertools import product\nproduct(iter1, iter2)          # nested loop replacement\nproduct(iterable, repeat=n)    # iterable with itself n times",
+    example:
+      "from itertools import product\n\n# Equivalent to: for r in range(2): for c in range(3):\nfor r, c in product(range(2), range(3)):\n    print(r, c, end='  ')\n# 0 0  0 1  0 2  1 0  1 1  1 2\n\n# All binary strings of length 3\nfor bits in product([0, 1], repeat=3):\n    print(bits)\n# (0, 0, 0) ... (1, 1, 1)",
+    variants: [
+      "product(range(m), range(n))           # 2D grid coords",
+      "product([0, 1], repeat=n)             # all n-bit combinations",
+      "product('AB', 'CD')                   # → AC, AD, BC, BD",
+      "product(lst, repeat=2)                # all pairs including self-pairs",
+    ],
+  },
+  {
+    id: "math-functions",
+    name: "math.ceil / floor / sqrt / log",
+    category: "Math",
+    summary: "Ceiling, floor, square root, and log — the math module functions used most in interview problems.",
+    syntax:
+      "import math\nmath.ceil(x)       # smallest int ≥ x\nmath.floor(x)      # largest int ≤ x\nmath.sqrt(x)       # √x as float\nmath.log(x, base)  # log_base(x)",
+    example:
+      "import math\n\nprint(math.ceil(4.1))    # 5\nprint(math.floor(4.9))   # 4\nprint(math.sqrt(16))     # 4.0\nprint(math.log(8, 2))    # 3.0\n\n# Ceiling division without import:\nprint(-(-7 // 2))        # 4   (ceiling of 7/2)\nprint((7 + 2 - 1) // 2)  # 4   (equivalent formula)",
+    variants: [
+      "math.ceil(a / b)              # ceiling division",
+      "-(-a // b)                    # ceiling division without import",
+      "int(math.sqrt(n))             # integer square root",
+      "math.log2(n)                  # log base 2",
+    ],
+  },
+  {
+    id: "pow-modulo",
+    name: "pow(base, exp, mod)",
+    category: "Math",
+    summary: "Three-argument pow() computes (base ** exp) % mod via fast exponentiation — O(log exp).",
+    syntax: "pow(base, exp, mod)  # (base ** exp) % mod, but efficient",
+    example:
+      "MOD = 10**9 + 7\n\n# Instant even for huge exponents\nprint(pow(2, 100, MOD))          # fast\nprint(pow(2, 100) % MOD)         # slow — computes 2^100 first\n\n# Modular inverse (when mod is prime): a^(p-2) mod p\ninverse_of_3 = pow(3, MOD - 2, MOD)\nprint((3 * inverse_of_3) % MOD)  # 1",
+    variants: [
+      "pow(base, exp, MOD)            # modular exponentiation",
+      "pow(a, MOD - 2, MOD)           # modular inverse (prime mod only)",
+      "(a * b) % MOD                  # multiply staying in mod range",
+      "(a + b) % MOD                  # add staying in mod range",
+    ],
+  },
+  {
+    id: "string-constants",
+    name: "string.ascii_lowercase / digits",
+    category: "String",
+    summary: "Built-in character set constants — avoids hardcoding 'abcdefghijklmnopqrstuvwxyz' etc.",
+    syntax:
+      "import string\nstring.ascii_lowercase   # 'abcdefghijklmnopqrstuvwxyz'\nstring.ascii_uppercase   # 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'\nstring.digits            # '0123456789'",
+    example:
+      "import string\n\n# Character-to-index map\nalpha_idx = {c: i for i, c in enumerate(string.ascii_lowercase)}\nprint(alpha_idx['a'])  # 0\nprint(alpha_idx['z'])  # 25\n\n# Zero-initialised frequency dict\nfreq = {c: 0 for c in string.ascii_lowercase}\n\n# Membership check\nprint('g' in string.ascii_lowercase)  # True\nprint('3' in string.digits)           # True",
+    variants: [
+      "string.ascii_lowercase           # 'abc...z'",
+      "string.ascii_uppercase           # 'ABC...Z'",
+      "string.digits                    # '0123456789'",
+      "string.ascii_letters             # lower + upper combined",
+    ],
+  },
+  {
+    id: "recursion-limit",
+    name: "sys.setrecursionlimit",
+    category: "Patterns",
+    summary: "Python's default recursion limit is ~1000. Raise it before deep recursive solutions.",
+    syntax: "import sys\nsys.setrecursionlimit(10**6)",
+    example:
+      "import sys\nsys.setrecursionlimit(10**6)\n\n# Now safe for large inputs (e.g. DFS on a 10^5 node graph)\ndef dfs(node, visited):\n    visited.add(node)\n    for nei in graph[node]:\n        if nei not in visited:\n            dfs(nei, visited)\n\n# Prefer iterative with explicit stack when possible — avoids the limit entirely",
+    variants: [
+      "sys.setrecursionlimit(10**6)      # typical contest setting",
+      "sys.setrecursionlimit(10**4)      # conservative LeetCode setting",
     ],
   },
   {
