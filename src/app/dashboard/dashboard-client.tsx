@@ -330,6 +330,7 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
   const [realDrills, setRealDrills] = useState<DemoDrill[] | null>(null);
   const [realFluencyStats, setRealFluencyStats] = useState<{ overallTier: string; categories: DemoFluencyCategory[] } | null>(null);
   const [drillsLoading, setDrillsLoading] = useState(false);
+  const [drillsError, setDrillsError] = useState<string | null>(null);
 
   const activityData = useMemo(() => {
     if (activityRange === "14d") return data.attemptHistory;
@@ -342,13 +343,21 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
   const fetchDrills = useCallback(async () => {
     if (isDemo) return;
     setDrillsLoading(true);
+    setDrillsError(null);
     try {
       const [drillsRes, statsRes] = await Promise.all([
         fetch("/api/drills?filter=all"),
         fetch("/api/drills/stats"),
       ]);
-      if (drillsRes.ok) {
-        const { drills } = await drillsRes.json();
+      if (!drillsRes.ok) {
+        const body = await drillsRes.json().catch(() => ({}));
+        setDrillsError(`Drills API ${drillsRes.status}: ${body?.error ?? drillsRes.statusText}`);
+      } else {
+        const data = await drillsRes.json();
+        const { drills, _meta } = data;
+        if (process.env.NODE_ENV !== "production" && _meta) {
+          console.debug("[drills] meta:", _meta);
+        }
         const now = new Date();
         const mapped: DemoDrill[] = drills.map((d: { id: number; title: string; category: string; level: number; prompt: string; expectedCode: string; alternatives?: string[]; explanation: string; state: { stability: number; lastReviewedAt: string | null; nextReviewAt: string | null; totalAttempts: number; bestConfidence: number | null } | null }) => {
           let dueStatus: "due" | "new" | "mastered" = "new";
@@ -386,8 +395,8 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
           })),
         });
       }
-    } catch {
-      // Silently fall back to demo data
+    } catch (err) {
+      setDrillsError(err instanceof Error ? err.message : "Failed to load drills");
     } finally {
       setDrillsLoading(false);
     }
@@ -580,18 +589,29 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
   }, [sortedCompleted, queueSearch]);
 
   // Drill data — use real API data when authenticated, demo data as fallback
-  const allDrills = realDrills ?? DEMO_DRILLS;
+  const allDrills = isDemo ? DEMO_DRILLS : (realDrills ?? []);
   const dueDrills = useMemo(() => allDrills.filter(d => d.dueStatus === "due"), [allDrills]);
   const newDrills = useMemo(() => allDrills.filter(d => d.dueStatus === "new"), [allDrills]);
   const masteredDrills = useMemo(() => allDrills.filter(d => d.dueStatus === "mastered"), [allDrills]);
   const activeDrillList = drillSubTab === "due" ? dueDrills : drillSubTab === "new" ? newDrills : masteredDrills;
-  const fluencyStats = realFluencyStats ?? DEMO_FLUENCY_STATS;
+  const fluencyStats = isDemo ? DEMO_FLUENCY_STATS : (realFluencyStats ?? DEMO_FLUENCY_STATS);
 
   function startDrillSession() {
     const sessionDrills = [...dueDrills, ...newDrills].slice(0, 8);
     if (sessionDrills.length === 0) return;
     setDrillSession({ active: true, drills: sessionDrills, current: 0, results: [] });
     setListMode("drills");
+  }
+
+  function computeCategoryStreak(drills: DemoDrill[], currentIndex: number): number {
+    if (currentIndex === 0) return 1;
+    const currentCat = drills[currentIndex].category;
+    let streak = 1;
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (drills[i].category === currentCat) streak++;
+      else break;
+    }
+    return streak;
   }
 
   function handleDrillRate(confidence: DrillConfidence, userCode: string) {
@@ -601,6 +621,8 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
 
     // POST attempt to API for authenticated users
     if (!isDemo && currentDrill) {
+      const sessionPosition = drillSession.current + 1; // 1-indexed
+      const categoryStreak = computeCategoryStreak(drillSession.drills, drillSession.current);
       fetch("/api/drills/attempt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -608,7 +630,8 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
           drillId: currentDrill.id,
           userCode,
           confidence,
-          sessionPosition: drillSession.current,
+          sessionPosition,
+          categoryStreak,
         }),
       }).then(() => fetchDrills()).catch(() => {});
     }
@@ -1135,7 +1158,18 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                   </button>
                 </div>
                 {/* Drill list */}
-                {drillsLoading && !realDrills ? (
+                {drillsError ? (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 space-y-1">
+                    <p className="text-sm font-medium text-red-500">Could not load drills</p>
+                    <p className="text-xs text-muted-foreground font-mono">{drillsError}</p>
+                    <button
+                      onClick={fetchDrills}
+                      className="text-xs text-accent hover:underline mt-1"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : drillsLoading && !realDrills ? (
                   <div className="rounded-lg border border-border bg-muted p-6 text-center">
                     <p className="text-sm text-muted-foreground">Loading drills…</p>
                   </div>

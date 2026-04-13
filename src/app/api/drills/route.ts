@@ -2,9 +2,54 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { syntaxDrills, userDrillStates } from "@/db/schema";
-import { eq, and, lte, isNull, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
+
+/** Level unlock thresholds: avg stability of reviewed drills at level N must exceed this to unlock N+1. */
+const LEVEL_UNLOCK_STABILITY: Record<number, number> = {
+  1: 7,  // L1 avg stability > 7d → unlocks L2
+  2: 14, // L2 avg stability > 14d → unlocks L3
+  3: 21, // L3 avg stability > 21d → unlocks L4
+};
+
+/** Compute the max unlocked drill level per category for a user. L1 is always available. */
+function computeCategoryUnlocks(
+  drills: Array<{ category: string; level: number; state: { stability: number } | null }>,
+): Map<string, number> {
+  const catLevelStabilities = new Map<string, Map<number, number[]>>();
+
+  for (const d of drills) {
+    if (!d.state) continue;
+    if (!catLevelStabilities.has(d.category)) catLevelStabilities.set(d.category, new Map());
+    const catMap = catLevelStabilities.get(d.category)!;
+    if (!catMap.has(d.level)) catMap.set(d.level, []);
+    catMap.get(d.level)!.push(d.state.stability);
+  }
+
+  const categories = [...new Set(drills.map((d) => d.category))];
+  const unlocks = new Map<string, number>();
+
+  for (const cat of categories) {
+    const catMap = catLevelStabilities.get(cat);
+    let maxLevel = 1; // L1 always available
+
+    for (let level = 1; level <= 3; level++) {
+      const stabs = catMap?.get(level) ?? [];
+      if (stabs.length === 0) break; // no reviewed drills at this level — stop here
+      const avgStability = stabs.reduce((a, b) => a + b, 0) / stabs.length;
+      if (avgStability > LEVEL_UNLOCK_STABILITY[level]) {
+        maxLevel = level + 1;
+      } else {
+        break;
+      }
+    }
+
+    unlocks.set(cat, maxLevel);
+  }
+
+  return unlocks;
+}
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -33,6 +78,8 @@ export async function GET(req: NextRequest) {
       ),
     );
 
+  const totalInDb = rows.length;
+
   let drills = rows.map((row) => ({
     id: row.drill.id,
     title: row.drill.title,
@@ -55,6 +102,10 @@ export async function GET(req: NextRequest) {
       : null,
   }));
 
+  // Apply level gating
+  const categoryUnlocks = computeCategoryUnlocks(drills);
+  drills = drills.filter((d) => d.level <= (categoryUnlocks.get(d.category) ?? 1));
+
   // Apply category filter
   if (category) {
     drills = drills.filter((d) => d.category === category);
@@ -72,5 +123,13 @@ export async function GET(req: NextRequest) {
     drills = drills.filter((d) => d.state === null);
   }
 
-  return NextResponse.json({ drills });
+  return NextResponse.json({
+    drills,
+    _meta: {
+      totalInDb,
+      returnedCount: drills.length,
+      gatingActive: true,
+      categoryUnlocks: Object.fromEntries(categoryUnlocks),
+    },
+  });
 }
