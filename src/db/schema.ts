@@ -205,7 +205,7 @@ export const drillConfidenceEnum = pgEnum("drill_confidence", [
 
 export const syntaxDrills = pgTable("syntax_drill", {
   id: serial("id").primaryKey(),
-  title: varchar("title", { length: 255 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull().unique(),
   category: varchar("category", { length: 100 }).notNull(),
   level: smallint("level").notNull(), // 1-4
   language: varchar("language", { length: 20 }).notNull().default("python"),
