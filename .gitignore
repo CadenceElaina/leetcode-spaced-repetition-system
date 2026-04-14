@@ -34,5 +34,4 @@ npm-debug.log*
 drizzle/
 .vercel
 
-scripts/seed-drills.js
 src/db/schema.js

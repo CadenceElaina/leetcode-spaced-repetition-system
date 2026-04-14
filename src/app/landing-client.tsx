@@ -528,7 +528,7 @@ export function LandingPage({ totalProblems, categories, isAuthenticated, authCo
             <div className="grid grid-cols-2 gap-1.5">
               <FeatureCard icon="🧠" title="Spaced Recall" desc="Review intervals grow as you prove mastery" />
               <FeatureCard icon="📊" title="Readiness Score" desc="Know exactly how prepared you are (S–D tier)" />
-              <FeatureCard icon="🎯" title="Pattern Drills" desc="Focus on one category, weakest first" />
+              <FeatureCard icon="🎯" title="Category Focus" desc="Target weak categories with smart filtering" />
               <FeatureCard icon="⏱️" title="Mock Interviews" desc="Timed sessions from your weak spots" />
             </div>
           </div>

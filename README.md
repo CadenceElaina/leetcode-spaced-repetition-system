@@ -43,7 +43,6 @@ Built around 150 curated LeetCode problems with a modified [FSRS](https://github
 - **Spaced repetition** — FSRS-based scheduling adapted for coding problems (see [Algorithm](#algorithm) below)
 - **Readiness dashboard** — tier score, coverage, retention, category balance, consistency, capacity-adjusted pace projection toward a configurable target date
 - **Mock interviews** — random medium + hard from weak categories, 45-minute timer
-- **Pattern drills** — focused practice on a single category, sorted weakest-first
 - **Activity import** — paste activity from neetcode.io to bulk-log problems
 - **GitHub sync** — auto-detect NeetCode submissions via webhook, confirm from dashboard
 
@@ -264,7 +263,6 @@ src/
   app/
     dashboard/                 # Dashboard (queue, stats, readiness)
     problems/                  # Problem list, detail, attempt form
-    drill/                     # Pattern drill mode
     mock-interview/            # Timed mock interview
     api/attempts/              # Attempt logging + SRS update
     api/notes/                 # Per-user problem notes

@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { problems, userProblemStates, attempts, syntaxDrills } from "@/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { problems, userProblemStates, attempts } from "@/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { DifficultyBadge } from "@/components/difficulty-badge";
@@ -98,22 +98,6 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
 
     recentAttempts = attemptRows;
   }
-
-  // Find drills whose tags mention this problem's title or category
-  const relatedDrills = await db
-    .select({
-      id: syntaxDrills.id,
-      title: syntaxDrills.title,
-      level: syntaxDrills.level,
-      category: syntaxDrills.category,
-      prompt: syntaxDrills.prompt,
-    })
-    .from(syntaxDrills)
-    .where(
-      sql`${syntaxDrills.tags} && ARRAY[${problem.title}, ${problem.category}]::text[]`
-    )
-    .orderBy(syntaxDrills.level)
-    .limit(12);
 
   const retentionLabel = srsState
     ? srsState.retention >= 0.8 ? "Strong" : srsState.retention >= 0.6 ? "Good" : srsState.retention >= 0.4 ? "Fading" : srsState.retention >= 0.2 ? "Weak" : "Critical"
@@ -218,39 +202,6 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
       </div>
-
-      {/* Related Drills */}
-      {relatedDrills.length > 0 && (
-        <div>
-          <h2 className="mb-3 text-lg font-semibold">Related Drills</h2>
-          <p className="text-xs text-muted-foreground mb-3">
-            Practice the syntax atoms used in this problem
-          </p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {relatedDrills.map((drill) => (
-              <Link
-                key={drill.id}
-                href="/dashboard?tab=drills"
-                className="flex items-center gap-3 rounded-lg border border-border bg-muted p-3 transition-colors hover:border-accent/40"
-              >
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                  drill.level === 1 ? "bg-muted-foreground/20 text-muted-foreground" :
-                  drill.level === 2 ? "bg-accent/30 text-accent" :
-                  drill.level === 3 ? "bg-accent/60 text-white" :
-                  drill.level === 4 ? "bg-accent text-accent-foreground" :
-                  "bg-purple-600 text-white"
-                }`}>
-                  L{drill.level}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{drill.title}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{drill.prompt.slice(0, 80)}…</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Attempt History */}
       {recentAttempts.length > 0 && (

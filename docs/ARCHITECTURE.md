@@ -21,7 +21,7 @@
 │                  └─────┬──────┘ │
 │  ┌───────────────────────────┐  │
 │  │     SRS Engine            │  │
-│  │  (problems + drills)      │  │
+│  │  (problems)               │  │
 │  └───────────────────────────┘  │
 └────────────────────────┼────────┘
                          │
@@ -287,8 +287,6 @@ When an attempt is deleted, the server replays all remaining attempts for that p
 | Page           | Route                    | Nav | Purpose                                                        |
 | -------------- | ------------------------ | :-: | -------------------------------------------------------------- |
 | Dashboard      | `/dashboard`             |  ✓  | Unified hub: review queue, new problems, stats, countdown      |
-| Drill          | `/drill`                 |  ✓  | Category picker → focused practice sorted by weakest retention |
-| Drill (inline) | `/dashboard` (Drills tab)|  —  | Session-based drill practice with SessionHeader + DrillCard    |
 | Mock Interview | `/mock-interview`        |  ✓  | Timed 45-min session: 1 medium + 1 hard from weak categories   |
 | Problem List   | `/problems`              |     | Browse all 150, filter by category/difficulty/Blind75          |
 | Problem Detail | `/problems/[id]`         |     | Info, complexity, notes, links, attempt history                |
@@ -296,184 +294,6 @@ When an attempt is deleted, the server replays all remaining attempts for that p
 | Review Queue   | `/review`                |     | Priority-ordered list with skip/feedback                       |
 | Stats          | `/stats`                 |     | Full analytics: charts, retention, categories                  |
 | Import         | `/import`                |     | Paste NeetCode activity for bulk import                        |
-
----
-
-## Syntax Drill System
-
-Rapid-fire recall exercises for Python syntax patterns, separate from (but complementary to) the LeetCode problem SRS.
-
-### Content Model
-
-120 drills stored in `drills.json`, seeded via `scripts/seed-drills.ts`. Each drill targets a single syntax atom (e.g., "defaultdict append", "Counter constructor") across five escalating levels.
-
-| Level | Name      | Mode                              | Scoring               |
-| :---: | --------- | --------------------------------- | --------------------- |
-|   1   | Recognize | MC + type-it (both visible)       | Exact match           |
-|   2   | Recall    | Type from scratch                 | Exact normalized match |
-|   3   | Compose   | Blend 2+ atoms                    | Recall-biased coverage |
-|   4   | Implement | Full function / pattern           | Recall-biased coverage |
-|   5   | Capstone  | Unseen variant, same atoms        | Pyodide test execution or self-rate |
-
-**Recall-biased token coverage** (L3+): `intersection.size / expectedTokens.size` — measures what fraction of the expected tokens the user produced. Thresholds: ≥0.85 → conf 4, ≥0.75 → conf 3, ≥0.65 → conf 2, <0.65 → conf 1.
-
-**Atom chain pattern:** drills within a category build incrementally — e.g., the Group Anagrams chain starts with `char_to_index` (L1), adds `frequency_array` (L2), composes `anagram_key` (L3), then full `groupAnagrams` (L4).
-
-### Data Model (Drill Tables)
-
-```
-┌──────────────┐       ┌────────────────┐       ┌────────────────┐
-│  SyntaxDrill │──1:N──│  DrillAttempt  │──N:1──│      User      │
-└──────────────┘       └────────────────┘       └────────────────┘
-       │                                               │
-       │               ┌────────────────┐              │
-       └───────1:N─────│ UserDrillState │──────N:1─────┘
-                       └────────────────┘
-```
-
-#### SyntaxDrill
-
-| Column       | Type         | Notes                          |
-| ------------ | ------------ | ------------------------------ |
-| id           | SERIAL PK    |                                |
-| title        | VARCHAR(255) | UNIQUE                         |
-| category     | VARCHAR(100) | e.g., "Hashmaps"               |
-| level        | SMALLINT     | 1–4                            |
-| language     | VARCHAR(20)  | Default: `"python"`            |
-| prompt       | TEXT         | Markdown with \`backtick\` spans |
-| expectedCode | TEXT         | Canonical answer               |
-| alternatives | TEXT[]       | Accepted alternate answers     |
-| explanation  | TEXT         | Shown after attempt            |
-| tags         | TEXT[]       | For future problem↔drill links |
-| distractors  | TEXT[]       | Wrong MC options (L1 only)     |
-| promptVariants | TEXT[]     | Alternate prompt phrasings     |
-| testCases    | JSONB        | L5 Pyodide test cases          |
-
-#### UserDrillState
-
-One row per user-drill pair. Same SRS pattern as `UserProblemState`.
-
-| Column         | Type       | Notes                          |
-| -------------- | ---------- | ------------------------------ |
-| id             | UUID PK    |                                |
-| userId         | UUID FK    |                                |
-| drillId        | INTEGER FK |                                |
-| stability      | REAL       | Default: 0.5 days              |
-| lastReviewedAt | TIMESTAMP  |                                |
-| nextReviewAt   | TIMESTAMP  | Computed from stability        |
-| totalAttempts  | INTEGER    | Default: 0                     |
-| bestConfidence | SMALLINT   | 1–4                            |
-| notes          | TEXT       |                                |
-| createdAt      | TIMESTAMP  |                                |
-| updatedAt      | TIMESTAMP  |                                |
-
-**Constraint:** `UNIQUE(userId, drillId)`.
-
-#### DrillAttempt
-
-| Column          | Type       | Notes                          |
-| --------------- | ---------- | ------------------------------ |
-| id              | UUID PK    |                                |
-| userId          | UUID FK    |                                |
-| drillId         | INTEGER FK |                                |
-| userCode        | TEXT       | What the user submitted        |
-| confidence      | SMALLINT   | 1–4 (auto-graded from scoring) |
-| sessionPosition | INTEGER    | nth drill in current session   |
-| categoryStreak  | INTEGER    | Consecutive same-category      |
-| effectiveCredit | REAL       | Fatigue multiplier applied     |
-| createdAt       | TIMESTAMP  |                                |
-
-### Drill SRS Algorithm
-
-Simpler than the problem SRS — single confidence signal instead of multi-factor modifiers.
-
-**Confidence multipliers:**
-
-| Confidence | Multiplier | Meaning        |
-| :--------: | :--------: | -------------- |
-|    1       |    0.5×    | Again — forgot |
-|    2       |    1.0×    | Hard — struggled |
-|    3       |    1.8×    | Good — got it  |
-|    4       |    2.5×    | Easy — instant |
-
-$$S_{\text{new}} = S_{\text{old}} \times (1 + (\text{multiplier} - 1) \times \text{fatigueCredit})$$
-
-**Session fatigue** — diminishing returns within a session:
-
-| Position | Credit |
-| :------: | :----: |
-|   1–8    |  1.0   |
-|   9–15   |  0.7   |
-|  16–25   |  0.4   |
-|   26+    |  0.2   |
-
-**Category streak penalty** — grinding one category has diminishing returns:
-
-| Consecutive | Credit |
-| :---------: | :----: |
-|      1      |  1.0   |
-|      2      |  0.8   |
-|      3      |  0.5   |
-|     4+      |  0.3   |
-
-**Combined fatigue credit** = `sessionFatigue × categoryStreakPenalty`. This scales the multiplier toward 1.0 (neutral) — at low credit, stability barely changes regardless of confidence.
-
-### Level Gating
-
-Higher levels unlock per category based on average stability at the previous level:
-
-- L1: always available
-- L2: unlocks when L1 avg stability > 7 days
-- L3: unlocks when L2 avg stability > 14 days
-- L4: unlocks when L3 avg stability > 21 days
-- L5: unlocks when L4 avg stability > 28 days
-
-### Drill Fluency Score
-
-Per-category composite (0–100):
-
-| Component   | Weight | Measures                         |
-| ----------- | :----: | -------------------------------- |
-| Coverage    |  30%   | % of category drills reviewed    |
-| Stability   |  50%   | Avg stability / 30 (capped at 1) |
-| Freshness   |  20%   | 1 − (overdue / reviewed)         |
-
-Same S/A/B/C/D tier system as problem readiness.
-
-### Drill Session UX
-
-Sessions run in the dashboard's "Drills" tab:
-
-1. **DrillTour** — one-screen onboarding overlay on first visit (localStorage `"drills-onboarded"`). Covers levels, shortcuts, sound toggle.
-2. **SessionHeader** — persistent bar above DrillCard showing dot-pip progress, combo badge (≥4 streak), auto-continue toggle, mute button.
-3. **DrillCard** — core interaction. Three phases: prompt → retry (on partial, max 2 attempts) → result (with verdict animation).
-4. **SessionSummary** — modal on completion with counting animations (correct/hard/again), best streak, Done / Keep Going CTAs.
-
-**Code editor:** CodeMirror 6 (`@uiw/react-codemirror`) with Python syntax highlighting, custom Aurora dark theme, no auto-indent (simulates interview whiteboard). Used for all drill input, expected code display, and retry views.
-
-**Keyboard shortcuts:** `Ctrl+Shift+Enter` submit, `Ctrl+.` next, `Ctrl+,` previous.
-
-**Sound effects:** Web Audio API synthesis (`src/lib/sounds.ts`). Four sounds: correct (ascending C5→E5), partial (A4), wrong (descending G4→E4), milestone (C5→E5→G5 at 5/10/25 combo). Mute preference persisted in localStorage.
-
-**Verdict animations:** CSS `@keyframes` in `globals.css` — `drill-correct-glow` (green border pulse), `drill-partial-shimmer` (amber sweep), `drill-wrong-shake` (horizontal shift).
-
-### Drill API Routes
-
-| Route                 | Method | Purpose                               |
-| --------------------- | :----: | ------------------------------------- |
-| `/api/drills`         |  GET   | Fetch drills with level gating + filter (due/new/all) |
-| `/api/drills/attempt` |  POST  | Log attempt, compute fatigue credit, update SRS state |
-| `/api/drills/stats`   |  GET   | Category fluency scores + overall tier |
-
-### L5 Auto-Grading (Pyodide)
-
-Level 5 drills execute user code against test cases using Pyodide (CPython compiled to WebAssembly). Runs entirely client-side in a Web Worker (`public/workers/pyodide-worker.js`) — no server execution.
-
-1. `PyodideRunner` singleton (`src/lib/pyodide.ts`) manages the worker lifecycle
-2. `init()` loads Pyodide from CDN on drill tab entry (background download)
-3. `runTests(code, testCases)` executes user code + validates against expected outputs
-4. Test results map to confidence via pass rate: ≥80% → 4, ≥60% → 3, ≥40% → 2, <40% → 1
-5. 5-second per-test timeout prevents infinite loops
 
 ---
 

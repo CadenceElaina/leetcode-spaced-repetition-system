@@ -19,7 +19,6 @@ npx drizzle-kit generate   # Generate migration SQL
 
 # Seeding
 npx tsx scripts/seed.ts           # Seed 150 NeetCode problems
-npx tsx scripts/seed-drills.ts    # Seed drill data
 python scripts/fetch_problems.py  # Regenerate problem metadata
 ```
 
@@ -79,7 +78,6 @@ All mutations go through `/api/*` routes:
 | `GET/POST /api/notes` | User notes per problem |
 | `GET/POST /api/review` | Review queue + skip |
 | `POST /api/webhook/github` | GitHub push webhook (HMAC-validated, auto-detects solved problems) |
-| `GET/POST /api/drills/*` | Drill mode attempts and stats |
 
 ### GitHub Sync
 
