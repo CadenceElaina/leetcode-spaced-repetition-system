@@ -16,8 +16,10 @@ import { syntaxDrills } from "../src/db/schema";
 import { sql } from "drizzle-orm";
 
 interface DrillTestCase {
-  input: string;
-  expected: string;
+  input?: string;
+  expected?: string;
+  setup?: string;
+  check?: string;
 }
 
 interface SeedDrill {

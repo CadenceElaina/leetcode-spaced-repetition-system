@@ -493,8 +493,10 @@ export type DrillLevel = 1 | 2 | 3 | 4 | 5;
 export type DrillConfidence = 1 | 2 | 3 | 4; // Again/Hard/Good/Easy
 
 export interface DrillTestCase {
-  input: string;
-  expected: string;
+  input?: string;
+  expected?: string;
+  setup?: string;
+  check?: string;
 }
 
 export interface SyntaxDrill {

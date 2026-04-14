@@ -114,6 +114,87 @@ json.dumps({"actual": repr(_result), "passed": bool(_passed)})
 }
 
 /**
+ * Run snippet-level test cases against user code (L1–L4 drills).
+ * Each test case: { setup: string (Python code to set up variables), check: string (Python expression → True/False) }
+ *
+ * Flow per test case:
+ *   1. Create fresh namespace
+ *   2. Execute setup code (creates input variables)
+ *   3. Execute user code (may import, create variables, or contain bare return)
+ *   4. Evaluate check expression — should return True if code is correct
+ */
+async function runSnippetTests(id, code, testCases) {
+  if (!pyodide) {
+    self.postMessage({ type: "snippet-test-error", id, error: "Pyodide not loaded" });
+    return;
+  }
+
+  const results = [];
+
+  for (const tc of testCases) {
+    try {
+      // Build Python wrapper that executes setup → user code → check in a shared namespace
+      const wrapper = `
+import json as _json
+
+_ns = {}
+
+# 1. Setup: create input variables
+exec(${JSON.stringify(tc.setup || "pass")}, _ns)
+
+# 2. User code: detect bare return via compile check
+_user_code = ${JSON.stringify(code)}
+_needs_wrapping = False
+try:
+    compile(_user_code, '<drill>', 'exec')
+except SyntaxError as _e:
+    if 'return' in str(_e).lower():
+        _needs_wrapping = True
+    else:
+        raise
+
+if _needs_wrapping:
+    _lines = _user_code.split('\\n')
+    # Declare setup variables as global so reassignment works (e.g. l1 = l1.next)
+    _global_vars = [k for k in _ns if not k.startswith('_') and k != '__builtins__']
+    _global_decl = '    global ' + ', '.join(_global_vars) + '\\n' if _global_vars else ''
+    _indented = '\\n'.join('    ' + l for l in _lines)
+    _wrapped = 'def _user_fn():\\n' + _global_decl + _indented
+    exec(_wrapped, _ns)
+    _ns['_result'] = _ns['_user_fn']()
+else:
+    exec(_user_code, _ns)
+
+# 3. Check: evaluate expression in same namespace
+_passed = bool(eval(${JSON.stringify(tc.check)}, _ns))
+_json.dumps({"passed": _passed})
+`;
+
+      const timeoutId = setTimeout(() => {
+        try { pyodide.interruptExecution(); } catch { /* ok */ }
+      }, TIMEOUT_MS);
+
+      const result = await pyodide.runPythonAsync(wrapper);
+      clearTimeout(timeoutId);
+
+      const parsed = JSON.parse(result);
+      results.push({
+        check: tc.check,
+        passed: parsed.passed,
+      });
+    } catch (err) {
+      results.push({
+        check: tc.check,
+        passed: false,
+        error: String(err).split("\n").pop() || String(err),
+      });
+    }
+  }
+
+  self.postMessage({ type: "snippet-test-result", id, results });
+}
+
+/**
  * Run arbitrary user code and capture stdout.
  * If code contains bare `return` statements (outside a function), wrap it in
  * a function so it doesn't cause "SyntaxError: 'return' outside function".
@@ -175,6 +256,8 @@ self.onmessage = async (e) => {
     await loadPyodideRuntime();
   } else if (type === "run") {
     await runTests(id, code, testCases);
+  } else if (type === "run-snippet-tests") {
+    await runSnippetTests(id, code, testCases);
   } else if (type === "run-code") {
     await runCode(id, code);
   }

@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import type { DrillConfidence, DrillLevel, DrillTestCase, DemoDrill } from "@/app/dashboard/demo-data";
 import { playSound } from "@/lib/sounds";
-import { getPyodide, passRateToConfidence, type TestCaseResult } from "@/lib/pyodide";
+import { getPyodide, passRateToConfidence, type TestCaseResult, type SnippetTestResult } from "@/lib/pyodide";
 import { CodeEditor } from "@/components/code-editor";
 
 type DrillCardPhase = "prompt" | "retry" | "result" | "self-rate" | "running-tests";
@@ -181,7 +181,7 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
   }, []);
 
   // L5 Pyodide test results
-  const [testResults, setTestResults] = useState<TestCaseResult[] | null>(null);
+  const [testResults, setTestResults] = useState<(TestCaseResult | SnippetTestResult)[] | null>(null);
 
   // Run button state (scratch code execution)
   const [runOutput, setRunOutput] = useState<string | null>(null);
@@ -262,15 +262,69 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
     }
   }, [userCode]);
 
+  /** Helper: determine if drill has snippet-format test cases (setup/check) */
+  const hasSnippetTests = drill.testCases && drill.testCases.length > 0 && drill.testCases[0].setup !== undefined;
+
+  /** Helper: run snippet tests and enter result phase */
+  const runSnippetTestsAndGrade = useCallback((code: string, isRetry: boolean) => {
+    const pyodide = getPyodide();
+    if (!pyodide.isReady() || !drill.testCases) return false;
+
+    const snippetCases = drill.testCases
+      .filter((tc): tc is { setup: string; check: string } => tc.setup !== undefined && tc.check !== undefined);
+    if (snippetCases.length === 0) return false;
+
+    setPhase("running-tests");
+    pyodide
+      .runSnippetTests(code, snippetCases)
+      .then((results) => {
+        setTestResults(results);
+        const passed = results.filter((r) => r.passed).length;
+        let confidence = passRateToConfidence(passed, results.length);
+        if (isRetry && confidence > 2) confidence = 2 as 1 | 2 | 3 | 4; // cap retry at 2
+        enterResult(
+          {
+            verdict: confidence >= 3 ? "correct" : confidence === 2 ? "close" : "incorrect",
+            similarity: passed / results.length,
+            confidence,
+          },
+          code,
+        );
+      })
+      .catch(() => {
+        // Pyodide error — fall back to token matching
+        const match = checkCode(code, drill.expectedCode, drill.alternatives ?? [], drill.level);
+        const finalMatch = isRetry
+          ? { ...match, confidence: (match.confidence >= 2 ? 2 : 1) as DrillConfidence }
+          : match;
+        if (!isRetry && finalMatch.confidence < 4) {
+          setFirstAttemptCode(code);
+          setRetryCode("");
+          setResult(finalMatch);
+          setPhase("retry");
+          playSound(finalMatch.confidence >= 2 ? "partial" : "wrong", muted);
+        } else {
+          enterResult(finalMatch, code);
+        }
+      });
+    return true;
+  }, [drill, muted, enterResult]);
+
   /** First attempt submit */
   const handleSubmit = useCallback(() => {
-    // L5: try Pyodide auto-grading, fall back to self-rate
+    // Try snippet-format test cases (L1–L5 with setup/check) via Pyodide
+    if (hasSnippetTests && getPyodide().isReady()) {
+      runSnippetTestsAndGrade(userCode, false);
+      return;
+    }
+
+    // L5 with old function-based test cases: try Pyodide auto-grading, fall back to self-rate
     if (drill.level === 5) {
       const pyodide = getPyodide();
       if (pyodide.isReady() && drill.testCases && drill.testCases.length > 0) {
         setPhase("running-tests");
         pyodide
-          .runTests(userCode, drill.testCases)
+          .runTests(userCode, drill.testCases as { input: string; expected: string }[])
           .then((results) => {
             setTestResults(results);
             const passed = results.filter((r) => r.passed).length;
@@ -294,6 +348,7 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
       return;
     }
 
+    // Fallback: token matching (L1–L4 without test cases or Pyodide not ready)
     const match = checkCode(userCode, drill.expectedCode, drill.alternatives ?? [], drill.level);
 
     if (match.confidence < 4) {
@@ -306,15 +361,21 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
     } else {
       enterResult(match, userCode);
     }
-  }, [userCode, drill, muted, enterResult]);
+  }, [userCode, drill, muted, enterResult, hasSnippetTests, runSnippetTestsAndGrade]);
 
   /** Second attempt submit (retry phase) */
   const handleRetrySubmit = useCallback(() => {
+    // Try snippet tests on retry too
+    if (hasSnippetTests && getPyodide().isReady()) {
+      runSnippetTestsAndGrade(retryCode, true);
+      return;
+    }
+
     const match = checkCode(retryCode, drill.expectedCode, drill.alternatives ?? [], drill.level);
     // Second attempt: correct/close → cap at conf 2; wrong → conf 1
     const cappedConfidence: DrillConfidence = match.confidence >= 2 ? 2 : 1;
     enterResult({ ...match, confidence: cappedConfidence }, retryCode);
-  }, [retryCode, drill, enterResult]);
+  }, [retryCode, drill, enterResult, hasSnippetTests, runSnippetTestsAndGrade]);
 
   /** Self-rate handler (L5 — user rates after seeing reference solution) */
   const handleSelfRate = useCallback(
@@ -556,8 +617,14 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
                 {drill.testCases.map((tc: DrillTestCase, i: number) => (
                   <div key={i} className="flex gap-2 text-xs font-mono">
                     <span className="text-muted-foreground shrink-0">#{i + 1}</span>
-                    <span className="text-foreground/70">Input: {tc.input}</span>
-                    <span className="text-accent/70">→ {tc.expected}</span>
+                    {tc.input !== undefined ? (
+                      <>
+                        <span className="text-foreground/70">Input: {tc.input}</span>
+                        <span className="text-accent/70">→ {tc.expected}</span>
+                      </>
+                    ) : (
+                      <span className="text-foreground/70">{tc.check}</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -612,7 +679,7 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
             )}
           </div>
 
-          {/* Pyodide test results (L5 auto-graded path) */}
+          {/* Pyodide test results */}
           {testResults && testResults.length > 0 && (
             <div className="rounded-lg border border-border bg-card p-3">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
@@ -625,13 +692,27 @@ export function DrillCard({ drill, onRate, onPrevious, muted = false, autoContin
                       {tr.passed ? "✓" : "✗"}
                     </span>
                     <div className="min-w-0">
-                      <span className="text-muted-foreground">Input: {tr.input}</span>
-                      {!tr.passed && (
+                      {"input" in tr ? (
                         <>
-                          <br />
-                          <span className="text-red-400">Got: {tr.actual}</span>
-                          <br />
-                          <span className="text-green-400">Expected: {tr.expected}</span>
+                          <span className="text-muted-foreground">Input: {tr.input}</span>
+                          {!tr.passed && (
+                            <>
+                              <br />
+                              <span className="text-red-400">Got: {tr.actual}</span>
+                              <br />
+                              <span className="text-green-400">Expected: {tr.expected}</span>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-muted-foreground">Check: {tr.check}</span>
+                          {!tr.passed && tr.error && (
+                            <>
+                              <br />
+                              <span className="text-red-400">{tr.error}</span>
+                            </>
+                          )}
                         </>
                       )}
                     </div>

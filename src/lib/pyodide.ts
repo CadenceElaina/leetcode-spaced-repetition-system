@@ -20,6 +20,18 @@ export interface TestCaseResult {
   passed: boolean;
 }
 
+/** Snippet-level test case (L1–L4): setup creates variables, check evaluates to True/False */
+export interface SnippetTestCase {
+  setup: string;
+  check: string;
+}
+
+export interface SnippetTestResult {
+  check: string;
+  passed: boolean;
+  error?: string;
+}
+
 export type PyodideStatus = "idle" | "loading" | "ready" | "error";
 
 interface PendingRun {
@@ -32,6 +44,11 @@ interface PendingCodeRun {
   reject: (error: Error) => void;
 }
 
+interface PendingSnippetRun {
+  resolve: (results: SnippetTestResult[]) => void;
+  reject: (error: Error) => void;
+}
+
 let instance: PyodideRunner | null = null;
 
 class PyodideRunner {
@@ -39,6 +56,7 @@ class PyodideRunner {
   private status: PyodideStatus = "idle";
   private pendingRuns = new Map<string, PendingRun>();
   private pendingCodeRuns = new Map<string, PendingCodeRun>();
+  private pendingSnippetRuns = new Map<string, PendingSnippetRun>();
   private listeners = new Set<(status: PyodideStatus) => void>();
   private nextId = 0;
 
@@ -138,6 +156,39 @@ class PyodideRunner {
     });
   }
 
+  async runSnippetTests(
+    code: string,
+    testCases: SnippetTestCase[],
+  ): Promise<SnippetTestResult[]> {
+    if (!this.worker || this.status !== "ready") {
+      throw new Error("Pyodide not ready");
+    }
+
+    const id = String(++this.nextId);
+
+    return new Promise<SnippetTestResult[]>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pendingSnippetRuns.delete(id);
+        reject(new Error("Pyodide execution timed out"));
+      }, 30_000);
+
+      this.pendingSnippetRuns.set(id, {
+        resolve: (results) => {
+          clearTimeout(timeout);
+          this.pendingSnippetRuns.delete(id);
+          resolve(results);
+        },
+        reject: (err) => {
+          clearTimeout(timeout);
+          this.pendingSnippetRuns.delete(id);
+          reject(err);
+        },
+      });
+
+      this.worker!.postMessage({ type: "run-snippet-tests", id, code, testCases });
+    });
+  }
+
   private handleMessage(e: MessageEvent): void {
     const { type, id, results, error, output } = e.data;
 
@@ -160,6 +211,12 @@ class PyodideRunner {
     } else if (type === "run-code-error") {
       const pending = this.pendingCodeRuns.get(id);
       if (pending) pending.reject(new Error(error));
+    } else if (type === "snippet-test-result") {
+      const pending = this.pendingSnippetRuns.get(id);
+      if (pending) pending.resolve(results);
+    } else if (type === "snippet-test-error") {
+      const pending = this.pendingSnippetRuns.get(id);
+      if (pending) pending.reject(new Error(error));
     }
   }
 
@@ -172,6 +229,7 @@ class PyodideRunner {
     this.status = "idle";
     this.pendingRuns.clear();
     this.pendingCodeRuns.clear();
+    this.pendingSnippetRuns.clear();
     this.listeners.clear();
     this.notify();
   }
