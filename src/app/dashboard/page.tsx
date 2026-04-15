@@ -111,6 +111,7 @@ export default async function DashboardPage() {
         totalAttempts: s.totalAttempts,
         daysOverdue,
         retrievability,
+        stability: s.stability,
         lastReviewedAt: s.lastReviewedAt ? s.lastReviewedAt.toISOString() : null,
       };
     })
@@ -125,6 +126,7 @@ export default async function DashboardPage() {
       totalAttempts: number;
       daysOverdue: number;
       retrievability: number;
+      stability: number;
       lastReviewedAt: string | null;
     }[];
 

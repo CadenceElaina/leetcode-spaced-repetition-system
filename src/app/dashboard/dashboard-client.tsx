@@ -21,6 +21,7 @@ type ReviewItem = {
   totalAttempts: number;
   daysOverdue: number;
   retrievability: number;
+  stability: number;
   lastReviewedAt: string | null;
 };
 
@@ -40,7 +41,7 @@ type CompletedItem = {
 };
 
 type ListMode = "review" | "new" | "completed" | "import";
-type ReviewSort = "overdue" | "difficulty" | "category";
+type ReviewSort = "urgency" | "overdue" | "difficulty" | "category";
 type NewSort = "curriculum" | "hardest";
 type CompletedSort = "retention" | "review-date" | "category";
 
@@ -312,7 +313,7 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
   const [showSettings, setShowSettings] = useState(false);
   const [categoryView, setCategoryView] = useState<"weak" | "all">("weak");
   const [listMode, setListMode] = useState<ListMode>("review");
-  const [reviewSort, setReviewSort] = useState<ReviewSort>("overdue");
+  const [reviewSort, setReviewSort] = useState<ReviewSort>("urgency");
   const [newSort, setNewSort] = useState<NewSort>("curriculum");
   const [completedSort, setCompletedSort] = useState<CompletedSort>("retention");
   const [queueSearch, setQueueSearch] = useState("");
@@ -460,7 +461,10 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
 
   const sortedReviewQueue = useMemo(() => {
     const q = [...data.reviewQueue];
-    if (reviewSort === "overdue") {
+    if (reviewSort === "urgency") {
+      // Lowest stability first (most fragile), then most overdue as tiebreaker
+      q.sort((a, b) => a.stability - b.stability || b.daysOverdue - a.daysOverdue);
+    } else if (reviewSort === "overdue") {
       q.sort((a, b) => b.daysOverdue - a.daysOverdue || DIFF_ORDER[a.difficulty] - DIFF_ORDER[b.difficulty]);
     } else if (reviewSort === "difficulty") {
       q.sort((a, b) => DIFF_ORDER[a.difficulty] - DIFF_ORDER[b.difficulty] || b.daysOverdue - a.daysOverdue);
@@ -682,7 +686,7 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
             {/* Row 2: sort pills — left-aligned, unobtrusive */}
             {listMode === "review" && (
               <div className="flex gap-1">
-                {(["overdue", "difficulty", "category"] as ReviewSort[]).map((s) => (
+                {(["urgency", "overdue", "difficulty", "category"] as ReviewSort[]).map((s) => (
                   <button
                     key={s}
                     onClick={() => setReviewSort(s)}
@@ -692,7 +696,7 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {s === "overdue" ? "Oldest" : s === "difficulty" ? "Hardest" : "Category"}
+                    {s === "urgency" ? "Urgency" : s === "overdue" ? "Oldest" : s === "difficulty" ? "Hardest" : "Category"}
                   </button>
                 ))}
               </div>
