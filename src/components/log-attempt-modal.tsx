@@ -41,6 +41,7 @@ type Props = {
 
 export function LogAttemptModal({ problem, onClose, onLogged }: Props) {
   const [outcome, setOutcome] = useState<Outcome>("SOLVED");
+  const [quality, setQuality] = useState<"OPTIMAL" | "BRUTE_FORCE">("OPTIMAL");
   const [confidence, setConfidence] = useState(3);
   const [solveTime, setSolveTime] = useState(problem.isReview ? 15 : 20);
   const [rewrote, setRewrote] = useState(false);
@@ -75,7 +76,7 @@ export function LogAttemptModal({ problem, onClose, onLogged }: Props) {
       solutionQuality = "BRUTE_FORCE";
     } else {
       solvedIndependently = "YES";
-      solutionQuality = "OPTIMAL";
+      solutionQuality = quality;
     }
 
     return {
@@ -91,7 +92,7 @@ export function LogAttemptModal({ problem, onClose, onLogged }: Props) {
       ...(problem.source && { source: problem.source }),
       ...(problem.attemptDate && { attemptDate: new Date(problem.attemptDate).toISOString() }),
     };
-  }, [outcome, confidence, solveTime, rewrote, problem]);
+  }, [outcome, quality, confidence, solveTime, rewrote, problem]);
 
   async function handleSubmit(force = false) {
     setSubmitting(true);
@@ -193,6 +194,29 @@ export function LogAttemptModal({ problem, onClose, onLogged }: Props) {
               ))}
             </div>
           </div>
+
+          {/* Quality — only when solved independently */}
+          {outcome === "SOLVED" && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Solution quality</p>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setQuality("OPTIMAL")}
+                  className={`${btnBase} flex-1 ${quality === "OPTIMAL" ? btnActive : btnInactive}`}
+                >
+                  Optimal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuality("BRUTE_FORCE")}
+                  className={`${btnBase} flex-1 ${quality === "BRUTE_FORCE" ? btnActive : btnInactive}`}
+                >
+                  Not Optimal
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Confidence + Time row */}
           <div className="grid grid-cols-2 gap-4">

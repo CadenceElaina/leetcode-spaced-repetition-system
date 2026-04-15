@@ -204,7 +204,7 @@ export async function POST(req: NextRequest) {
     oldStability = existing[0].stability;
     newStability = computeNewStability(existing[0].stability, signals);
     nextReview = isFailed
-      ? now // immediately
+      ? new Date(now.getTime() + 24 * 60 * 60 * 1000) // tomorrow
       : isStruggled
         ? new Date(now.getTime() + 24 * 60 * 60 * 1000) // 1 day
         : computeNextReviewDate(newStability, now);
@@ -228,7 +228,7 @@ export async function POST(req: NextRequest) {
     const initialStability = computeInitialStability(signals);
     newStability = initialStability;
     nextReview = isFailed
-      ? now
+      ? new Date(now.getTime() + 24 * 60 * 60 * 1000) // tomorrow
       : isStruggled
         ? new Date(now.getTime() + 24 * 60 * 60 * 1000)
         : computeNextReviewDate(initialStability, now);
@@ -350,7 +350,7 @@ export async function DELETE(req: NextRequest) {
     const isStruggled = lastAttempt.solvedIndependently === "PARTIAL" && lastAttempt.confidence <= 2;
     const lastDate = lastAttempt.createdAt;
     const nextReview = isFailed
-      ? lastDate
+      ? new Date(lastDate.getTime() + 24 * 60 * 60 * 1000) // tomorrow
       : isStruggled
         ? new Date(lastDate.getTime() + 24 * 60 * 60 * 1000)
         : computeNextReviewDate(stability, lastDate);
