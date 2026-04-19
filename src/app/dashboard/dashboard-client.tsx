@@ -704,7 +704,20 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
   return (
     <>
     {/* Onboarding Walkthrough */}
-    <Onboarding />
+    <Onboarding isDemo={isDemo} onPreferences={(prefs) => {
+      if (prefs.targetCount > 0) {
+        setTargetCount(prefs.targetCount);
+        setTargetDate(prefs.targetDate);
+      }
+      setAutoDeferHards(prefs.autoDeferHards);
+      if (prefs.autoDeferHards) {
+        setReviewItems((prev) => prev.filter((r) => r.difficulty !== "Hard"));
+        setDeferredItems((prev) => [
+          ...prev,
+          ...reviewItems.filter((r) => r.difficulty === "Hard").map((item) => ({ ...item, deferredUntil: null, isAutoDeferred: true })),
+        ]);
+      }
+    }} />
     <div className="relative lg:h-[calc(100dvh-120px)]">
     {/* Subtle ambient starfield — fixed, full-viewport, behind all content */}
     <DashboardSkyCanvas />

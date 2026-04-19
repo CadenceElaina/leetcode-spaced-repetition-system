@@ -135,28 +135,56 @@ const STEPS = [
     body: "Aurora uses spaced repetition to help you retain DSA concepts. The algorithm schedules reviews based on how well you remember each problem — so you focus on what needs work.",
     target: null as string | null,
     side: "center" as const,
+    kind: "welcome" as const,
+  },
+  {
+    title: "Choose Your Goal",
+    body: "",
+    target: null as string | null,
+    side: "center" as const,
+    kind: "goal" as const,
+  },
+  {
+    title: "Defer Hard Problems?",
+    body: "",
+    target: null as string | null,
+    side: "center" as const,
+    kind: "defer" as const,
+  },
+  {
+    title: "How Reviews Work",
+    body: "",
+    target: null as string | null,
+    side: "center" as const,
+    kind: "review-explainer" as const,
   },
   {
     title: "Your Review Queue",
     body: "",
     target: "queue",
     side: "right" as const,
+    kind: "tour" as const,
   },
   {
     title: "Log Attempts in Seconds",
     body: "",
     target: "queue",
     side: "right" as const,
+    kind: "tour" as const,
   },
   {
     title: "Track Your Progress",
     body: "",
     target: "stats",
     side: "left" as const,
+    kind: "tour" as const,
   },
 ];
 
-export function Onboarding() {
+export function Onboarding({ isDemo = false, onPreferences }: {
+  isDemo?: boolean;
+  onPreferences?: (prefs: { targetCount: number; targetDate: string; autoDeferHards: boolean }) => void;
+}) {
   const [show, setShow] = useState(false);
   const [step, setStep] = useState(0);
   const [rects, setRects] = useState<{ queue: Rect | null; stats: Rect | null }>({ queue: null, stats: null });
@@ -164,6 +192,11 @@ export function Onboarding() {
   const [tierFrame, setTierFrame] = useState(0);
   const logIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tierIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Preference state for goal/defer steps
+  const [selectedGoal, setSelectedGoal] = useState<"blind75" | "neetcode150" | "none">("neetcode150");
+  const [selectedDate, setSelectedDate] = useState("2026-09-01");
+  const [deferHards, setDeferHards] = useState(true);
 
   const measure = useCallback(() => {
     const q = document.querySelector("[data-onboarding='queue']");
@@ -190,9 +223,9 @@ export function Onboarding() {
 
   useEffect(() => { if (show) measure(); }, [step, show, measure]);
 
-  // Log animation (step 2)
+  // Log animation (step 5 — "Log Attempts")
   useEffect(() => {
-    if (step === 2 && show) {
+    if (step === 5 && show) {
       setLogFrame(0);
       logIntervalRef.current = setInterval(() => {
         setLogFrame((f) => (f + 1) % LOG_STEPS.length);
@@ -203,9 +236,9 @@ export function Onboarding() {
     }
   }, [step, show]);
 
-  // Tier animation (step 3)
+  // Tier animation (step 6 — "Track Progress")
   useEffect(() => {
-    if (step === 3 && show) {
+    if (step === 6 && show) {
       setTierFrame(0);
       tierIntervalRef.current = setInterval(() => {
         setTierFrame((f) => (f + 1) % TIER_PROGRESSION.length);
@@ -217,6 +250,21 @@ export function Onboarding() {
   }, [step, show]);
 
   function finish() {
+    // Save preferences
+    const targetCount = selectedGoal === "blind75" ? 75 : selectedGoal === "neetcode150" ? 150 : 0;
+    if (targetCount > 0) {
+      localStorage.setItem("srs_target", JSON.stringify({ date: selectedDate, count: targetCount }));
+    }
+    // Save defer hards via API (authenticated users only)
+    if (!isDemo) {
+      fetch("/api/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "toggle-auto-defer-hards", enabled: deferHards }),
+      }).catch(() => {/* ignore errors during onboarding save */});
+    }
+    // Notify parent to update state without refresh
+    onPreferences?.({ targetCount, targetDate: selectedDate, autoDeferHards: deferHards });
     localStorage.setItem(ONBOARDING_KEY, "1");
     setShow(false);
   }
@@ -292,7 +340,7 @@ export function Onboarding() {
       )}
 
       {/* ═══ Queue overlay with opaque background ═══ */}
-      {(step === 1 || step === 2) && queueRect && (
+      {(step === 4 || step === 5) && queueRect && (
         <div
           className="absolute overflow-hidden rounded-lg bg-background"
           style={{
@@ -323,7 +371,7 @@ export function Onboarding() {
             <span className="text-xs px-2 py-0.5 rounded text-muted-foreground">Category</span>
           </div>
           {/* Review items */}
-          <div className={`rounded-lg border border-border overflow-hidden bg-background ${step === 2 ? "opacity-40" : ""}`}>
+          <div className={`rounded-lg border border-border overflow-hidden bg-background ${step === 5 ? "opacity-40" : ""}`}>
             {MOCK_REVIEW_ITEMS.map((item, i) => (
               <div
                 key={i}
@@ -352,8 +400,8 @@ export function Onboarding() {
             ))}
           </div>
 
-          {/* ── Step 2: Simulated log modal centered on queue ── */}
-          {step === 2 && (
+          {/* ── Step 5: Simulated log modal centered on queue ── */}
+          {step === 5 && (
             <div className="absolute inset-0 flex items-start justify-center pt-12">
               <div className="w-[90%] max-w-md rounded-lg border border-border bg-background shadow-2xl overflow-hidden">
                 {/* Modal header */}
@@ -456,7 +504,7 @@ export function Onboarding() {
       )}
 
       {/* ═══ Stats overlay: animated right-column data ═══ */}
-      {step === 3 && statsRect && (() => {
+      {step === 6 && statsRect && (() => {
         const t = TIER_PROGRESSION[tierFrame];
         const activity = ACTIVITY_DATA[tierFrame];
         const actMax = Math.max(...activity.map(d => d.n + d.r), 1);
@@ -657,8 +705,129 @@ export function Onboarding() {
           {current.body && <p className="text-sm text-muted-foreground leading-relaxed">{current.body}</p>}
         </div>
 
-        {/* ── Step 1: Queue legend/breakdown ── */}
+        {/* ── Step 1: Goal selection ── */}
         {step === 1 && (
+          <div className="px-5 pb-2 space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Pick a problem set to work through. You can always change this later in settings.
+            </p>
+            <div className="space-y-2">
+              {([
+                { id: "blind75" as const, label: "Blind 75", desc: "The essential 75 problems — focused, efficient prep", count: 75 },
+                { id: "neetcode150" as const, label: "NeetCode 150", desc: "Comprehensive coverage across all major patterns", count: 150 },
+                { id: "none" as const, label: "No specific goal", desc: "Just track whatever problems I practice", count: 0 },
+              ]).map((goal) => (
+                <button
+                  key={goal.id}
+                  onClick={() => setSelectedGoal(goal.id)}
+                  className={`w-full text-left rounded-lg border p-3 transition-all ${
+                    selectedGoal === goal.id
+                      ? "border-accent bg-accent/10 ring-1 ring-accent/50"
+                      : "border-border hover:border-border/80 hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{goal.label}</span>
+                    {goal.count > 0 && <span className="text-xs text-muted-foreground tabular-nums">{goal.count} problems</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{goal.desc}</p>
+                </button>
+              ))}
+            </div>
+            {selectedGoal !== "none" && (
+              <div>
+                <label htmlFor="onboarding-date" className="block text-xs text-muted-foreground mb-1">Target date</label>
+                <input
+                  id="onboarding-date"
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Default: Sep 1, 2026 (Fall recruiting season)</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Step 2: Defer hards ── */}
+        {step === 2 && (
+          <div className="px-5 pb-2 space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Hard-difficulty problems (as classified by NeetCode/LeetCode) can be automatically deferred from your review queue.
+            </p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3 space-y-2">
+              <p className="text-xs text-foreground font-medium">Why defer hards?</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Hard problems often build on patterns from Easy and Medium problems. Deferring them lets you solidify core concepts first — you&apos;ll solve them more efficiently once the fundamentals are strong.
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                With this enabled, Hard problems won&apos;t appear in your review queue. You can still attempt them manually from the Problems page anytime.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {([
+                { value: true, label: "Yes, defer hards", desc: "Focus on Easy & Medium first (recommended for most people)" },
+                { value: false, label: "No, include all difficulties", desc: "Review Hard problems on the normal SRS schedule" },
+              ]).map((opt) => (
+                <button
+                  key={String(opt.value)}
+                  onClick={() => setDeferHards(opt.value)}
+                  className={`w-full text-left rounded-lg border p-3 transition-all ${
+                    deferHards === opt.value
+                      ? "border-accent bg-accent/10 ring-1 ring-accent/50"
+                      : "border-border hover:border-border/80 hover:bg-muted/50"
+                  }`}
+                >
+                  <span className="text-sm font-medium">{opt.label}</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 3: How reviews work ── */}
+        {step === 3 && (
+          <div className="px-5 pb-2 space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Aurora uses FSRS (Free Spaced Repetition Scheduler) to decide when you should review each problem.
+            </p>
+            <div className="space-y-2.5">
+              <div className="flex items-start gap-2.5">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-accent text-[10px] font-bold shrink-0 mt-0.5">1</span>
+                <div>
+                  <p className="text-xs font-medium">New problems come back fast</p>
+                  <p className="text-xs text-muted-foreground">A problem you just attempted gets its first review within 12–42 hours. Failed or struggled? It comes back tomorrow.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-accent text-[10px] font-bold shrink-0 mt-0.5">2</span>
+                <div>
+                  <p className="text-xs font-medium">Intervals grow with mastery</p>
+                  <p className="text-xs text-muted-foreground">Each successful review increases the &quot;stability&quot; — the gap until the next review. Solve it well repeatedly and intervals stretch to weeks, then months.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-accent text-[10px] font-bold shrink-0 mt-0.5">3</span>
+                <div>
+                  <p className="text-xs font-medium">Urgency sorts by fragility</p>
+                  <p className="text-xs text-muted-foreground">The default sort shows the most fragile memories first — problems with the lowest stability that are most at risk of being forgotten.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-accent text-[10px] font-bold shrink-0 mt-0.5">4</span>
+                <div>
+                  <p className="text-xs font-medium">Quality matters, not just completion</p>
+                  <p className="text-xs text-muted-foreground">The algorithm weighs whether you solved independently, your solution quality, confidence, and time. An optimal solve with high confidence gives a bigger stability boost.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 4: Queue legend/breakdown ── */}
+        {step === 4 && (
           <div className="px-5 pb-2 space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
               Here&apos;s what a mid-semester review queue looks like. Each row shows:
@@ -692,8 +861,8 @@ export function Onboarding() {
           </div>
         )}
 
-        {/* ── Step 2: Log modal explanation ── */}
-        {step === 2 && (
+        {/* ── Step 5: Log modal explanation ── */}
+        {step === 5 && (
           <div className="px-5 pb-2 space-y-2">
             <p className="text-sm text-muted-foreground leading-relaxed">
               Click &quot;Log&quot; on any review item. The quick-log modal opens — 4 taps and the algorithm recalculates your schedule:
@@ -725,8 +894,8 @@ export function Onboarding() {
           </div>
         )}
 
-        {/* ── Step 3: Stats breakdown legend ── */}
-        {step === 3 && (() => {
+        {/* ── Step 6: Stats breakdown legend ── */}
+        {step === 6 && (() => {
           const t = TIER_PROGRESSION[tierFrame];
           return (
             <div className="px-5 pb-2 space-y-3">

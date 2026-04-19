@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { SetupGuide } from "@/components/setup-guide";
+import { DeleteAccountButton } from "@/components/delete-account-modal";
 
 const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
@@ -174,13 +175,16 @@ export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = f
           <span className="hidden sm:inline text-sm text-muted-foreground">{greeting}</span>
         )}
         {isAuthenticated ? (
-          <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-150"
-            title="Sign out"
-          >
-            Sign out
-          </button>
+          <div className="flex items-center gap-1">
+            <DeleteAccountButton />
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-150"
+              title="Sign out"
+            >
+              Sign out
+            </button>
+          </div>
         ) : authConfigured ? (
           <div className="flex items-center gap-1.5">
             {isDemo && !isLanding && (
