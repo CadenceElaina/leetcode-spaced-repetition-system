@@ -31,7 +31,13 @@ export function DeleteAccountButton() {
         return;
       }
 
-      // Account deleted — sign out and redirect
+      // Clear all Aurora localStorage so re-auth triggers fresh onboarding
+      localStorage.removeItem("aurora_onboarding_complete");
+      localStorage.removeItem("srs_target");
+      localStorage.removeItem("aurora_greeting");
+      localStorage.removeItem("aurora_guide_pos");
+
+      // Account deleted — sign out and redirect to home
       await signOut({ callbackUrl: "/" });
     } catch {
       setError("Something went wrong. Please try again.");
@@ -52,13 +58,13 @@ export function DeleteAccountButton() {
 
       {open && portalTarget && createPortal(
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-label="Delete account"
           onClick={(e) => { if (e.target === e.currentTarget && !loading) { setOpen(false); setConfirmation(""); setError(null); } }}
         >
-          <div className="relative w-full max-w-md mx-4 rounded-xl border border-destructive/30 bg-muted shadow-2xl">
+          <div className="relative w-full max-w-md rounded-xl border border-destructive/30 bg-muted shadow-2xl">
             {/* Header */}
             <div className="px-5 pt-5 pb-3">
               <h2 className="text-lg font-semibold text-destructive flex items-center gap-2">
