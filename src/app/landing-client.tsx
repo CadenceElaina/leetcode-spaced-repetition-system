@@ -400,9 +400,9 @@ function FeatureCard({ icon, title, desc }: { icon: string; title: string; desc:
     >
       <div className="flex items-center gap-1.5 mb-0.5">
         <span className="text-xs">{icon}</span>
-        <p className="text-[11px] font-semibold text-foreground">{title}</p>
+        <p className="text-xs font-semibold text-foreground">{title}</p>
       </div>
-      <p className="text-[10px] text-muted-foreground leading-snug">{desc}</p>
+      <p className="text-[11px] text-muted-foreground leading-snug">{desc}</p>
     </div>
   );
 }
@@ -512,12 +512,12 @@ export function LandingPage({ totalProblems, categories, isAuthenticated, authCo
             <div className="flex items-center gap-5">
               <div className="text-center">
                 <p className="text-base font-bold text-foreground">{totalProblems}</p>
-                <p className="text-[10px] text-muted-foreground">problems</p>
+                <p className="text-[11px] text-muted-foreground">problems</p>
               </div>
               <div className="h-5 w-px bg-border/50" />
               <div className="text-center">
                 <p className="text-base font-bold text-foreground">{categories.length}</p>
-                <p className="text-[10px] text-muted-foreground">categories</p>
+                <p className="text-[11px] text-muted-foreground">categories</p>
               </div>
               <div className="h-5 w-px bg-border/50" />
               <div className="text-center relative group focus-within:*:last-child:opacity-100 focus-within:*:last-child:pointer-events-auto">
@@ -529,9 +529,9 @@ export function LandingPage({ totalProblems, categories, isAuthenticated, authCo
                     </svg>
                   </button>
                 </div>
-                <p className="text-[10px] text-muted-foreground">algorithm</p>
+                <p className="text-[11px] text-muted-foreground">algorithm</p>
                 {/* Tooltip */}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 rounded-lg border border-border/60 bg-muted/95 p-3 text-left text-[11px] text-foreground shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150 z-50">
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 rounded-lg border border-border/60 bg-muted/95 p-3 text-left text-xs text-foreground shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150 z-50">
                   <p className="font-semibold mb-1">Free Spaced Repetition Scheduler</p>
                   <p className="text-muted-foreground leading-relaxed">An open-source algorithm that schedules reviews at growing intervals based on how well you retain each problem. Aurora adapts it using solve outcome, confidence, and solve speed.</p>
                 </div>

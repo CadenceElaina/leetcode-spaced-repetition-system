@@ -1499,57 +1499,64 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
           </div>
 
           {/* Compact stats strip */}
-          <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/50 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <span className={`inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${TIER_COLORS[data.readiness.tier]}`}>
-                {data.readiness.tier}
-              </span>
-              <span className="text-xs text-muted-foreground">Readiness</span>
-              <InfoTooltip
-                content={
-                  <div className="space-y-1.5">
-                    <p className="font-medium">Readiness Score ({data.readiness.score}/100)</p>
-                    <p>Measures how prepared you are overall, based on:</p>
-                    <div className="space-y-1 text-[11px]">
-                      <div className="flex justify-between"><span>Coverage (30%)</span><span>{Math.round(data.readinessBreakdown.coverage * 100)}%</span></div>
-                      <div className="flex justify-between"><span>Retention (40%)</span><span>{Math.round(data.readinessBreakdown.retention * 100)}%</span></div>
-                      <div className="flex justify-between"><span>Category Balance (20%)</span><span>{Math.round(data.readinessBreakdown.categoryBalance * 100)}%</span></div>
-                      <div className="flex justify-between"><span>Consistency (10%)</span><span>{Math.round(data.readinessBreakdown.consistency * 100)}%</span></div>
+          <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+            {/* Row 1: Key indicators */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className={`inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${TIER_COLORS[data.readiness.tier]}`}>
+                  {data.readiness.tier}
+                </span>
+                <span className="text-sm font-medium">{data.readiness.score}</span>
+                <span className="text-xs text-muted-foreground">Readiness</span>
+                <InfoTooltip
+                  content={
+                    <div className="space-y-1.5">
+                      <p className="font-medium">Readiness Score ({data.readiness.score}/100)</p>
+                      <p>Measures how prepared you are overall, based on:</p>
+                      <div className="space-y-1 text-[11px]">
+                        <div className="flex justify-between"><span>Coverage (30%)</span><span>{Math.round(data.readinessBreakdown.coverage * 100)}%</span></div>
+                        <div className="flex justify-between"><span>Retention (40%)</span><span>{Math.round(data.readinessBreakdown.retention * 100)}%</span></div>
+                        <div className="flex justify-between"><span>Category Balance (20%)</span><span>{Math.round(data.readinessBreakdown.categoryBalance * 100)}%</span></div>
+                        <div className="flex justify-between"><span>Consistency (10%)</span><span>{Math.round(data.readinessBreakdown.consistency * 100)}%</span></div>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground pt-1">S ≥ 90 · A ≥ 75 · B ≥ 55 · C ≥ 35 · D &lt; 35</p>
                     </div>
-                    <p className="text-[11px] text-muted-foreground pt-1">S ≥ 90 · A ≥ 75 · B ≥ 55 · C ≥ 35 · D &lt; 35</p>
-                  </div>
-                }
-              />
+                  }
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs leading-none">🔥</span>
+                <span className="text-sm font-semibold tabular-nums">{data.currentStreak}</span>
+                <span className="text-xs text-muted-foreground">streak</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className={`text-sm font-semibold tabular-nums ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>{countdown.projectedRaw}/{targetCount}</span>
+                <span className="text-xs text-muted-foreground">projected</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="text-xs leading-none">🔥</span>
-              <span className="text-xs font-semibold tabular-nums">{data.currentStreak}</span>
-              <span className="text-xs text-muted-foreground">streak</span>
+            {/* Row 2: Pace stats */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-semibold tabular-nums">{(showOverallPace ? data.overallReviewPerDay : data.avgReviewPerDay).toFixed(1)}</span>
+                <span className="text-xs text-muted-foreground">reviews/day</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-semibold tabular-nums">{(showOverallPace ? data.overallNewPerDay : data.avgNewPerDay).toFixed(1)}</span>
+                <span className="text-xs text-muted-foreground">new/day</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-semibold tabular-nums">{(showOverallPace ? data.overallPerDay : data.avgPerDay).toFixed(1)}</span>
+                <span className="text-xs text-muted-foreground">total/day</span>
+              </div>
+              <button
+                onClick={() => setShowOverallPace(!showOverallPace)}
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors ml-auto shrink-0"
+                title={showOverallPace ? "Showing overall averages — click for 14-day" : "Showing 14-day averages — click for overall"}
+              >
+                <span className="text-[10px] uppercase tracking-wider w-[3.5ch] text-right">{showOverallPace ? "all" : "14d"}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              </button>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="text-xs font-semibold tabular-nums">{(showOverallPace ? data.overallReviewPerDay : data.avgReviewPerDay).toFixed(1)}</span>
-              <span className="text-xs text-muted-foreground">reviews/day</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-xs font-semibold tabular-nums">{(showOverallPace ? data.overallNewPerDay : data.avgNewPerDay).toFixed(1)}</span>
-              <span className="text-xs text-muted-foreground">new/day</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-xs font-semibold tabular-nums">{(showOverallPace ? data.overallPerDay : data.avgPerDay).toFixed(1)}</span>
-              <span className="text-xs text-muted-foreground">total/day</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className={`text-xs font-semibold tabular-nums ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>{countdown.projectedRaw}/{targetCount}</span>
-              <span className="text-xs text-muted-foreground">projected</span>
-            </div>
-            <button
-              onClick={() => setShowOverallPace(!showOverallPace)}
-              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors ml-auto shrink-0"
-              title={showOverallPace ? "Showing overall averages — click for 14-day" : "Showing 14-day averages — click for overall"}
-            >
-              <span className="text-[10px] uppercase tracking-wider w-[3.5ch] text-right">{showOverallPace ? "all" : "14d"}</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-            </button>
           </div>
 
           {/* Settings */}
@@ -1626,7 +1633,7 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                 )}
 
                 {/* Mini bar chart — 30 day projection */}
-                <div className="flex items-end gap-px h-12">
+                <div className="relative flex items-end gap-px h-12 group/chart">
                   {queueProjection.dailyQueueSize.map((size, i) => {
                     const maxSize = Math.max(...queueProjection.dailyQueueSize, 1);
                     const height = Math.max(2, (size / maxSize) * 100);
@@ -1634,15 +1641,23 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
                     return (
                       <div
                         key={i}
-                        className={`flex-1 rounded-t-sm transition-all ${isToday ? "bg-accent" : size === 0 ? "bg-green-500/60" : "bg-orange-500/60"}`}
+                        className={`relative flex-1 rounded-t-sm transition-all group/bar peer ${isToday ? "bg-accent" : size === 0 ? "bg-green-500/60" : "bg-orange-500/60"}`}
                         style={{ height: `${height}%` }}
-                        title={`Day ${i}: ${size} items due`}
-                      />
+                      >
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 rounded bg-background border border-border px-2 py-1 text-[10px] text-foreground whitespace-nowrap opacity-0 pointer-events-none group-hover/bar:opacity-100 transition-opacity z-10 shadow-md">
+                          <span className="font-medium">Day {i}</span>: {size} item{size !== 1 ? "s" : ""} due
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
-                <div className="flex justify-between text-[10px] text-muted-foreground select-text">
+                <div className="flex justify-between items-center text-[10px] text-muted-foreground select-text">
                   <span>Today</span>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-accent" /> Today</span>
+                    <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-orange-500/60" /> Due</span>
+                    <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-green-500/60" /> Clear</span>
+                  </div>
                   <span>+30 days</span>
                 </div>
 

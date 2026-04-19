@@ -605,7 +605,7 @@ export function SetupGuide({ trigger }: SetupGuideProps = {}) {
 
   return (
     <>
-      {trigger ? trigger({ onClick: open }) : defaultTrigger}
+      {mode === "closed" && (trigger ? trigger({ onClick: open }) : defaultTrigger)}
 
       {/* Modal — portaled to body to escape nav's containing block */}
       {mode === "modal" && portalTarget && createPortal(
