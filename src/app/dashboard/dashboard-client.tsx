@@ -1287,7 +1287,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
         {/* Countdown */}
         <section className="rounded-lg border border-border bg-muted p-3">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium text-muted-foreground">{countdownTitle}</p>
+            <p className="text-sm font-semibold text-foreground">{countdownTitle}</p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowSettings(!showSettings)}
@@ -1354,7 +1354,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-foreground">Readiness</span>
             </div>
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.readiness ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.readiness ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
           </button>
           {!collapsedWidgets.readiness && (
             <div className="mt-2">
@@ -1418,9 +1418,9 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
           </div>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-[11px] text-muted-foreground mb-1">Total Solve</p><p className="text-2xl font-bold">{formatMinutes(data.totalSolveMinutes)}</p></div>
-              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-[11px] text-muted-foreground mb-1">Total Study</p><p className="text-2xl font-bold">{formatMinutes(data.totalStudyMinutes)}</p></div>
-              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-[11px] text-muted-foreground mb-1">Avg Solve</p><p className="text-2xl font-bold">{data.avgSolveMinutes > 0 ? `${Math.round(data.avgSolveMinutes)}m` : "—"}</p></div>
+              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-xs text-muted-foreground mb-1">Total Solve</p><p className="text-2xl font-bold">{formatMinutes(data.totalSolveMinutes)}</p></div>
+              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-xs text-muted-foreground mb-1">Total Study</p><p className="text-2xl font-bold">{formatMinutes(data.totalStudyMinutes)}</p></div>
+              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-xs text-muted-foreground mb-1">Avg Solve</p><p className="text-2xl font-bold">{data.avgSolveMinutes > 0 ? `${Math.round(data.avgSolveMinutes)}m` : "—"}</p></div>
             </div>
           </div>
         </section>
@@ -1434,26 +1434,26 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             aria-label="Toggle categories and difficulty breakdown"
           >
             <p className="text-sm font-semibold text-foreground">Categories &amp; Difficulty</p>
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.breakdown ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.breakdown ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
           </button>
           {!collapsedWidgets.breakdown && (
           <div className="grid grid-cols-2 gap-3 mt-2">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] font-medium text-muted-foreground">Categories</p>
+              <p className="text-xs font-medium text-muted-foreground">Categories</p>
               <div className="flex gap-1">
                 <button onClick={() => setCategoryView("weak")} className={`text-[10px] px-1.5 py-0.5 rounded ${categoryView === "weak" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Weakest</button>
                 <button onClick={() => setCategoryView("all")} className={`text-[10px] px-1.5 py-0.5 rounded ${categoryView === "all" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}>All</button>
               </div>
             </div>
-            <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-2">
+            <div className="space-y-1.5 h-[160px] overflow-y-auto pr-2">
               {displayCategories.map((cat) => (
                 <Link key={cat.category} href={`/problems?category=${encodeURIComponent(cat.category)}`} className="flex items-center gap-2 group/cat cursor-pointer">
-                  <span className="text-[11px] w-24 shrink-0 truncate group-hover/cat:text-foreground transition-colors" title={cat.category}>{cat.category}</span>
+                  <span className="text-xs w-24 shrink-0 truncate group-hover/cat:text-foreground transition-colors" title={cat.category}>{cat.category}</span>
                   <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background group-hover/cat:h-2 transition-all duration-150">
                     <div className={`h-full rounded-full transition-all duration-300 ${retentionBarColor(cat.avgRetention)}`} style={{ width: `${cat.total > 0 ? Math.round((cat.attempted / cat.total) * 100) : 0}%` }} />
                   </div>
-                  <span className={`text-[11px] w-10 text-right shrink-0 tabular-nums transition-colors ${cat.attempted > 0 ? retentionColor(cat.avgRetention) : "text-muted-foreground"}`}>
+                  <span className={`text-xs w-10 text-right shrink-0 tabular-nums transition-colors ${cat.attempted > 0 ? retentionColor(cat.avgRetention) : "text-muted-foreground"}`}>
                     <span className="group-hover/cat:hidden">{cat.attempted}/{cat.total}</span>
                     <span className="hidden group-hover/cat:inline">{cat.attempted > 0 ? `${Math.round(cat.avgRetention * 100)}%` : "—"}</span>
                   </span>
@@ -1462,17 +1462,17 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             </div>
           </div>
           <div>
-            <p className="text-[11px] font-medium text-muted-foreground mb-2">Difficulty</p>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Difficulty</p>
             <div className="space-y-2.5">
               {data.difficultyBreakdown.map((d) => {
                 const pct = d.count > 0 ? Math.round((d.attempted / d.count) * 100) : 0;
                 return (
                   <Link key={d.difficulty} href={`/problems?difficulty=${d.difficulty}&status=Attempted`} className="flex items-center gap-2 group/diff cursor-pointer">
-                    <span className="text-[11px] w-12 shrink-0 group-hover/diff:text-foreground transition-colors">{d.difficulty}</span>
+                    <span className="text-xs w-12 shrink-0 group-hover/diff:text-foreground transition-colors">{d.difficulty}</span>
                     <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background group-hover/diff:h-2 transition-all duration-150">
                       <div className={`h-full rounded-full transition-all duration-300 ${DIFF_COLORS[d.difficulty]}`} style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="text-[11px] text-muted-foreground w-10 text-right tabular-nums">
+                    <span className="text-xs text-muted-foreground w-10 text-right tabular-nums">
                       <span className="group-hover/diff:hidden">{d.attempted}/{d.count}</span>
                       <span className="hidden group-hover/diff:inline">{pct}%</span>
                     </span>
@@ -1504,7 +1504,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 }
               />
             </div>
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.mastery ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.mastery ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
           </button>
           {!collapsedWidgets.mastery && (
             <div className="mt-2">
@@ -1556,24 +1556,24 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                   <button
                     onClick={() => setActivityPage((p) => p + 1)}
                     disabled={!canGoBack}
-                    className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
+                    className="w-6 h-6 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background/60 disabled:opacity-30 disabled:pointer-events-none transition-colors"
                     aria-label="Go back 14 days"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                   </button>
                   <button
                     onClick={() => setActivityPage((p) => Math.max(0, p - 1))}
                     disabled={!canGoForward}
-                    className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
+                    className="w-6 h-6 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background/60 disabled:opacity-30 disabled:pointer-events-none transition-colors"
                     aria-label="Go forward 14 days"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                   </button>
                 </>
               )}
               {/* Chevron — collapses the whole section */}
               <button onClick={() => toggleWidget("activity")} aria-label="Toggle activity chart">
-                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.activity ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.activity ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
               </button>
             </div>
           </div>
@@ -1583,7 +1583,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {/* Col 1: Streak */}
                 <div className="flex flex-col gap-1">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Streak</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Streak</p>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Current</span>
                     <span className="font-semibold tabular-nums flex items-center gap-0.5">
@@ -1608,7 +1608,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 {/* Col 2: Goal vs Actual comparison table */}
                 <div className="flex flex-col gap-1 border-l border-border/50 pl-2">
                   <div className="flex items-center justify-between mb-0.5">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">Pace</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide leading-none">Pace</p>
                     {!editingPace && (
                       <button onClick={() => setEditingPace(true)} className="p-0.5 text-muted-foreground hover:text-foreground transition-colors" title="Edit goals">
                         <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -1616,7 +1616,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                     )}
                   </div>
                   {/* Header row */}
-                  <div className="grid grid-cols-3 text-[10px] text-muted-foreground mb-0.5">
+                  <div className="grid grid-cols-3 text-[11px] text-muted-foreground mb-0.5">
                     <span></span>
                     <span className="text-right">Goal</span>
                     <span className="text-right">Actual</span>
@@ -1682,12 +1682,23 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
           <div className="flex items-center justify-between w-full">
             <p className="text-sm font-semibold text-foreground">Queue Forecast</p>
             <div className="flex items-center gap-2">
-              <div className="flex rounded overflow-hidden border border-border/60 text-[10px]">
-                <button onClick={() => setForecastMode("actual")} className={`px-2 py-0.5 transition-colors ${forecastMode === "actual" ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>Actual</button>
-                <button onClick={() => setForecastMode("goals")} className={`px-2 py-0.5 transition-colors border-l border-border/60 ${forecastMode === "goals" ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>Goals</button>
+              <div className="flex rounded-md border border-border p-0.5 gap-0.5">
+                {(["actual", "goals"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setForecastMode(m)}
+                    className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
+                      forecastMode === m
+                        ? "bg-accent/20 text-accent font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {m === "actual" ? "Actual" : "Goals"}
+                  </button>
+                ))}
               </div>
               <button onClick={() => setShowQueueForecast(v => !v)} aria-label="Toggle queue forecast" aria-expanded={showQueueForecast}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${showQueueForecast ? "" : "rotate-180"}`}><polyline points="18 15 12 9 6 15"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${showQueueForecast ? "" : "rotate-180"}`}><polyline points="18 15 12 9 6 15"/></svg>
               </button>
             </div>
           </div>
@@ -1731,7 +1742,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                     );
                   })}
                 </div>
-                <div className="flex justify-between text-[10px] text-muted-foreground">
+                <div className="flex justify-between text-[11px] text-muted-foreground">
                   <span><span className="font-medium text-foreground">{proj.currentSize}</span> due now</span>
                   <span>{proj.reviewsPerDay} rev/d · {proj.newPerDay} new/d · <span className="text-muted-foreground/60">+30d</span></span>
                 </div>
