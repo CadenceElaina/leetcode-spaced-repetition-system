@@ -866,7 +866,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
               {listMode === "review" && (
                 <div className="flex-[3] min-w-0 flex rounded-md border border-border p-0.5 gap-0.5">
                   {(["urgency", "overdue", "difficulty", "category"] as ReviewSort[]).map((s) => (
-                    <button key={s} onClick={() => setReviewSort(s)} className={`flex-1 text-center text-xs px-1 py-0.5 rounded transition-colors ${reviewSort === s ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
+                    <button key={s} onClick={() => setReviewSort(s)} className={`flex-1 text-center text-xs px-1 py-0.5 rounded transition-colors ${reviewSort === s ? "bg-accent/20 text-accent font-semibold" : "text-muted-foreground hover:text-foreground"}`}>
                       {s === "urgency" ? "Urgency" : s === "overdue" ? "Oldest" : s === "difficulty" ? "Hardest" : "Category"}
                     </button>
                   ))}
@@ -875,7 +875,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
               {listMode === "new" && (
                 <div className="flex-[3] min-w-0 flex items-center rounded-md border border-border p-0.5 gap-0.5">
                   {(["curriculum", "hardest"] as NewSort[]).map((s) => (
-                    <button key={s} onClick={() => setNewSort(s)} className={`text-xs px-2 py-0.5 rounded transition-colors ${newSort === s ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
+                    <button key={s} onClick={() => setNewSort(s)} className={`text-xs px-2 py-0.5 rounded transition-colors ${newSort === s ? "bg-accent/20 text-accent font-semibold" : "text-muted-foreground hover:text-foreground"}`}>
                       {s === "curriculum" ? "Curriculum" : "Hardest first"}
                     </button>
                   ))}
@@ -894,7 +894,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
               {listMode === "completed" && (
                 <div className="flex-[3] min-w-0 flex rounded-md border border-border p-0.5 gap-0.5">
                   {(["retention", "review-date", "category"] as CompletedSort[]).map((s) => (
-                    <button key={s} onClick={() => setCompletedSort(s)} className={`flex-1 text-center text-xs px-1 py-0.5 rounded transition-colors ${completedSort === s ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
+                    <button key={s} onClick={() => setCompletedSort(s)} className={`flex-1 text-center text-xs px-1 py-0.5 rounded transition-colors ${completedSort === s ? "bg-accent/20 text-accent font-semibold" : "text-muted-foreground hover:text-foreground"}`}>
                       {s === "retention" ? "Strongest" : s === "review-date" ? "Next review" : "Category"}
                     </button>
                   ))}
@@ -1286,9 +1286,9 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             aria-label="Toggle readiness"
           >
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground">Readiness</span>
+              <span className="text-sm font-semibold text-foreground">Readiness</span>
             </div>
-            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.readiness ? "▼" : "▲"}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.readiness ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
           </button>
           {!collapsedWidgets.readiness && (
             <div className="mt-2">
@@ -1345,7 +1345,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
         {/* Time */}
         <section className="rounded-lg border border-border bg-muted p-3">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-medium text-muted-foreground">Time</p>
+            <p className="text-sm font-semibold text-foreground">Time</p>
             <button onClick={() => setShowStatsDetail(false)} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Back to dashboard" title="Back to dashboard">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
             </button>
@@ -1367,8 +1367,8 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             aria-expanded={!collapsedWidgets.breakdown}
             aria-label="Toggle categories and difficulty breakdown"
           >
-            <p className="text-xs font-medium text-muted-foreground">Categories &amp; Difficulty</p>
-            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.breakdown ? "▼" : "▲"}</span>
+            <p className="text-sm font-semibold text-foreground">Categories &amp; Difficulty</p>
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.breakdown ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
           </button>
           {!collapsedWidgets.breakdown && (
           <div className="grid grid-cols-2 gap-3 mt-2">
@@ -1426,7 +1426,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             aria-label="Toggle mastery progress"
           >
             <div className="flex items-center gap-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Mastery Progress</p>
+              <p className="text-sm font-semibold text-foreground">Mastery Progress</p>
               <InfoTooltip
                 content={
                   <div className="space-y-1.5">
@@ -1438,7 +1438,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 }
               />
             </div>
-            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.mastery ? "▼" : "▲"}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.mastery ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
           </button>
           {!collapsedWidgets.mastery && (
             <div className="mt-2">
@@ -1466,9 +1466,9 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             aria-label="Toggle activity chart"
           >
             <div className="flex items-center gap-2">
-              <p className="text-xs font-medium text-muted-foreground">Activity</p>
+              <p className="text-sm font-semibold text-foreground">Activity</p>
             </div>
-            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.activity ? "▼" : "▲"}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.activity ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
           </button>
           {!collapsedWidgets.activity && (
             <div className="mt-2 space-y-3">
@@ -1476,9 +1476,9 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
               <div className="grid grid-cols-3 gap-2 text-xs">
                 {/* Col 1: Streak */}
                 <div className="flex flex-col gap-1 justify-center">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Streak</p>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Streak</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">Current</span>
+                    <span className="text-xs text-muted-foreground">Current</span>
                     <span className="font-semibold tabular-nums flex items-center gap-0.5">
                       {data.currentStreak === 0 ? (
                         <><span>{data.currentStreak}</span><span>❄️</span></>
@@ -1488,12 +1488,12 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">Best</span>
+                    <span className="text-xs text-muted-foreground">Best</span>
                     <span className="font-semibold tabular-nums">{data.bestStreak}</span>
                   </div>
                   {data.avgConfidence > 0 && (
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-muted-foreground">Confidence</span>
+                      <span className="text-xs text-muted-foreground">Confidence</span>
                       <span className="font-medium tabular-nums">{data.avgConfidence.toFixed(1)}/5</span>
                     </div>
                   )}
@@ -1501,7 +1501,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 {/* Col 2: Goals */}
                 <div className="flex flex-col gap-1 border-l border-border/50 pl-2">
                   <div className="flex items-center justify-between mb-0.5">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide leading-none">Goals</p>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">Goals</p>
                     {editingPace ? (
                       <button
                         onClick={() => {
@@ -1518,7 +1518,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-[11px]">New</span>
+                    <span className="text-xs text-muted-foreground">New</span>
                     {editingPace ? (
                       <input type="number" min="0" step="0.5" value={plannedNewPerDay} onChange={(e) => setPlannedNewPerDay(parseFloat(e.target.value) || 0)} className="w-14 rounded border border-border bg-background px-1.5 py-0.5 text-right text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-accent" />
                     ) : (
@@ -1526,7 +1526,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-[11px]">Review</span>
+                    <span className="text-xs text-muted-foreground">Review</span>
                     {editingPace ? (
                       <input type="number" min="0" step="0.5" value={plannedReviewPerDay} onChange={(e) => setPlannedReviewPerDay(parseFloat(e.target.value) || 0)} className="w-14 rounded border border-border bg-background px-1.5 py-0.5 text-right text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-accent" />
                     ) : (
@@ -1536,13 +1536,13 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 </div>
                 {/* Col 3: Actuals */}
                 <div className="flex flex-col gap-1 border-l border-border/50 pl-2">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Actual</p>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Actual</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-[11px]">New</span>
+                    <span className="text-xs text-muted-foreground">New</span>
                     <span className={`font-medium tabular-nums ${data.avgNewPerDay >= plannedNewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgNewPerDay.toFixed(1)}/day</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-[11px]">Review</span>
+                    <span className="text-xs text-muted-foreground">Review</span>
                     <span className={`font-medium tabular-nums ${data.avgReviewPerDay >= plannedReviewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgReviewPerDay.toFixed(1)}/day</span>
                   </div>
                 </div>
@@ -1550,20 +1550,22 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
 
               <ActivityChart history={activityData} />
               {/* Range selector below chart */}
-              <div className="flex gap-0.5 justify-end pt-0.5">
-                {(["14d", "30d", "90d", "all"] as const).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setActivityRange(r)}
-                    className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
-                      activityRange === r
-                        ? "bg-background text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {r === "all" ? "All" : r}
-                  </button>
-                ))}
+              <div className="flex justify-end pt-1">
+                <div className="flex rounded-md border border-border p-0.5 gap-0.5">
+                  {(["14d", "30d", "90d", "all"] as const).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setActivityRange(r)}
+                      className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
+                        activityRange === r
+                          ? "bg-accent/20 text-accent font-semibold"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {r === "all" ? "All" : r}
+                    </button>
+                  ))}
+                </div>
               </div>
 
             </div>
@@ -1578,7 +1580,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             aria-expanded={showQueueForecast}
           >
             <div className="flex items-center gap-2">
-              <p className="text-xs font-medium text-muted-foreground">Queue Forecast</p>
+              <p className="text-sm font-semibold text-foreground">Queue Forecast</p>
               <div className="flex rounded overflow-hidden border border-border/60 text-[10px]" onClick={(e) => e.stopPropagation()}>
                 <button onClick={() => setForecastMode("actual")} className={`px-2 py-0.5 transition-colors ${forecastMode === "actual" ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>Actual</button>
                 <button onClick={() => setForecastMode("goals")} className={`px-2 py-0.5 transition-colors border-l border-border/60 ${forecastMode === "goals" ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>Goals</button>
@@ -2208,7 +2210,7 @@ function PendingBanner({
           </span>
           <span className="text-xs text-muted-foreground">from GitHub</span>
         </div>
-        <span className="text-xs text-muted-foreground">{expanded ? "▲" : "▼"}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${expanded ? "" : "rotate-180"}`}><polyline points="18 15 12 9 6 15"/></svg>
       </button>
       {expanded && (
         <div className="border-t border-violet-500/20">
