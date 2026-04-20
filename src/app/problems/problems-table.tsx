@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { DifficultyBadge } from "@/components/difficulty-badge";
@@ -28,6 +28,7 @@ type ProblemState = {
 };
 
 const ALL = "All";
+const PAGE_SIZE = 25;
 
 function statusLabel(r: number, bestQuality?: string | null): { label: string; className: string } {
   if (bestQuality === "NONE") return { label: "Unsolved", className: "text-red-500" };
@@ -56,6 +57,14 @@ export function ProblemsTable({
   const [categoryFilter, setCategoryFilter] = useState<string>(initialCategory ?? ALL);
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? ALL);
   const [blind75Only, setBlind75Only] = useState(false);
+  const [page, setPage] = useState(1);
+
+  // Default Blind-75 filter based on the user's chosen goal (set during onboarding).
+  // Runs once on mount to avoid SSR/client hydration mismatch.
+  useEffect(() => {
+    const goal = typeof window !== "undefined" ? localStorage.getItem("srs_goal_type") : null;
+    if (goal === "blind75") setBlind75Only(true);
+  }, []);
 
   const categories = useMemo(
     () => [...new Set(problems.map((p) => p.category))],
@@ -79,6 +88,15 @@ export function ProblemsTable({
       return true;
     });
   }, [problems, problemStates, search, difficultyFilter, categoryFilter, statusFilter, blind75Only]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const visible = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, difficultyFilter, categoryFilter, statusFilter, blind75Only]);
 
   const inputClass = "h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
 
@@ -123,7 +141,9 @@ export function ProblemsTable({
           Blind 75 only
         </label>
         <span className="ml-auto text-xs text-muted-foreground">
-          {filtered.length} of {problems.length} problems
+          {filtered.length === problems.length
+            ? `${problems.length} problems`
+            : `${filtered.length} of ${problems.length} problems`}
         </span>
       </div>
 
@@ -146,7 +166,7 @@ export function ProblemsTable({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p) => {
+            {visible.map((p) => {
               const state = problemStates[p.id];
               const status = state ? statusLabel(state.retention, state.bestQuality) : null;
               return (
@@ -190,8 +210,101 @@ export function ProblemsTable({
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageStart={pageStart}
+          pageEnd={Math.min(pageStart + PAGE_SIZE, filtered.length)}
+          total={filtered.length}
+          onChange={setPage}
+        />
+      )}
     </div>
   );
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+  pageStart,
+  pageEnd,
+  total,
+  onChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  pageStart: number;
+  pageEnd: number;
+  total: number;
+  onChange: (p: number) => void;
+}) {
+  const pageButtons = buildPageList(currentPage, totalPages);
+  const btnBase = "inline-flex h-8 min-w-[2rem] items-center justify-center rounded-md px-2 text-xs transition-colors";
+
+  return (
+    <nav
+      aria-label="Problems pagination"
+      className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"
+    >
+      <p className="text-xs text-muted-foreground">
+        Showing <span className="text-foreground font-medium">{pageStart + 1}</span>–
+        <span className="text-foreground font-medium">{pageEnd}</span> of{" "}
+        <span className="text-foreground font-medium">{total}</span>
+      </p>
+      <div className="flex flex-wrap items-center gap-1">
+        <button
+          onClick={() => onChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          className={`${btnBase} border border-border text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent`}
+        >
+          Prev
+        </button>
+        {pageButtons.map((p, i) =>
+          p === "…" ? (
+            <span key={`ellipsis-${i}`} className={`${btnBase} text-muted-foreground/60`} aria-hidden="true">
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onChange(p)}
+              aria-current={p === currentPage ? "page" : undefined}
+              className={`${btnBase} ${
+                p === currentPage
+                  ? "bg-accent text-accent-foreground font-semibold"
+                  : "border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              {p}
+            </button>
+          ),
+        )}
+        <button
+          onClick={() => onChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          className={`${btnBase} border border-border text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent`}
+        >
+          Next
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+/** Build a compact page list with ellipses: e.g. [1, "…", 4, 5, 6, "…", 12]. */
+function buildPageList(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages: (number | "…")[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) pages.push("…");
+  for (let p = start; p <= end; p++) pages.push(p);
+  if (end < total - 1) pages.push("…");
+  pages.push(total);
+  return pages;
 }
 
 function formatDate(dateStr: string): string {

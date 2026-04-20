@@ -860,87 +860,93 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                   Import
                 </button>
             </div>
-            {/* Row 2: sort pills + search sharing a row */}
+            {/* Row 2: sort pills (60%) + search (40%) */}
             <div className="flex items-center gap-1.5">
-            {listMode === "review" && (<>
-                {(["urgency", "overdue", "difficulty", "category"] as ReviewSort[]).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setReviewSort(s)}
-                    className={`text-xs px-2 py-0.5 rounded transition-colors ${
-                      reviewSort === s
-                        ? "bg-accent/15 text-accent border border-accent/30 font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {s === "urgency" ? "Urgency" : s === "overdue" ? "Oldest" : s === "difficulty" ? "Hardest" : "Category"}
-                  </button>
-                ))}
-            </>)}
-            {listMode === "new" && (<>
-                {(["curriculum", "hardest"] as NewSort[]).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setNewSort(s)}
-                    className={`text-xs px-2 py-0.5 rounded transition-colors ${
-                      newSort === s
-                        ? "bg-accent/15 text-accent border border-accent/30 font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {s === "curriculum" ? "Curriculum order" : "Hardest first"}
-                  </button>
-                ))}
-                <span className="flex-1" />
-                {goalType === "blind75" && (
-                  <>
-                    <span className="text-xs font-medium text-accent">Blind 75</span>
+              {/* Sort pills — take 60% */}
+              <div className="flex items-center gap-1 flex-[3] min-w-0 overflow-x-auto">
+                {listMode === "review" && (
+                  (["urgency", "overdue", "difficulty", "category"] as ReviewSort[]).map((s) => (
                     <button
-                      onClick={() => { setGoalType("neetcode150"); localStorage.setItem("srs_goal_type", "neetcode150"); }}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      key={s}
+                      onClick={() => setReviewSort(s)}
+                      className={`text-xs px-2 py-0.5 rounded transition-colors whitespace-nowrap flex-1 text-center ${
+                        reviewSort === s
+                          ? "bg-accent/15 text-accent border border-accent/30 font-medium"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
                     >
-                      Show all 150 →
+                      {s === "urgency" ? "Urgency" : s === "overdue" ? "Oldest" : s === "difficulty" ? "Hardest" : "Category"}
                     </button>
+                  ))
+                )}
+                {listMode === "new" && (
+                  <>
+                    {(["curriculum", "hardest"] as NewSort[]).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setNewSort(s)}
+                        className={`text-xs px-2 py-0.5 rounded transition-colors whitespace-nowrap ${
+                          newSort === s
+                            ? "bg-accent/15 text-accent border border-accent/30 font-medium"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {s === "curriculum" ? "Curriculum order" : "Hardest first"}
+                      </button>
+                    ))}
+                    {goalType === "blind75" && (
+                      <>
+                        <span className="text-xs font-medium text-accent whitespace-nowrap">Blind 75</span>
+                        <button
+                          onClick={() => { setGoalType("neetcode150"); localStorage.setItem("srs_goal_type", "neetcode150"); }}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                        >
+                          Show all 150 →
+                        </button>
+                      </>
+                    )}
+                    {goalType !== "blind75" && data.newProblems.some(p => p.blind75) && (
+                      <button
+                        onClick={() => { setGoalType("blind75"); localStorage.setItem("srs_goal_type", "blind75"); }}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                      >
+                        Blind 75 only
+                      </button>
+                    )}
                   </>
                 )}
-                {goalType !== "blind75" && data.newProblems.some(p => p.blind75) && (
-                  <button
-                    onClick={() => { setGoalType("blind75"); localStorage.setItem("srs_goal_type", "blind75"); }}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Blind 75 only
-                  </button>
+                {listMode === "completed" && (
+                  (["retention", "review-date", "category"] as CompletedSort[]).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setCompletedSort(s)}
+                      className={`text-xs px-2 py-0.5 rounded transition-colors whitespace-nowrap flex-1 text-center ${
+                        completedSort === s
+                          ? "bg-accent/15 text-accent border border-accent/30 font-medium"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {s === "retention" ? "Strongest" : s === "review-date" ? "Next review" : "Category"}
+                    </button>
+                  ))
                 )}
-            </>)}
-            {listMode === "completed" && (<>
-                {(["retention", "review-date", "category"] as CompletedSort[]).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setCompletedSort(s)}
-                    className={`text-xs px-2 py-0.5 rounded transition-colors ${
-                      completedSort === s
-                        ? "bg-accent/15 text-accent border border-accent/30 font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {s === "retention" ? "Strongest" : s === "review-date" ? "Next review" : "Category"}
-                  </button>
-                ))}
-            </>)}
-              <span className="flex-1" />
+              </div>
+              {/* Search — take 40% */}
               {listMode !== "import" && (
-                <input
-                  type="text"
-                  value={queueSearch}
-                  onChange={(e) => setQueueSearch(e.target.value)}
-                  placeholder="Filter…"
-                  className="h-7 w-24 rounded border border-border bg-background px-2 text-xs placeholder:text-muted-foreground focus:outline-none"
-                />
-              )}
-              {listMode === "new" && (
-                <Link href="/problems" className="text-xs text-accent hover:underline shrink-0">
-                  Browse all →
-                </Link>
+                <div className="flex items-center gap-1.5 flex-[2] min-w-0">
+                  <input
+                    type="text"
+                    value={queueSearch}
+                    onChange={(e) => setQueueSearch(e.target.value)}
+                    placeholder="Filter…"
+                    className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs placeholder:text-muted-foreground focus:outline-none"
+                  />
+                  {listMode === "new" && (
+                    <Link href="/problems" className="text-xs text-accent hover:underline shrink-0">
+                      Browse all →
+                    </Link>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -1310,48 +1316,55 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             aria-label="Toggle readiness"
           >
             <div className="flex items-center gap-2">
-              <span className={`inline-flex h-6 w-6 items-center justify-center rounded text-[11px] font-bold ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
-              <span className="text-xs font-semibold tabular-nums">{data.readiness.score}<span className="text-muted-foreground font-normal">/100</span></span>
-              <span className="text-xs text-muted-foreground">Readiness</span>
+              <span className="text-xs font-medium text-muted-foreground">Readiness</span>
             </div>
             <span className="text-[10px] text-muted-foreground">{collapsedWidgets.readiness ? "▼" : "▲"}</span>
           </button>
           {!collapsedWidgets.readiness && (
-            <div className="mt-2 space-y-2">
-              {/* Pace status */}
-              <div className="text-xs space-y-0.5">
-                <p className={`font-semibold ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>
-                  {countdown.onTrack ? "On track" : "Behind pace"}
-                </p>
-                <div className="flex items-center gap-3 text-muted-foreground">
-                  <span>Projected <span className="font-medium text-foreground tabular-nums">{countdown.projectedRaw}/{targetCount}</span></span>
-                  {!countdown.onTrack && (
-                    <span>Need <span className="font-medium text-foreground tabular-nums">{countdown.neededPerDay.toFixed(1)}/day</span></span>
-                  )}
-                </div>
-              </div>
-              {/* Readiness bars */}
-              <div className="pt-1.5 border-t border-border/50 space-y-1.5">
-                {[
-                  { label: "Coverage", value: data.readinessBreakdown.coverage, weight: "30%", tooltip: "What % of the 150 problems you’ve attempted at least once." },
-                  { label: "Retention", value: data.readinessBreakdown.retention, weight: "40%", tooltip: "How well you remember the problems you’ve attempted — averaged across all your solved problems." },
-                  { label: "Category Balance", value: data.readinessBreakdown.categoryBalance, weight: "20%", tooltip: "How evenly your attempts are distributed across problem categories. Weak spots in specific categories lower this score." },
-                  { label: "Consistency", value: data.readinessBreakdown.consistency, weight: "10%", tooltip: "Based on your current streak and practice frequency. Consistent daily review builds stronger long-term retention." },
-                ].map(({ label, value, weight, tooltip }) => (
-                  <div key={label}>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        {label}
-                        <span className="text-muted-foreground/50">({weight})</span>
-                        <InfoTooltip content={<p className="max-w-[220px]">{tooltip}</p>} />
-                      </span>
-                      <span className="font-medium tabular-nums">{Math.round(value * 100)}%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-background overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-500 ${value >= 0.7 ? "bg-green-500" : value >= 0.4 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.round(value * 100)}%` }} />
-                    </div>
+            <div className="mt-2">
+              {/* Two-column: grade+score+pace left | bars right */}
+              <div className="flex gap-3">
+                {/* Left: grade + score + pace status */}
+                <div className="flex flex-col items-center gap-1.5 pt-0.5 shrink-0 w-16">
+                  <span className={`inline-flex h-9 w-9 items-center justify-center rounded text-base font-bold ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
+                  <span className="text-sm font-bold tabular-nums leading-none">{data.readiness.score}<span className="text-[10px] text-muted-foreground font-normal">/100</span></span>
+                  <div className="mt-auto pt-1 text-[10px] text-center space-y-0.5">
+                    <p className={`font-semibold leading-tight ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>
+                      {countdown.onTrack ? "On track" : "Behind"}
+                    </p>
+                    <p className="text-muted-foreground leading-tight">
+                      {countdown.projectedRaw}/{targetCount}
+                    </p>
+                    {!countdown.onTrack && (
+                      <p className="text-muted-foreground leading-tight">
+                        Need {countdown.neededPerDay.toFixed(1)}/d
+                      </p>
+                    )}
                   </div>
-                ))}
+                </div>
+                {/* Right: readiness bars */}
+                <div className="flex-1 space-y-1.5">
+                  {[
+                    { label: "Coverage", value: data.readinessBreakdown.coverage, weight: "30%", tooltip: "What % of the 150 problems you’ve attempted at least once." },
+                    { label: "Retention", value: data.readinessBreakdown.retention, weight: "40%", tooltip: "How well you remember the problems you’ve attempted — averaged across all your solved problems." },
+                    { label: "Category Balance", value: data.readinessBreakdown.categoryBalance, weight: "20%", tooltip: "How evenly your attempts are distributed across problem categories. Weak spots in specific categories lower this score." },
+                    { label: "Consistency", value: data.readinessBreakdown.consistency, weight: "10%", tooltip: "Based on your current streak and practice frequency. Consistent daily review builds stronger long-term retention." },
+                  ].map(({ label, value, weight, tooltip }) => (
+                    <div key={label}>
+                      <div className="flex items-center justify-between text-xs mb-0.5">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          {label}
+                          <span className="text-muted-foreground/50">({weight})</span>
+                          <InfoTooltip content={<p className="max-w-[220px]">{tooltip}</p>} />
+                        </span>
+                        <span className="font-medium tabular-nums">{Math.round(value * 100)}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-background overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-500 ${value >= 0.7 ? "bg-green-500" : value >= 0.4 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.round(value * 100)}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -1504,72 +1517,75 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
           </button>
           {!collapsedWidgets.activity && (
             <div className="mt-2 space-y-3">
-              {/* Daily Pace — top */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Daily Pace</p>
-                  {editingPace ? (
-                    <button
-                      onClick={() => {
-                        localStorage.setItem("aurora_planned_new_per_day", String(plannedNewPerDay));
-                        localStorage.setItem("aurora_planned_review_per_day", String(plannedReviewPerDay));
-                        setEditingPace(false);
-                      }}
-                      className="text-[10px] text-accent hover:opacity-80"
-                    >Save</button>
-                  ) : (
-                    <button onClick={() => setEditingPace(true)} className="text-[10px] text-muted-foreground hover:text-foreground">Edit goals</button>
+              {/* 3-column stats row: Streak | Goals | Actuals */}
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                {/* Col 1: Streak */}
+                <div className="flex flex-col gap-1 justify-center">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Streak</p>
+                  <div className="flex items-center gap-1">
+                    <span>🔥</span>
+                    <span className="font-semibold tabular-nums">{data.currentStreak}</span>
+                    <span className="text-muted-foreground text-[11px]">day{data.currentStreak !== 1 ? "s" : ""}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <span className="text-[11px]">Best</span>
+                    <span className="font-semibold tabular-nums text-foreground">{data.bestStreak}</span>
+                  </div>
+                  {data.avgConfidence > 0 && (
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <span className="text-[11px]">Confidence</span>
+                      <span className="font-medium tabular-nums text-foreground">{data.avgConfidence.toFixed(1)}/5</span>
+                    </div>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">New goal</span>
+                {/* Col 2: Goals */}
+                <div className="flex flex-col gap-1 border-l border-border/50 pl-2">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide leading-none">Goals</p>
                     {editingPace ? (
-                      <input type="number" min="0" step="0.5" value={plannedNewPerDay} onChange={(e) => setPlannedNewPerDay(parseFloat(e.target.value) || 0)} className="w-16 rounded border border-border bg-background px-1.5 py-0.5 text-right text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-accent" />
+                      <button
+                        onClick={() => {
+                          localStorage.setItem("aurora_planned_new_per_day", String(plannedNewPerDay));
+                          localStorage.setItem("aurora_planned_review_per_day", String(plannedReviewPerDay));
+                          setEditingPace(false);
+                        }}
+                        className="text-[10px] text-accent hover:opacity-80"
+                      >Save</button>
+                    ) : (
+                      <button onClick={() => setEditingPace(true)} className="p-0.5 text-muted-foreground hover:text-foreground transition-colors" title="Edit goals">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground text-[11px]">New</span>
+                    {editingPace ? (
+                      <input type="number" min="0" step="0.5" value={plannedNewPerDay} onChange={(e) => setPlannedNewPerDay(parseFloat(e.target.value) || 0)} className="w-14 rounded border border-border bg-background px-1.5 py-0.5 text-right text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-accent" />
                     ) : (
                       <span className="font-medium tabular-nums">{plannedNewPerDay.toFixed(1)}/day</span>
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Actual new</span>
-                    <span className={`font-medium tabular-nums ${data.avgNewPerDay >= plannedNewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgNewPerDay.toFixed(1)}/day</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Review goal</span>
+                    <span className="text-muted-foreground text-[11px]">Review</span>
                     {editingPace ? (
-                      <input type="number" min="0" step="0.5" value={plannedReviewPerDay} onChange={(e) => setPlannedReviewPerDay(parseFloat(e.target.value) || 0)} className="w-16 rounded border border-border bg-background px-1.5 py-0.5 text-right text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-accent" />
+                      <input type="number" min="0" step="0.5" value={plannedReviewPerDay} onChange={(e) => setPlannedReviewPerDay(parseFloat(e.target.value) || 0)} className="w-14 rounded border border-border bg-background px-1.5 py-0.5 text-right text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-accent" />
                     ) : (
                       <span className="font-medium tabular-nums">{plannedReviewPerDay.toFixed(1)}/day</span>
                     )}
                   </div>
+                </div>
+                {/* Col 3: Actuals */}
+                <div className="flex flex-col gap-1 border-l border-border/50 pl-2">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Actual</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Actual reviews</span>
+                    <span className="text-muted-foreground text-[11px]">New</span>
+                    <span className={`font-medium tabular-nums ${data.avgNewPerDay >= plannedNewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgNewPerDay.toFixed(1)}/day</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground text-[11px]">Review</span>
                     <span className={`font-medium tabular-nums ${data.avgReviewPerDay >= plannedReviewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgReviewPerDay.toFixed(1)}/day</span>
                   </div>
                 </div>
-              </div>
-
-              {/* Streak + Confidence row */}
-              <div className="flex items-center gap-3 text-xs pt-1 border-t border-border/50">
-                <span className="flex items-center gap-1">
-                  <span>🔥</span>
-                  <span className="font-semibold tabular-nums">{data.currentStreak}</span>
-                  <span className="text-muted-foreground">streak</span>
-                </span>
-                <span className="text-muted-foreground">·</span>
-                <span className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Best</span>
-                  <span className="font-semibold tabular-nums">{data.bestStreak}</span>
-                </span>
-                {data.avgConfidence > 0 && (
-                  <>
-                    <span className="text-muted-foreground">·</span>
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <span>Avg confidence</span>
-                      <span className="font-medium text-foreground tabular-nums">{data.avgConfidence.toFixed(1)}/5</span>
-                    </span>
-                  </>
-                )}
               </div>
 
               <ActivityChart history={activityData} />
