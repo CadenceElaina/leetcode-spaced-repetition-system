@@ -811,7 +811,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             <div className="flex gap-0.5 rounded-md border border-border p-0.5 overflow-x-auto w-full">
                 <button
                   onClick={() => setListMode("review")}
-                  className={`text-sm px-2.5 py-1 rounded transition-colors ${listMode === "review" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 text-center text-sm px-2 py-1 rounded transition-colors ${listMode === "review" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Review
                   {reviewItems.length > 0 && (
@@ -822,7 +822,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 </button>
                 <button
                   onClick={() => setListMode("new")}
-                  className={`text-sm px-2.5 py-1 rounded transition-colors ${listMode === "new" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 text-center text-sm px-2 py-1 rounded transition-colors ${listMode === "new" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   New
                   {sortedNewProblems.length > 0 && (
@@ -833,7 +833,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 </button>
                 <button
                   onClick={() => setListMode("completed")}
-                  className={`text-sm px-2.5 py-1 rounded transition-colors ${listMode === "completed" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 text-center text-sm px-2 py-1 rounded transition-colors ${listMode === "completed" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Done
                   {data.completedProblems.length > 0 && (
@@ -844,7 +844,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 </button>
                 <button
                   onClick={() => setListMode("deferred")}
-                  className={`text-sm px-2.5 py-1 rounded transition-colors ${listMode === "deferred" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 text-center text-sm px-2 py-1 rounded transition-colors ${listMode === "deferred" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Deferred
                   {deferredItems.length > 0 && (
@@ -855,85 +855,55 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 </button>
                 <button
                   onClick={() => setListMode("import")}
-                  className={`text-sm px-2.5 py-1 rounded transition-colors ${listMode === "import" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 text-center text-sm px-2 py-1 rounded transition-colors ${listMode === "import" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Import
                 </button>
             </div>
-            {/* Row 2: sort pills (60%) + search (40%) */}
+            {/* Row 2: sort control + search */}
             <div className="flex items-center gap-1.5">
-              {/* Sort pills — take 60% */}
-              <div className="flex items-center gap-1 flex-[3] min-w-0 overflow-x-auto">
-                {listMode === "review" && (
-                  (["urgency", "overdue", "difficulty", "category"] as ReviewSort[]).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setReviewSort(s)}
-                      className={`text-xs px-2 py-0.5 rounded transition-colors whitespace-nowrap flex-1 text-center ${
-                        reviewSort === s
-                          ? "bg-accent/15 text-accent border border-accent/30 font-medium"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
+              {/* Sort — segmented control matching tab row style */}
+              {listMode === "review" && (
+                <div className="flex-[3] min-w-0 flex rounded-md border border-border p-0.5 gap-0.5">
+                  {(["urgency", "overdue", "difficulty", "category"] as ReviewSort[]).map((s) => (
+                    <button key={s} onClick={() => setReviewSort(s)} className={`flex-1 text-center text-xs px-1 py-0.5 rounded transition-colors ${reviewSort === s ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
                       {s === "urgency" ? "Urgency" : s === "overdue" ? "Oldest" : s === "difficulty" ? "Hardest" : "Category"}
                     </button>
-                  ))
-                )}
-                {listMode === "new" && (
-                  <>
-                    {(["curriculum", "hardest"] as NewSort[]).map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => setNewSort(s)}
-                        className={`text-xs px-2 py-0.5 rounded transition-colors whitespace-nowrap ${
-                          newSort === s
-                            ? "bg-accent/15 text-accent border border-accent/30 font-medium"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {s === "curriculum" ? "Curriculum order" : "Hardest first"}
-                      </button>
-                    ))}
-                    {goalType === "blind75" && (
-                      <>
-                        <span className="text-xs font-medium text-accent whitespace-nowrap">Blind 75</span>
-                        <button
-                          onClick={() => { setGoalType("neetcode150"); localStorage.setItem("srs_goal_type", "neetcode150"); }}
-                          className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                        >
-                          Show all 150 →
-                        </button>
-                      </>
-                    )}
-                    {goalType !== "blind75" && data.newProblems.some(p => p.blind75) && (
-                      <button
-                        onClick={() => { setGoalType("blind75"); localStorage.setItem("srs_goal_type", "blind75"); }}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                      >
-                        Blind 75 only
-                      </button>
-                    )}
-                  </>
-                )}
-                {listMode === "completed" && (
-                  (["retention", "review-date", "category"] as CompletedSort[]).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setCompletedSort(s)}
-                      className={`text-xs px-2 py-0.5 rounded transition-colors whitespace-nowrap flex-1 text-center ${
-                        completedSort === s
-                          ? "bg-accent/15 text-accent border border-accent/30 font-medium"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
+                  ))}
+                </div>
+              )}
+              {listMode === "new" && (
+                <div className="flex-[3] min-w-0 flex items-center rounded-md border border-border p-0.5 gap-0.5">
+                  {(["curriculum", "hardest"] as NewSort[]).map((s) => (
+                    <button key={s} onClick={() => setNewSort(s)} className={`text-xs px-2 py-0.5 rounded transition-colors ${newSort === s ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
+                      {s === "curriculum" ? "Curriculum" : "Hardest first"}
+                    </button>
+                  ))}
+                  <span className="flex-1" />
+                  {goalType === "blind75" && (
+                    <>
+                      <span className="text-xs font-medium text-accent px-1">Blind 75</span>
+                      <button onClick={() => { setGoalType("neetcode150"); localStorage.setItem("srs_goal_type", "neetcode150"); }} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-1">All 150</button>
+                    </>
+                  )}
+                  {goalType !== "blind75" && data.newProblems.some(p => p.blind75) && (
+                    <button onClick={() => { setGoalType("blind75"); localStorage.setItem("srs_goal_type", "blind75"); }} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-1">Blind 75</button>
+                  )}
+                </div>
+              )}
+              {listMode === "completed" && (
+                <div className="flex-[3] min-w-0 flex rounded-md border border-border p-0.5 gap-0.5">
+                  {(["retention", "review-date", "category"] as CompletedSort[]).map((s) => (
+                    <button key={s} onClick={() => setCompletedSort(s)} className={`flex-1 text-center text-xs px-1 py-0.5 rounded transition-colors ${completedSort === s ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
                       {s === "retention" ? "Strongest" : s === "review-date" ? "Next review" : "Category"}
                     </button>
-                  ))
-                )}
-              </div>
-              {/* Search — take 40% */}
+                  ))}
+                </div>
+              )}
+              {(listMode === "deferred" || listMode === "import") && <span className="flex-[3] min-w-0" />}
+              {/* Search */}
               {listMode !== "import" && (
-                <div className="flex items-center gap-1.5 flex-[2] min-w-0">
+                <div className={`flex items-center gap-1.5 min-w-0 ${(listMode === "review" || listMode === "new" || listMode === "completed") ? "flex-[2]" : "flex-1"}`}>
                   <input
                     type="text"
                     value={queueSearch}
@@ -1322,39 +1292,25 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
           </button>
           {!collapsedWidgets.readiness && (
             <div className="mt-2">
-              {/* Two-column: grade+score+pace left | bars right */}
-              <div className="flex gap-3">
-                {/* Left: grade + score + pace status */}
-                <div className="flex flex-col items-center gap-1.5 pt-0.5 shrink-0 w-16">
-                  <span className={`inline-flex h-9 w-9 items-center justify-center rounded text-base font-bold ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
+              {/* Two-column: grade+score left (narrow) | bars right */}
+              <div className="flex gap-3 items-start">
+                {/* Left: grade badge + score only */}
+                <div className="flex flex-col items-center gap-1 shrink-0 w-11 pt-0.5">
+                  <span className={`inline-flex h-10 w-10 items-center justify-center rounded text-lg font-bold ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
                   <span className="text-sm font-bold tabular-nums leading-none">{data.readiness.score}<span className="text-[10px] text-muted-foreground font-normal">/100</span></span>
-                  <div className="mt-auto pt-1 text-[10px] text-center space-y-0.5">
-                    <p className={`font-semibold leading-tight ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>
-                      {countdown.onTrack ? "On track" : "Behind"}
-                    </p>
-                    <p className="text-muted-foreground leading-tight">
-                      {countdown.projectedRaw}/{targetCount}
-                    </p>
-                    {!countdown.onTrack && (
-                      <p className="text-muted-foreground leading-tight">
-                        Need {countdown.neededPerDay.toFixed(1)}/d
-                      </p>
-                    )}
-                  </div>
                 </div>
-                {/* Right: readiness bars */}
-                <div className="flex-1 space-y-1.5">
+                {/* Right: readiness bars — weight in tooltip, not label */}
+                <div className="flex-1 min-w-0 space-y-1.5">
                   {[
-                    { label: "Coverage", value: data.readinessBreakdown.coverage, weight: "30%", tooltip: "What % of the 150 problems you’ve attempted at least once." },
-                    { label: "Retention", value: data.readinessBreakdown.retention, weight: "40%", tooltip: "How well you remember the problems you’ve attempted — averaged across all your solved problems." },
-                    { label: "Category Balance", value: data.readinessBreakdown.categoryBalance, weight: "20%", tooltip: "How evenly your attempts are distributed across problem categories. Weak spots in specific categories lower this score." },
-                    { label: "Consistency", value: data.readinessBreakdown.consistency, weight: "10%", tooltip: "Based on your current streak and practice frequency. Consistent daily review builds stronger long-term retention." },
-                  ].map(({ label, value, weight, tooltip }) => (
+                    { label: "Coverage", value: data.readinessBreakdown.coverage, tooltip: "Coverage — 30% of score. What % of the 150 problems you’ve attempted at least once." },
+                    { label: "Retention", value: data.readinessBreakdown.retention, tooltip: "Retention — 40% of score. How well you remember the problems you’ve attempted, averaged across all solved problems." },
+                    { label: "Category Balance", value: data.readinessBreakdown.categoryBalance, tooltip: "Category Balance — 20% of score. How evenly your attempts are distributed across problem categories." },
+                    { label: "Consistency", value: data.readinessBreakdown.consistency, tooltip: "Consistency — 10% of score. Based on your current streak and practice frequency." },
+                  ].map(({ label, value, tooltip }) => (
                     <div key={label}>
                       <div className="flex items-center justify-between text-xs mb-0.5">
                         <span className="flex items-center gap-1 text-muted-foreground">
                           {label}
-                          <span className="text-muted-foreground/50">({weight})</span>
                           <InfoTooltip content={<p className="max-w-[220px]">{tooltip}</p>} />
                         </span>
                         <span className="font-medium tabular-nums">{Math.round(value * 100)}%</span>
@@ -1365,6 +1321,20 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                     </div>
                   ))}
                 </div>
+              </div>
+              {/* Pace status — full-width bottom row, easy to scan */}
+              <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+                <span className={`font-semibold ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>
+                  {countdown.onTrack ? "On track" : "Behind pace"}
+                </span>
+                <span className="text-muted-foreground">
+                  Projected <span className="font-medium text-foreground tabular-nums">{countdown.projectedRaw}/{targetCount}</span>
+                </span>
+                {!countdown.onTrack && (
+                  <span className="text-muted-foreground">
+                    Need <span className="font-medium text-foreground tabular-nums">{countdown.neededPerDay.toFixed(1)}/day</span>
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -1497,21 +1467,6 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
           >
             <div className="flex items-center gap-2">
               <p className="text-xs font-medium text-muted-foreground">Activity</p>
-              <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
-                {(["14d", "30d", "90d", "all"] as const).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setActivityRange(r)}
-                    className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
-                      activityRange === r
-                        ? "bg-background text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {r === "all" ? "All" : r}
-                  </button>
-                ))}
-              </div>
             </div>
             <span className="text-[10px] text-muted-foreground">{collapsedWidgets.activity ? "▼" : "▲"}</span>
           </button>
@@ -1522,19 +1477,24 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 {/* Col 1: Streak */}
                 <div className="flex flex-col gap-1 justify-center">
                   <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Streak</p>
-                  <div className="flex items-center gap-1">
-                    <span>🔥</span>
-                    <span className="font-semibold tabular-nums">{data.currentStreak}</span>
-                    <span className="text-muted-foreground text-[11px]">day{data.currentStreak !== 1 ? "s" : ""}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">Current</span>
+                    <span className="font-semibold tabular-nums flex items-center gap-0.5">
+                      {data.currentStreak === 0 ? (
+                        <><span>{data.currentStreak}</span><span>❄️</span></>
+                      ) : (
+                        <><span>{data.currentStreak}</span><span>🔥</span></>
+                      )}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <span className="text-[11px]">Best</span>
-                    <span className="font-semibold tabular-nums text-foreground">{data.bestStreak}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">Best</span>
+                    <span className="font-semibold tabular-nums">{data.bestStreak}</span>
                   </div>
                   {data.avgConfidence > 0 && (
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <span className="text-[11px]">Confidence</span>
-                      <span className="font-medium tabular-nums text-foreground">{data.avgConfidence.toFixed(1)}/5</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-muted-foreground">Confidence</span>
+                      <span className="font-medium tabular-nums">{data.avgConfidence.toFixed(1)}/5</span>
                     </div>
                   )}
                 </div>
@@ -1589,6 +1549,22 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
               </div>
 
               <ActivityChart history={activityData} />
+              {/* Range selector below chart */}
+              <div className="flex gap-0.5 justify-end pt-0.5">
+                {(["14d", "30d", "90d", "all"] as const).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setActivityRange(r)}
+                    className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
+                      activityRange === r
+                        ? "bg-background text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {r === "all" ? "All" : r}
+                  </button>
+                ))}
+              </div>
 
             </div>
           )}
