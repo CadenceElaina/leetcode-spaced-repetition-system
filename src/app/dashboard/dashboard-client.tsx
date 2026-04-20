@@ -264,6 +264,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
   const [newSort, setNewSort] = useState<NewSort>("curriculum");
   const [completedSort, setCompletedSort] = useState<CompletedSort>("retention");
   const [queueSearch, setQueueSearch] = useState("");
+  const [showStatsDetail, setShowStatsDetail] = useState(false);
   const [pendingItems, setPendingItems] = useState<PendingItem[]>(data.pendingSubmissions);
   const [logModalProblem, setLogModalProblem] = useState<LogModalProblem | null>(null);
   const [collapsedWidgets, setCollapsedWidgets] = useState<Record<string, boolean>>({});
@@ -1176,6 +1177,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
       {/* ── Right Column ── */}
       <div className="flex flex-col lg:col-span-6 lg:min-h-0" data-onboarding="stats">
         <div className="flex flex-col gap-3 overflow-y-auto flex-1 min-h-0">
+        {!showStatsDetail && (<>
         {/* Countdown */}
         <section className="rounded-lg border border-border bg-muted p-3">
           <div className="flex items-center justify-between mb-2">
@@ -1188,6 +1190,14 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 title="Edit target"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </button>
+              <button
+                onClick={() => setShowStatsDetail(true)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="View all stats"
+                title="View all stats"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
               </button>
             </div>
           </div>
@@ -1233,14 +1243,18 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             />
           )}
         </section>
+        </>)}
 
+        {showStatsDetail && (<>
         {/* Overview */}
         <section className="rounded-lg border border-border bg-muted p-3">
-          <button onClick={() => toggleWidget("overview")} className="flex items-center justify-between w-full" aria-expanded={!collapsedWidgets.overview}>
+          <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-medium text-muted-foreground">Overview</p>
-            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.overview ? "▼" : "▲"}</span>
-          </button>
-          {!collapsedWidgets.overview && (
+            <button onClick={() => setShowStatsDetail(false)} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Back to dashboard" title="Back to dashboard">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            </button>
+          </div>
+          {true && (
             <div className="mt-3 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border border-border/50 bg-background/40 p-3">
@@ -1276,11 +1290,8 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
 
         {/* Pace */}
         <section className="rounded-lg border border-border bg-muted p-3">
-          <button onClick={() => toggleWidget("pace")} className="flex items-center justify-between w-full" aria-expanded={!collapsedWidgets.pace}>
-            <p className="text-xs font-medium text-muted-foreground">Pace</p>
-            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.pace ? "▼" : "▲"}</span>
-          </button>
-          {!collapsedWidgets.pace && (
+          <p className="text-xs font-medium text-muted-foreground mb-3">Pace</p>
+          {true && (
             <div className="mt-3 space-y-3">
               <div>
                 <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Last 14 Days</p>
@@ -1308,11 +1319,8 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
 
         {/* Time */}
         <section className="rounded-lg border border-border bg-muted p-3">
-          <button onClick={() => toggleWidget("time")} className="flex items-center justify-between w-full" aria-expanded={!collapsedWidgets.time}>
-            <p className="text-xs font-medium text-muted-foreground">Time</p>
-            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.time ? "▼" : "▲"}</span>
-          </button>
-          {!collapsedWidgets.time && (
+          <p className="text-xs font-medium text-muted-foreground mb-3">Time</p>
+          {true && (
             <div className="mt-3 space-y-3">
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-[11px] text-muted-foreground mb-1">Total Solve</p><p className="text-2xl font-bold">{formatMinutes(data.totalSolveMinutes)}</p></div>
@@ -1331,11 +1339,8 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
 
         {/* Readiness */}
         <section className="rounded-lg border border-border bg-muted p-3">
-          <button onClick={() => toggleWidget("readiness")} className="flex items-center justify-between w-full" aria-expanded={!collapsedWidgets.readiness}>
-            <p className="text-xs font-medium text-muted-foreground">Readiness</p>
-            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.readiness ? "▼" : "▲"}</span>
-          </button>
-          {!collapsedWidgets.readiness && (
+          <p className="text-xs font-medium text-muted-foreground mb-3">Readiness</p>
+          {true && (
             <div className="mt-3 space-y-3">
               <div className="flex items-center gap-4 rounded-lg border border-border/50 bg-background/40 p-3">
                 <span className={`inline-flex h-12 w-12 items-center justify-center rounded-lg text-lg font-bold ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
@@ -1373,7 +1378,9 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             </div>
           )}
         </section>
+        </>)}
 
+        {!showStatsDetail && (<>
         {/* Activity Chart */}
         <section className="rounded-lg border border-border bg-muted p-3 shrink-0">
           <button
@@ -1587,6 +1594,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
           </div>
           )}
         </section>
+        </>)}
 
         </div>
       </div>
