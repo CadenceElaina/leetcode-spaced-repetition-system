@@ -279,6 +279,8 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
   const [showQueueForecast, setShowQueueForecast] = useState(true);
   const [forecastMode, setForecastMode] = useState<"actual" | "goals">("actual");
   const [countdownTitle, setCountdownTitle] = useState("Fall Recruiting Countdown");
+  const [forecastReviewPerDay, setForecastReviewPerDay] = useState(5);
+  const [forecastNewPerDay, setForecastNewPerDay] = useState(1.5);
 
 
   const activityData = useMemo(() => {
@@ -319,6 +321,10 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
     // Sync targetCount with saved goalType
     const savedGoalForCount = localStorage.getItem("srs_goal_type");
     if (savedGoalForCount === "blind75" && !saved) setTargetCount(75);
+    const savedForecastReview = localStorage.getItem("aurora_forecast_review_per_day");
+    if (savedForecastReview) setForecastReviewPerDay(parseFloat(savedForecastReview));
+    const savedForecastNew = localStorage.getItem("aurora_forecast_new_per_day");
+    if (savedForecastNew) setForecastNewPerDay(parseFloat(savedForecastNew));
   }, []);
 
   // Persist active tab across sessions
@@ -491,8 +497,8 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
     const queue = reviewItems.map((r) => ({ stability: r.stability, daysOverdue: r.daysOverdue }));
     if (queue.length === 0) return null;
 
-    const reviewsPerDay = Math.max(1, plannedReviewPerDay);
-    const newPerDay = plannedNewPerDay;
+    const reviewsPerDay = Math.max(1, forecastReviewPerDay);
+    const newPerDay = forecastNewPerDay;
     const AVG_MULTIPLIER = 2.0;
 
     type QueueItem = { stability: number; dueInDays: number };
@@ -534,7 +540,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
       reviewsPerDay: Math.round(reviewsPerDay * 10) / 10,
       newPerDay: Math.round(newPerDay * 10) / 10,
     };
-  }, [reviewItems, plannedReviewPerDay, plannedNewPerDay]);
+  }, [reviewItems, forecastReviewPerDay, forecastNewPerDay]);
 
   const weakCategories = useMemo(() =>
     [...data.categoryStats]
@@ -1260,34 +1266,17 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             </div>
           </div>
 
-          {/* Days left + status side by side */}
-          <div className="flex items-start gap-4 mb-1">
-            <div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold tabular-nums">{countdown.daysLeft}</span>
-                <span className="text-sm text-muted-foreground">days left</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {targetCount} problems by {new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-              </p>
-            </div>
-            <div className="flex flex-col gap-0.5 pt-0.5 text-xs">
-              <span className={`font-medium ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>
-                {countdown.onTrack ? "On track" : "Behind pace"}
-              </span>
-              <span className="text-muted-foreground">
-                Projected {countdown.projectedRaw}/{targetCount}
-              </span>
-              {!countdown.onTrack && (
-                <span className="text-muted-foreground">
-                  Need {countdown.neededPerDay.toFixed(1)}/day
-                </span>
-              )}
-            </div>
+          {/* Days left */}
+          <div className="flex items-baseline gap-2 mb-0.5">
+            <span className="text-3xl font-bold tabular-nums">{countdown.daysLeft}</span>
+            <span className="text-sm text-muted-foreground">days left</span>
           </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            {targetCount} problems by {new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </p>
 
           {/* Progress bar */}
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-background">
+          <div className="h-2 overflow-hidden rounded-full bg-background">
             <div
               className={`h-full rounded-full transition-all duration-300 ${countdown.onTrack ? "bg-green-500" : "bg-orange-500"}`}
               style={{ width: `${Math.min(100, (data.attemptedCount / targetCount) * 100)}%` }}
@@ -1296,35 +1285,6 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
           <div className="flex justify-between mt-1">
             <span className="text-xs text-muted-foreground">{data.attemptedCount} solved</span>
             <span className="text-xs text-muted-foreground">{countdown.remaining} to go</span>
-          </div>
-
-          {/* Readiness breakdown */}
-          <div className="mt-3 pt-2 border-t border-border/50 space-y-1.5">
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`inline-flex h-6 w-6 items-center justify-center rounded text-[11px] font-bold ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
-              <span className="text-xs font-semibold tabular-nums">{data.readiness.score}<span className="text-muted-foreground font-normal">/100</span></span>
-              <span className="text-xs text-muted-foreground">Readiness</span>
-            </div>
-            {[
-              { label: "Coverage", value: data.readinessBreakdown.coverage, weight: "30%", tooltip: "What % of the 150 problems you’ve attempted at least once. More coverage = more interview surface area. Weighted 30% of your readiness score." },
-              { label: "Retention", value: data.readinessBreakdown.retention, weight: "40%", tooltip: "Average retrievability across all attempted problems — how well your memory is holding up right now according to the SRS model. The most important signal. Weighted 40%." },
-              { label: "Category Balance", value: data.readinessBreakdown.categoryBalance, weight: "20%", tooltip: "How evenly your attempts are distributed across problem categories. Weak spots in specific categories lower this score. Weighted 20%." },
-              { label: "Consistency", value: data.readinessBreakdown.consistency, weight: "10%", tooltip: "Based on your current streak and practice frequency. Consistent daily review builds stronger long-term retention. Weighted 10%." },
-            ].map(({ label, value, weight, tooltip }) => (
-              <div key={label}>
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    {label}
-                    <span className="text-muted-foreground/50">({weight})</span>
-                    <InfoTooltip content={<p className="max-w-[220px]">{tooltip}</p>} />
-                  </span>
-                  <span className="font-medium tabular-nums">{Math.round(value * 100)}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-background overflow-hidden">
-                  <div className={`h-full rounded-full transition-all duration-500 ${value >= 0.7 ? "bg-green-500" : value >= 0.4 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.round(value * 100)}%` }} />
-                </div>
-              </div>
-            ))}
           </div>
 
           {/* Settings */}
@@ -1338,6 +1298,62 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
               autoDeferHards={autoDeferHards}
               onToggleAutoDeferHards={(v) => demoGuard(() => handleToggleAutoDeferHards(v))}
             />
+          )}
+        </section>
+
+        {/* Readiness */}
+        <section className="rounded-lg border border-border bg-muted p-3">
+          <button
+            onClick={() => toggleWidget("readiness")}
+            className="flex items-center justify-between w-full"
+            aria-expanded={!collapsedWidgets.readiness}
+            aria-label="Toggle readiness"
+          >
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex h-6 w-6 items-center justify-center rounded text-[11px] font-bold ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
+              <span className="text-xs font-semibold tabular-nums">{data.readiness.score}<span className="text-muted-foreground font-normal">/100</span></span>
+              <span className="text-xs text-muted-foreground">Readiness</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.readiness ? "▼" : "▲"}</span>
+          </button>
+          {!collapsedWidgets.readiness && (
+            <div className="mt-2 space-y-2">
+              {/* Pace status */}
+              <div className="text-xs space-y-0.5">
+                <p className={`font-semibold ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>
+                  {countdown.onTrack ? "On track" : "Behind pace"}
+                </p>
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <span>Projected <span className="font-medium text-foreground tabular-nums">{countdown.projectedRaw}/{targetCount}</span></span>
+                  {!countdown.onTrack && (
+                    <span>Need <span className="font-medium text-foreground tabular-nums">{countdown.neededPerDay.toFixed(1)}/day</span></span>
+                  )}
+                </div>
+              </div>
+              {/* Readiness bars */}
+              <div className="pt-1.5 border-t border-border/50 space-y-1.5">
+                {[
+                  { label: "Coverage", value: data.readinessBreakdown.coverage, weight: "30%", tooltip: "What % of the 150 problems you’ve attempted at least once." },
+                  { label: "Retention", value: data.readinessBreakdown.retention, weight: "40%", tooltip: "How well you remember the problems you’ve attempted — averaged across all your solved problems." },
+                  { label: "Category Balance", value: data.readinessBreakdown.categoryBalance, weight: "20%", tooltip: "How evenly your attempts are distributed across problem categories. Weak spots in specific categories lower this score." },
+                  { label: "Consistency", value: data.readinessBreakdown.consistency, weight: "10%", tooltip: "Based on your current streak and practice frequency. Consistent daily review builds stronger long-term retention." },
+                ].map(({ label, value, weight, tooltip }) => (
+                  <div key={label}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        {label}
+                        <span className="text-muted-foreground/50">({weight})</span>
+                        <InfoTooltip content={<p className="max-w-[220px]">{tooltip}</p>} />
+                      </span>
+                      <span className="font-medium tabular-nums">{Math.round(value * 100)}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-background overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-500 ${value >= 0.7 ? "bg-green-500" : value >= 0.4 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.round(value * 100)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </section>
         </>)}
@@ -1358,42 +1374,6 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
               <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-[11px] text-muted-foreground mb-1">Avg Solve</p><p className="text-2xl font-bold">{data.avgSolveMinutes > 0 ? `${Math.round(data.avgSolveMinutes)}m` : "—"}</p></div>
             </div>
           </div>
-        </section>
-
-        {/* Mastery Progress */}
-        <section className="rounded-lg border border-border bg-muted p-3">
-          <button
-            onClick={() => toggleWidget("mastery")}
-            className="flex items-center justify-between w-full"
-            aria-expanded={!collapsedWidgets.mastery}
-            aria-label="Toggle mastery progress"
-          >
-            <div className="flex items-center gap-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Mastery Progress</p>
-              <InfoTooltip
-                content={
-                  <div className="space-y-1.5">
-                    <p className="font-medium">Problem Mastery</p>
-                    <p>A problem is <span className="text-green-400 font-medium">mastered</span> when its stability reaches 30+ days — meaning the SRS won&apos;t schedule it again for at least a month.</p>
-                    <p><span className="text-accent font-medium">Learning</span> problems have been attempted but haven&apos;t reached that threshold yet.</p>
-                    <p className="text-[11px] text-muted-foreground pt-1">Mastered problems only need occasional confirmation to verify retention, especially before interviews.</p>
-                  </div>
-                }
-              />
-            </div>
-            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.mastery ? "▼" : "▲"}</span>
-          </button>
-          {!collapsedWidgets.mastery && (
-            <div className="mt-2">
-              <MasteryProgress
-                mastered={data.masteredCount}
-                learning={data.learningCount}
-                total={data.totalProblems}
-                masteryList={data.masteryList}
-                learningList={data.learningList}
-              />
-            </div>
-          )}
         </section>
 
         {/* Category + Difficulty side by side */}
@@ -1454,7 +1434,43 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
           </div>
           </div>
           )}
+        </section>        {/* Mastery Progress */}
+        <section className="rounded-lg border border-border bg-muted p-3">
+          <button
+            onClick={() => toggleWidget("mastery")}
+            className="flex items-center justify-between w-full"
+            aria-expanded={!collapsedWidgets.mastery}
+            aria-label="Toggle mastery progress"
+          >
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Mastery Progress</p>
+              <InfoTooltip
+                content={
+                  <div className="space-y-1.5">
+                    <p className="font-medium">Problem Mastery</p>
+                    <p>A problem is <span className="text-green-400 font-medium">mastered</span> when its stability reaches 30+ days — meaning the SRS won&apos;t schedule it again for at least a month.</p>
+                    <p><span className="text-accent font-medium">Learning</span> problems have been attempted but haven&apos;t reached that threshold yet.</p>
+                    <p className="text-[11px] text-muted-foreground pt-1">Mastered problems only need occasional confirmation to verify retention, especially before interviews.</p>
+                  </div>
+                }
+              />
+            </div>
+            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.mastery ? "▼" : "▲"}</span>
+          </button>
+          {!collapsedWidgets.mastery && (
+            <div className="mt-2">
+              <MasteryProgress
+                mastered={data.masteredCount}
+                learning={data.learningCount}
+                total={data.totalProblems}
+                masteryList={data.masteryList}
+                learningList={data.learningList}
+              />
+            </div>
+          )}
         </section>
+
+
         </>)}
 
         {!showStatsDetail && (<>
@@ -1534,79 +1550,97 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
               </div>
 
               {/* Streak + Confidence row */}
-              <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50">
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
-                    <span>🔥</span>
-                    <span className="font-semibold tabular-nums">{data.currentStreak}</span>
-                    <span className="text-muted-foreground">streak</span>
-                  </span>
-                  <span className="text-muted-foreground">·</span>
-                  <span className="flex items-center gap-1">
-                    <span className="text-muted-foreground">Best</span>
-                    <span className="font-semibold tabular-nums">{data.bestStreak}</span>
-                  </span>
-                </div>
+              <div className="flex items-center gap-3 text-xs pt-1 border-t border-border/50">
+                <span className="flex items-center gap-1">
+                  <span>🔥</span>
+                  <span className="font-semibold tabular-nums">{data.currentStreak}</span>
+                  <span className="text-muted-foreground">streak</span>
+                </span>
+                <span className="text-muted-foreground">·</span>
+                <span className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Best</span>
+                  <span className="font-semibold tabular-nums">{data.bestStreak}</span>
+                </span>
                 {data.avgConfidence > 0 && (
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <span>Confidence</span>
-                    <span className="font-medium text-foreground tabular-nums">{data.avgConfidence.toFixed(1)}/5</span>
-                  </span>
+                  <>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <span>Avg confidence</span>
+                      <span className="font-medium text-foreground tabular-nums">{data.avgConfidence.toFixed(1)}/5</span>
+                    </span>
+                  </>
                 )}
               </div>
 
               <ActivityChart history={activityData} />
 
-              {/* Queue Forecast — always shown, chevron toggles content */}
-              {(() => {
-                const proj = forecastMode === "actual" ? queueProjection : queueProjectionGoals;
-                return (
-                  <div className="pt-1 border-t border-border/50">
-                    <button
-                      onClick={() => setShowQueueForecast(v => !v)}
-                      className="flex items-center justify-between w-full mb-1"
-                    >
-                      <div className="flex items-center gap-2">
-                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Queue Forecast</p>
-                        <div className="flex rounded overflow-hidden border border-border/60 text-[10px]" onClick={(e) => e.stopPropagation()}>
-                          <button onClick={() => setForecastMode("actual")} className={`px-2 py-0.5 transition-colors ${forecastMode === "actual" ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>Actual</button>
-                          <button onClick={() => setForecastMode("goals")} className={`px-2 py-0.5 transition-colors border-l border-border/60 ${forecastMode === "goals" ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>Goals</button>
-                        </div>
-                      </div>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${showQueueForecast ? "" : "rotate-180"}`}><polyline points="18 15 12 9 6 15"/></svg>
-                    </button>
-                    {showQueueForecast && proj && (
-                      <div className="space-y-2 mt-1">
-                        {proj.clearDay !== null ? (
-                          <p className="text-sm font-semibold text-green-500">Clears in ~{proj.clearDay} day{proj.clearDay !== 1 ? "s" : ""}</p>
-                        ) : (
-                          <p className="text-sm font-semibold text-amber-500">Won&apos;t fully clear in 30d — lowest: {proj.minSize} items (day {proj.minDay})</p>
-                        )}
-                        <div className="relative flex items-end gap-px h-10">
-                          {proj.dailyQueueSize.map((size, i) => {
-                            const maxSize = Math.max(...proj.dailyQueueSize, 1);
-                            const height = Math.max(2, (size / maxSize) * 100);
-                            const isToday = i === 0;
-                            return (
-                              <div key={i} className={`relative flex-1 rounded-t-sm group/bar ${isToday ? "bg-accent" : size === 0 ? "bg-green-500/60" : "bg-orange-500/60"}`} style={{ height: `${height}%` }}>
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 rounded bg-background border border-border px-2 py-1 text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover/bar:opacity-100 transition-opacity z-10 shadow-md">
-                                  Day {i}: {size} due
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="flex justify-between text-[10px] text-muted-foreground">
-                          <span>{proj.currentSize} due now · {proj.reviewsPerDay} reviews/day · {proj.newPerDay} new/day</span>
-                          <span>+30d</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
             </div>
           )}
+        </section>
+
+        {/* Queue Forecast */}
+        <section className="rounded-lg border border-border bg-muted p-3 shrink-0">
+          <button
+            onClick={() => setShowQueueForecast(v => !v)}
+            className="flex items-center justify-between w-full"
+            aria-expanded={showQueueForecast}
+          >
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-medium text-muted-foreground">Queue Forecast</p>
+              <div className="flex rounded overflow-hidden border border-border/60 text-[10px]" onClick={(e) => e.stopPropagation()}>
+                <button onClick={() => setForecastMode("actual")} className={`px-2 py-0.5 transition-colors ${forecastMode === "actual" ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>Actual</button>
+                <button onClick={() => setForecastMode("goals")} className={`px-2 py-0.5 transition-colors border-l border-border/60 ${forecastMode === "goals" ? "bg-background text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>Goals</button>
+              </div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${showQueueForecast ? "" : "rotate-180"}`}><polyline points="18 15 12 9 6 15"/></svg>
+          </button>
+          {showQueueForecast && (() => {
+            const proj = forecastMode === "actual" ? queueProjection : queueProjectionGoals;
+            if (!proj) return <p className="text-xs text-muted-foreground mt-2">No items in queue.</p>;
+            return (
+              <div className="mt-2 space-y-2">
+                {forecastMode === "goals" && (
+                  <div className="flex items-center gap-4 text-xs pb-1 border-b border-border/50">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-muted-foreground">Reviews/day</span>
+                      <button onClick={() => { const v = Math.max(1, forecastReviewPerDay - 1); setForecastReviewPerDay(v); localStorage.setItem("aurora_forecast_review_per_day", String(v)); }} className="w-5 h-5 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground text-xs leading-none">−</button>
+                      <span className="font-medium tabular-nums w-8 text-center">{forecastReviewPerDay}</span>
+                      <button onClick={() => { const v = forecastReviewPerDay + 1; setForecastReviewPerDay(v); localStorage.setItem("aurora_forecast_review_per_day", String(v)); }} className="w-5 h-5 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground text-xs leading-none">+</button>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-muted-foreground">New/day</span>
+                      <button onClick={() => { const v = Math.max(0, forecastNewPerDay - 1); setForecastNewPerDay(v); localStorage.setItem("aurora_forecast_new_per_day", String(v)); }} className="w-5 h-5 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground text-xs leading-none">−</button>
+                      <span className="font-medium tabular-nums w-8 text-center">{forecastNewPerDay}</span>
+                      <button onClick={() => { const v = forecastNewPerDay + 1; setForecastNewPerDay(v); localStorage.setItem("aurora_forecast_new_per_day", String(v)); }} className="w-5 h-5 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground text-xs leading-none">+</button>
+                    </div>
+                  </div>
+                )}
+                {proj.clearDay !== null ? (
+                  <p className="text-sm font-semibold text-green-500">Clears in ~{proj.clearDay} day{proj.clearDay !== 1 ? "s" : ""}</p>
+                ) : (
+                  <p className="text-sm font-semibold text-amber-500">Won&apos;t fully clear in 30d — lowest: {proj.minSize} items (day {proj.minDay})</p>
+                )}
+                <div className="relative flex items-end gap-px h-10">
+                  {proj.dailyQueueSize.map((size, i) => {
+                    const maxSize = Math.max(...proj.dailyQueueSize, 1);
+                    const height = Math.max(2, (size / maxSize) * 100);
+                    const isToday = i === 0;
+                    return (
+                      <div key={i} className={`relative flex-1 rounded-t-sm group/bar ${isToday ? "bg-accent" : size === 0 ? "bg-green-500/60" : "bg-orange-500/60"}`} style={{ height: `${height}%` }}>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 rounded bg-background border border-border px-2 py-1 text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover/bar:opacity-100 transition-opacity z-10 shadow-md">
+                          Day {i}: {size} due
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>{proj.currentSize} due now · {proj.reviewsPerDay} reviews/day · {proj.newPerDay} new/day</span>
+                  <span>+30d</span>
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         </>)}
@@ -1991,11 +2025,13 @@ function MasteryProgress({
   masteryList: MasteryItem[];
   learningList: MasteryItem[];
 }) {
-  const [showAll, setShowAll] = useState(false);
+  const [learningPage, setLearningPage] = useState(0);
+  const PAGE_SIZE = 10;
   const newCount = total - mastered - learning;
   const masteredPct = total > 0 ? (mastered / total) * 100 : 0;
   const learningPct = total > 0 ? (learning / total) * 100 : 0;
-  const displayLearning = showAll ? learningList : learningList.slice(0, 5);
+  const totalPages = Math.ceil(learningList.length / PAGE_SIZE);
+  const displayLearning = learningList.slice(learningPage * PAGE_SIZE, (learningPage + 1) * PAGE_SIZE);
 
   return (
     <div>
@@ -2064,13 +2100,27 @@ function MasteryProgress({
               );
             })}
           </div>
-          {learningList.length > 5 && (
-            <button
-              onClick={() => setShowAll(!showAll)}
-              className="text-[11px] text-muted-foreground hover:text-foreground mt-1"
-            >
-              {showAll ? "Show less" : `Show all ${learningList.length}`}
-            </button>
+          {learningList.length > PAGE_SIZE && (
+            <div className="flex items-center gap-2 mt-1.5">
+              <button
+                onClick={() => setLearningPage(p => Math.max(0, p - 1))}
+                disabled={learningPage === 0}
+                className="text-[11px] px-2 py-0.5 rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                ←
+              </button>
+              <span className="text-[11px] text-muted-foreground tabular-nums">
+                {learningPage + 1} / {totalPages}
+              </span>
+              <button
+                onClick={() => setLearningPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={learningPage === totalPages - 1}
+                className="text-[11px] px-2 py-0.5 rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                →
+              </button>
+              <span className="text-[11px] text-muted-foreground ml-1">{learningList.length} total</span>
+            </div>
           )}
         </div>
       )}
