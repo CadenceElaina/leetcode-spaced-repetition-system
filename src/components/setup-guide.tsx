@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 
 const GITHUB_README = "https://github.com/CadenceElaina/aurora#getting-started";
 const POS_KEY = "aurora_guide_pos";
-const FLOAT_W = 660;
+const FLOAT_W = 460;
 
 type Mode = "closed" | "modal" | "float" | "minimized";
 
@@ -617,7 +617,7 @@ export function SetupGuide({ trigger }: SetupGuideProps = {}) {
           onMouseDown={handleBackdropClick}
         >
           <div
-            className="relative flex flex-col w-full max-w-2xl mx-4 rounded-2xl border border-border/60 bg-muted/95 shadow-2xl overflow-hidden"
+            className="relative flex flex-col w-full max-w-xl mx-4 rounded-2xl border border-border/60 bg-muted/95 shadow-2xl overflow-hidden"
             style={{ height: "75vh" }}
             onMouseDown={(e) => e.stopPropagation()}
           >

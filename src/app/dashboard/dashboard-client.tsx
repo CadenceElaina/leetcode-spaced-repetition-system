@@ -249,7 +249,7 @@ function getDefaultTargetDate(): string {
 
 /* ── Main Component ── */
 
-export function DashboardClient({ data, isDemo = false }: { data: DashboardData; isDemo?: boolean }) {
+export function DashboardClient({ data, isDemo = false, userId }: { data: DashboardData; isDemo?: boolean; userId?: string }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [srsBanner, setSrsBanner] = useState<{ oldS: number; newS: number; next: string; pct: number; attemptId: string; pName: string; pNum: string } | null>(null);
@@ -634,10 +634,11 @@ export function DashboardClient({ data, isDemo = false }: { data: DashboardData;
   return (
     <>
     {/* Onboarding Walkthrough */}
-    <Onboarding isDemo={isDemo} onPreferences={(prefs) => {
+    <Onboarding isDemo={isDemo} userId={userId} onPreferences={(prefs) => {
       if (prefs.targetCount > 0) {
         setTargetCount(prefs.targetCount);
         setTargetDate(prefs.targetDate);
+        setListMode("new");
       }
       setAutoDeferHards(prefs.autoDeferHards);
       if (prefs.autoDeferHards) {

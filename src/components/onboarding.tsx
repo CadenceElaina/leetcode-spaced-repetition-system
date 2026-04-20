@@ -65,11 +65,13 @@ const STEPS = [
   },
 ];
 
-export function Onboarding({ isDemo = false, onPreferences }: {
+export function Onboarding({ isDemo = false, userId, onPreferences }: {
   isDemo?: boolean;
+  userId?: string;
   onPreferences?: (prefs: { targetCount: number; targetDate: string; autoDeferHards: boolean }) => void;
 }) {
   const [show, setShow] = useState(false);
+  const storageKey = userId ? `${ONBOARDING_KEY}_${userId}` : ONBOARDING_KEY;
   const [step, setStep] = useState(0);
   const [rects, setRects] = useState<{ queue: Rect | null; stats: Rect | null }>({ queue: null, stats: null });
   const [logFrame, setLogFrame] = useState(0);
@@ -90,11 +92,11 @@ export function Onboarding({ isDemo = false, onPreferences }: {
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem(ONBOARDING_KEY)) {
+    if (!localStorage.getItem(storageKey)) {
       const t = setTimeout(() => { setShow(true); measure(); }, 400);
       return () => clearTimeout(t);
     }
-  }, [measure]);
+  }, [measure, storageKey]);
 
   useEffect(() => {
     if (!show) return;
@@ -131,7 +133,7 @@ export function Onboarding({ isDemo = false, onPreferences }: {
       }).catch(() => {/* ignore errors during onboarding save */});
     }
     onPreferences?.({ targetCount, targetDate: selectedDate, autoDeferHards: deferHards });
-    localStorage.setItem(ONBOARDING_KEY, "1");
+    localStorage.setItem(storageKey, "1");
     setShow(false);
   }
 
@@ -323,8 +325,8 @@ export function Onboarding({ isDemo = false, onPreferences }: {
 
       {/* ═══ Modal card ═══ */}
       <div
-        className="rounded-lg border border-border bg-background shadow-2xl transition-all duration-500 ease-in-out"
-        style={{ ...modalPositionStyle, pointerEvents: "auto", width: MODAL_WIDTH, minHeight: 280 }}
+        className="rounded-lg border border-border bg-background shadow-2xl transition-all duration-500 ease-in-out flex flex-col"
+        style={{ ...modalPositionStyle, pointerEvents: "auto", width: MODAL_WIDTH, minHeight: 320, maxHeight: "90vh" }}
       >
         {/* Progress dots */}
         <div className="flex justify-center gap-1.5 pt-4">
@@ -347,9 +349,10 @@ export function Onboarding({ isDemo = false, onPreferences }: {
         {/* ── Step 0: Welcome ── */}
         {step === 0 && (
           <div className="px-5 pb-2">
-            <a href="/info" className="inline-flex items-center gap-1 text-xs text-accent hover:underline mt-2">
-              Learn how the algorithm works \u2192
-            </a>
+            <p className="text-xs text-muted-foreground mt-2">
+              Read more about the algorithm and this site on our{" "}
+              <a href="/info" className="text-accent hover:underline">info page →</a>
+            </p>
           </div>
         )}
 
@@ -426,7 +429,7 @@ export function Onboarding({ isDemo = false, onPreferences }: {
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-5 pb-4 pt-2">
+        <div className="flex items-center justify-between px-5 pb-4 pt-2 mt-auto border-t border-border/20">
           <button onClick={finish} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
             Skip
           </button>

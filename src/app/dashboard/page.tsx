@@ -408,6 +408,7 @@ export default async function DashboardPage() {
   return (
     <Suspense>
     <DashboardClient
+      userId={userId}
       data={{
         reviewQueue,
         deferredProblems,
