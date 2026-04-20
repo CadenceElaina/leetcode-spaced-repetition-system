@@ -42,7 +42,7 @@ type CompletedItem = {
   bestQuality: string | null;
 };
 
-type ListMode = "review" | "new" | "completed" | "import" | "deferred" | "mock";
+type ListMode = "review" | "new" | "completed" | "import" | "mock";
 type MockPhase = "setup" | "active" | "finished";
 type ReviewSort = "urgency" | "overdue" | "difficulty" | "category";
 type NewDifficultyFilter = "all" | "easy" | "easy-medium" | "medium" | "hard";
@@ -292,6 +292,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
   const [autoDeferHards, setAutoDeferHards] = useState(data.autoDeferHards);
   const [reviewItems, setReviewItems] = useState(data.reviewQueue);
   const [deferSearch, setDeferSearch] = useState("");
+  const [showDeferredInline, setShowDeferredInline] = useState(false);
   const [plannedNewPerDay, setPlannedNewPerDay] = useState(1.5);
   const [plannedReviewPerDay, setPlannedReviewPerDay] = useState(5);
 
@@ -336,7 +337,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
       setGoalType(savedGoal as "blind75" | "neetcode150" | "none");
     }
     const savedTab = localStorage.getItem("aurora_tab_mode");
-    if (savedTab && ["review", "new", "completed", "deferred", "import"].includes(savedTab)) {
+    if (savedTab && ["review", "new", "completed", "import"].includes(savedTab)) {
       setListMode(savedTab as ListMode);
     }
     const savedNewPace = localStorage.getItem("aurora_planned_new_per_day");
@@ -638,7 +639,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
   const sortedCompleted = useMemo(() => {
     const q = [...data.completedProblems];
     if (completedSort === "retention") {
-      q.sort((a, b) => b.retrievability - a.retrievability);
+      q.sort((a, b) => a.retrievability - b.retrievability); // fading first
     } else if (completedSort === "review-date") {
       q.sort((a, b) => (a.daysUntilReview ?? 999) - (b.daysUntilReview ?? 999));
     } else {
@@ -885,17 +886,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                     </span>
                   )}
                 </button>
-                <button
-                  onClick={() => setListMode("deferred")}
-                  className={`flex-1 text-center text-sm px-2 py-1 rounded transition-colors ${listMode === "deferred" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  Deferred
-                  {deferredItems.length > 0 && (
-                    <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${listMode === "deferred" ? "bg-accent-foreground/20" : "bg-muted"}`}>
-                      {deferredItems.length}
-                    </span>
-                  )}
-                </button>
+
                 <button
                   onClick={() => setListMode("import")}
                   className={`flex-1 text-center text-sm px-2 py-1 rounded transition-colors ${listMode === "import" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
@@ -948,12 +939,12 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 <div className="flex-[3] min-w-0 flex rounded-md border border-border p-0.5 gap-0.5">
                   {(["retention", "review-date", "category"] as CompletedSort[]).map((s) => (
                     <button key={s} onClick={() => setCompletedSort(s)} className={`flex-1 text-center text-xs px-1 py-0.5 rounded transition-colors ${completedSort === s ? "bg-accent/20 text-accent font-semibold" : "text-muted-foreground hover:text-foreground"}`}>
-                      {s === "retention" ? "Strongest" : s === "review-date" ? "Next review" : "Category"}
+                      {s === "retention" ? "Fading" : s === "review-date" ? "Next review" : "Category"}
                     </button>
                   ))}
                 </div>
               )}
-              {(listMode === "deferred" || listMode === "import" || listMode === "mock") && <span className="flex-[3] min-w-0" />}
+              {(listMode === "import" || listMode === "mock") && <span className="flex-[3] min-w-0" />}
               {/* Search */}
               {listMode !== "import" && listMode !== "mock" && (
                 <input
@@ -969,7 +960,8 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
 
           {/* Review list */}
           {listMode === "review" && (
-            data.reviewQueue.length === 0 ? (
+            <div className="flex flex-col flex-1 min-h-0 gap-2">
+            {data.reviewQueue.length === 0 ? (
               <div className="rounded-lg border border-border bg-muted p-6 text-center">
                 <p className="text-sm text-muted-foreground">All caught up! No reviews due.</p>
                 <button onClick={() => setListMode("new")} className="mt-2 text-xs text-accent hover:underline">
@@ -1050,7 +1042,107 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                   })}
                 </div>
               </div>
-            )
+            )}
+            {/* Inline deferred disclosure — lives at the bottom of the Review tab */}
+            {(deferredItems.length > 0 || autoDeferHards) && (
+              <div className="rounded-lg border border-border overflow-hidden shrink-0">
+                <button
+                  onClick={() => setShowDeferredInline((v) => !v)}
+                  className="flex items-center justify-between w-full px-3 py-2 text-xs hover:bg-muted transition-colors"
+                >
+                  <span className="font-medium text-muted-foreground">
+                    Deferred{deferredItems.length > 0 ? ` (${deferredItems.length})` : ""}
+                  </span>
+                  <div className="flex items-center gap-2.5" onClick={(e) => e.stopPropagation()}>
+                    <label className="flex items-center gap-1 cursor-pointer text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={autoDeferHards}
+                        onChange={(e) => demoGuard(() => handleToggleAutoDeferHards(e.target.checked))}
+                        className="rounded border-border"
+                      />
+                      <span>Auto-defer Hards</span>
+                    </label>
+                    <button onClick={() => setShowDeferredInline((v) => !v)}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${showDeferredInline ? "" : "rotate-180"}`}><polyline points="18 15 12 9 6 15"/></svg>
+                    </button>
+                  </div>
+                </button>
+                {showDeferredInline && (
+                  <div className="border-t border-border">
+                    <div className="px-3 py-2 border-b border-border/50">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search review queue to defer..."
+                          value={deferSearch}
+                          onChange={(e) => setDeferSearch(e.target.value)}
+                          className="h-7 w-full rounded-md border border-border bg-background px-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                        {deferSearch.trim() && (
+                          <div className="absolute top-full left-0 right-0 z-10 mt-1 rounded-md border border-border bg-background shadow-lg max-h-48 overflow-y-auto">
+                            {reviewItems
+                              .filter((r) => {
+                                const s = deferSearch.toLowerCase();
+                                return r.title.toLowerCase().includes(s) || String(r.leetcodeNumber ?? "").includes(s) || r.category.toLowerCase().includes(s);
+                              })
+                              .slice(0, 10)
+                              .map((item) => (
+                                <button
+                                  key={item.problemId}
+                                  onClick={() => { demoGuard(() => handleDefer(item.problemId)); setDeferSearch(""); }}
+                                  className="flex items-center gap-2 w-full px-2.5 py-1.5 text-left hover:bg-muted transition-colors border-b border-border last:border-b-0"
+                                >
+                                  <span className="text-[10px] text-muted-foreground tabular-nums w-6 shrink-0">{item.leetcodeNumber}</span>
+                                  <span className="text-xs truncate flex-1">{item.title}</span>
+                                  <DifficultyBadge difficulty={item.difficulty} />
+                                  <span className="text-[10px] text-muted-foreground">Defer</span>
+                                </button>
+                              ))}
+                            {reviewItems.filter((r) => {
+                              const s = deferSearch.toLowerCase();
+                              return r.title.toLowerCase().includes(s) || String(r.leetcodeNumber ?? "").includes(s) || r.category.toLowerCase().includes(s);
+                            }).length === 0 && (
+                              <p className="px-2.5 py-2 text-xs text-muted-foreground">No matching review items</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {deferredItems.length === 0 ? (
+                      <p className="px-3 py-2.5 text-xs text-muted-foreground">No deferred problems.</p>
+                    ) : (
+                      <div className="max-h-48 overflow-y-auto">
+                        {deferredItems.map((item) => (
+                          <div
+                            key={item.stateId}
+                            className="flex items-center gap-3 px-3 py-2 border-b border-border last:border-b-0 hover:bg-muted transition-colors"
+                          >
+                            <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{item.leetcodeNumber}</span>
+                            <div className="min-w-0 flex-1">
+                              <span className="text-xs font-medium text-foreground truncate block">{item.title}</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {item.category}{item.isAutoDeferred ? " · Auto-deferred (hard)" : item.deferredUntil ? ` · Until ${new Date(item.deferredUntil).toLocaleDateString()}` : ""}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <DifficultyBadge difficulty={item.difficulty} />
+                              <button
+                                onClick={() => demoGuard(() => handleUndefer(item.problemId))}
+                                className="inline-flex h-6 items-center rounded border border-border px-2 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              >
+                                Restore
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            </div>
           )}
 
           {/* New problems list */}
@@ -1160,101 +1252,6 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
               attemptedIds={data.importAttemptedIds}
               todayAttemptedIds={data.importTodayAttemptedIds}
             />
-          )}
-
-          {/* Deferred list */}
-          {listMode === "deferred" && (
-            <div className="rounded-lg border border-border overflow-hidden flex-1 flex flex-col min-h-0">
-              <div className="px-3 py-2 border-b border-border bg-muted/50 space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground">
-                    {deferredItems.length} problem{deferredItems.length !== 1 ? "s" : ""} deferred
-                  </p>
-                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={autoDeferHards}
-                      onChange={(e) => demoGuard(() => handleToggleAutoDeferHards(e.target.checked))}
-                      className="rounded border-border"
-                    />
-                    Auto-defer Hards
-                  </label>
-                </div>
-                {/* Search to defer from review queue */}
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search review queue to defer a problem..."
-                    value={deferSearch}
-                    onChange={(e) => setDeferSearch(e.target.value)}
-                    className="h-7 w-full rounded-md border border-border bg-background px-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                  {deferSearch.trim() && (
-                    <div className="absolute top-full left-0 right-0 z-10 mt-1 rounded-md border border-border bg-background shadow-lg max-h-48 overflow-y-auto">
-                      {reviewItems
-                        .filter((r) => {
-                          const s = deferSearch.toLowerCase();
-                          return r.title.toLowerCase().includes(s) || String(r.leetcodeNumber ?? "").includes(s) || r.category.toLowerCase().includes(s);
-                        })
-                        .slice(0, 10)
-                        .map((item) => (
-                          <button
-                            key={item.problemId}
-                            onClick={() => {
-                              demoGuard(() => handleDefer(item.problemId));
-                              setDeferSearch("");
-                            }}
-                            className="flex items-center gap-2 w-full px-2.5 py-1.5 text-left hover:bg-muted transition-colors border-b border-border last:border-b-0"
-                          >
-                            <span className="text-[10px] text-muted-foreground tabular-nums w-6 shrink-0">{item.leetcodeNumber}</span>
-                            <span className="text-xs truncate flex-1">{item.title}</span>
-                            <DifficultyBadge difficulty={item.difficulty} />
-                            <span className="text-[10px] text-muted-foreground">Defer</span>
-                          </button>
-                        ))}
-                      {reviewItems.filter((r) => {
-                        const s = deferSearch.toLowerCase();
-                        return r.title.toLowerCase().includes(s) || String(r.leetcodeNumber ?? "").includes(s) || r.category.toLowerCase().includes(s);
-                      }).length === 0 && (
-                        <p className="px-2.5 py-2 text-xs text-muted-foreground">No matching review items</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              {deferredItems.length === 0 ? (
-                <div className="p-4 text-center">
-                  <p className="text-xs text-muted-foreground">No deferred problems yet. Use the search above to defer problems from your review queue.</p>
-                </div>
-              ) : (
-                <div className="overflow-y-auto flex-1 min-h-0">
-                  {deferredItems.map((item) => (
-                    <div
-                      key={item.stateId}
-                      className="flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-b-0 hover:bg-muted transition-colors duration-150"
-                    >
-                      <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{item.leetcodeNumber}</span>
-                      <div className="min-w-0 flex-1">
-                        <span className="text-sm font-medium text-foreground truncate block">{item.title}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {item.category} · {item.totalAttempts} attempt{item.totalAttempts !== 1 ? "s" : ""}
-                          {item.isAutoDeferred ? " · Auto-deferred (hard)" : item.deferredUntil ? ` · Until ${new Date(item.deferredUntil).toLocaleDateString()}` : ""}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <DifficultyBadge difficulty={item.difficulty} />
-                        <button
-                          onClick={() => demoGuard(() => handleUndefer(item.problemId))}
-                          className="inline-flex h-7 items-center rounded-md border border-border px-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          Restore
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           )}
 
           {/* ── Mock Interview Panel ── */}
@@ -1536,28 +1533,32 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
           <div className="flex items-center justify-between w-full">
             <button
               onClick={() => toggleWidget("activity")}
-              className="flex items-center gap-2"
               aria-expanded={!collapsedWidgets.activity}
               aria-label="Toggle activity chart"
             >
               <p className="text-sm font-semibold text-foreground">Activity</p>
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.activity ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
             </button>
-            {/* Range selector inline with header */}
-            <div className="flex rounded-md border border-border p-0.5 gap-0.5">
-              {(["14d", "30d", "90d", "all"] as const).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setActivityRange(r)}
-                  className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
-                    activityRange === r
-                      ? "bg-accent/20 text-accent font-semibold"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {r === "all" ? "All" : r}
-                </button>
-              ))}
+            <div className="flex items-center gap-1.5">
+              {/* Range selector */}
+              <div className="flex rounded-md border border-border p-0.5 gap-0.5">
+                {(["14d", "30d", "90d", "all"] as const).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setActivityRange(r)}
+                    className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
+                      activityRange === r
+                        ? "bg-accent/20 text-accent font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {r === "all" ? "All" : r}
+                  </button>
+                ))}
+              </div>
+              {/* Chevron — collapses the whole section */}
+              <button onClick={() => toggleWidget("activity")} aria-label="Toggle activity chart">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.activity ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
+              </button>
             </div>
           </div>
           {!collapsedWidgets.activity && (
