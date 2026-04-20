@@ -12,6 +12,11 @@ const MOCK_REVIEW_ITEMS = [
   { num: 20, title: "Valid Parentheses", difficulty: "Easy" as const, category: "Stack", attempts: 4, lastSeen: "3d ago", daysOverdue: 1, retention: 61, prio: "medium" as const },
   { num: 15, title: "3Sum", difficulty: "Medium" as const, category: "Two Pointers", attempts: 1, lastSeen: "12d ago", daysOverdue: 9, retention: 38, prio: "critical" as const },
   { num: 102, title: "Binary Tree Level Order", difficulty: "Medium" as const, category: "Trees", attempts: 3, lastSeen: "4d ago", daysOverdue: 2, retention: 67, prio: "medium" as const },
+  { num: 141, title: "Linked List Cycle", difficulty: "Easy" as const, category: "Linked List", attempts: 1, lastSeen: "7d ago", daysOverdue: 4, retention: 49, prio: "high" as const },
+  { num: 121, title: "Best Time to Buy Stock", difficulty: "Easy" as const, category: "Sliding Window", attempts: 2, lastSeen: "11d ago", daysOverdue: 7, retention: 41, prio: "critical" as const },
+  { num: 70, title: "Climbing Stairs", difficulty: "Easy" as const, category: "1D DP", attempts: 2, lastSeen: "6d ago", daysOverdue: 2, retention: 58, prio: "medium" as const },
+  { num: 53, title: "Maximum Subarray", difficulty: "Medium" as const, category: "Greedy", attempts: 1, lastSeen: "9d ago", daysOverdue: 5, retention: 46, prio: "high" as const },
+  { num: 235, title: "Lowest Common Ancestor BST", difficulty: "Medium" as const, category: "Trees", attempts: 2, lastSeen: "10d ago", daysOverdue: 8, retention: 39, prio: "critical" as const },
 ];
 
 const OVERDUE_BG: Record<string, string> = {
@@ -260,8 +265,8 @@ export function Onboarding({ isDemo = false, userId, onPreferences }: {
             <span className="text-xs px-2 py-0.5 rounded text-muted-foreground">Hardest</span>
             <span className="text-xs px-2 py-0.5 rounded text-muted-foreground">Category</span>
           </div>
-          {/* Review items */}
-          <div className="rounded-lg border border-border overflow-hidden bg-background opacity-40">
+          {/* Review items — full opacity so symbols are legible */}
+          <div className="rounded-lg border border-border overflow-hidden bg-background">
             {MOCK_REVIEW_ITEMS.map((item, i) => (
               <div
                 key={i}

@@ -264,12 +264,9 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
   const [newSort, setNewSort] = useState<NewSort>("curriculum");
   const [completedSort, setCompletedSort] = useState<CompletedSort>("retention");
   const [queueSearch, setQueueSearch] = useState("");
-  const [showStatsDetail, setShowStatsDetail] = useState(false);
-  const [statsTab, setStatsTab] = useState<"overview" | "pace" | "time" | "readiness">("overview");
   const [pendingItems, setPendingItems] = useState<PendingItem[]>(data.pendingSubmissions);
   const [logModalProblem, setLogModalProblem] = useState<LogModalProblem | null>(null);
   const [collapsedWidgets, setCollapsedWidgets] = useState<Record<string, boolean>>({});
-  const [showOverallPace, setShowOverallPace] = useState(false);
   const [activityRange, setActivityRange] = useState<"14d" | "30d" | "90d" | "all">("14d");
   const [deferredItems, setDeferredItems] = useState(data.deferredProblems);
   const [autoDeferHards, setAutoDeferHards] = useState(data.autoDeferHards);
@@ -1178,252 +1175,6 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
 
       {/* ── Right Column ── */}
       <div className="flex flex-col lg:col-span-6 lg:min-h-0" data-onboarding="stats">
-        {showStatsDetail ? (
-          /* ── Stats Detail — tabbed layout ── */
-          <section className="rounded-lg border border-border bg-muted p-4 overflow-y-auto flex-1 min-h-0 flex flex-col">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-medium text-muted-foreground">All Stats</p>
-              <button
-                onClick={() => setShowStatsDetail(false)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Back to dashboard"
-                title="Back to dashboard"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-              </button>
-            </div>
-
-            {/* Tab bar */}
-            <div className="flex gap-1 mb-4 border-b border-border/50 pb-2">
-              {(["overview", "pace", "time", "readiness"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setStatsTab(tab)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    statsTab === tab
-                      ? "bg-accent/15 text-accent border border-accent/20"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/80 border border-transparent"
-                  }`}
-                >
-                  {tab === "overview" ? "Overview" : tab === "pace" ? "Pace" : tab === "time" ? "Time" : "Readiness"}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab content */}
-            <div className="flex-1 min-h-0 space-y-4">
-              {statsTab === "overview" && (
-                <>
-                  {/* Key metrics at a glance */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                      <p className="text-[11px] text-muted-foreground mb-1">Progress</p>
-                      <p className="text-2xl font-bold tabular-nums">{data.attemptedCount}<span className="text-sm text-muted-foreground font-normal">/{data.totalProblems}</span></p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">problems attempted</p>
-                    </div>
-                    <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                      <p className="text-[11px] text-muted-foreground mb-1">Projection</p>
-                      <p className={`text-2xl font-bold tabular-nums ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>{countdown.projectedRaw}<span className="text-sm font-normal text-muted-foreground">/{targetCount}</span></p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">projected by target</p>
-                    </div>
-                  </div>
-
-                  {/* Retention summary */}
-                  <div>
-                    <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Retention</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <p className="text-lg font-bold tabular-nums">{data.retainedCount}/{data.attemptedCount}</p>
-                        <p className="text-[11px] text-muted-foreground">retained (R &gt; 70%)</p>
-                      </div>
-                      <div>
-                        <p className="text-lg font-bold tabular-nums text-green-500">{data.masteredCount}</p>
-                        <p className="text-[11px] text-muted-foreground">mastered (S ≥ 30d)</p>
-                      </div>
-                      <div>
-                        <p className="text-lg font-bold tabular-nums text-accent">{data.learningCount}</p>
-                        <p className="text-[11px] text-muted-foreground">learning</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Consistency */}
-                  <div>
-                    <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Consistency</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <p className="text-lg font-bold tabular-nums">🔥 {data.currentStreak}</p>
-                        <p className="text-[11px] text-muted-foreground">current streak</p>
-                      </div>
-                      <div>
-                        <p className="text-lg font-bold tabular-nums">{data.bestStreak}</p>
-                        <p className="text-[11px] text-muted-foreground">best streak</p>
-                      </div>
-                      <div>
-                        <p className="text-lg font-bold tabular-nums">{data.avgConfidence > 0 ? `${data.avgConfidence.toFixed(1)}/5` : "—"}</p>
-                        <p className="text-[11px] text-muted-foreground">avg confidence</p>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {statsTab === "pace" && (
-                <>
-                  {/* 14-day pace */}
-                  <div>
-                    <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Last 14 Days</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                        <p className="text-2xl font-bold tabular-nums">{data.avgNewPerDay.toFixed(1)}</p>
-                        <p className="text-[11px] text-muted-foreground">new/day</p>
-                      </div>
-                      <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                        <p className="text-2xl font-bold tabular-nums">{data.avgReviewPerDay.toFixed(1)}</p>
-                        <p className="text-[11px] text-muted-foreground">reviews/day</p>
-                      </div>
-                      <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                        <p className="text-2xl font-bold tabular-nums">{data.avgPerDay.toFixed(1)}</p>
-                        <p className="text-[11px] text-muted-foreground">total/day</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Overall pace */}
-                  <div>
-                    <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">All Time</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                        <p className="text-2xl font-bold tabular-nums">{data.overallNewPerDay.toFixed(1)}</p>
-                        <p className="text-[11px] text-muted-foreground">new/day</p>
-                      </div>
-                      <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                        <p className="text-2xl font-bold tabular-nums">{data.overallReviewPerDay.toFixed(1)}</p>
-                        <p className="text-[11px] text-muted-foreground">reviews/day</p>
-                      </div>
-                      <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                        <p className="text-2xl font-bold tabular-nums">{data.overallPerDay.toFixed(1)}</p>
-                        <p className="text-[11px] text-muted-foreground">total/day</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Needed rate */}
-                  <div className={`rounded-lg p-3 text-sm ${countdown.onTrack ? "bg-green-500/10 border border-green-500/20" : "bg-orange-500/10 border border-orange-500/20"}`}>
-                    <p className={`font-medium ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>
-                      {countdown.onTrack ? "On track" : "Behind pace"}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Need <span className="font-medium text-foreground">{countdown.neededPerDay.toFixed(1)}</span> new problems/day to hit {targetCount} by target date
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {statsTab === "time" && (
-                <>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                      <p className="text-[11px] text-muted-foreground mb-1">Total Solve</p>
-                      <p className="text-2xl font-bold">{formatMinutes(data.totalSolveMinutes)}</p>
-                    </div>
-                    <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                      <p className="text-[11px] text-muted-foreground mb-1">Total Study</p>
-                      <p className="text-2xl font-bold">{formatMinutes(data.totalStudyMinutes)}</p>
-                    </div>
-                    <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                      <p className="text-[11px] text-muted-foreground mb-1">Avg Solve</p>
-                      <p className="text-2xl font-bold">{data.avgSolveMinutes > 0 ? `${Math.round(data.avgSolveMinutes)}m` : "—"}</p>
-                    </div>
-                  </div>
-
-                  {/* Time context */}
-                  <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                    <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Context</p>
-                    <div className="space-y-2 text-xs text-muted-foreground">
-                      <div className="flex justify-between">
-                        <span>Study time includes notes, research, and review beyond just solving</span>
-                      </div>
-                      {data.totalSolveMinutes > 0 && (
-                        <div className="flex justify-between">
-                          <span>Solve efficiency</span>
-                          <span className="font-medium text-foreground">{Math.round((data.totalSolveMinutes / data.totalStudyMinutes) * 100)}% of study time</span>
-                        </div>
-                      )}
-                      {data.attemptedCount > 0 && (
-                        <div className="flex justify-between">
-                          <span>Study time per problem</span>
-                          <span className="font-medium text-foreground">{Math.round(data.totalStudyMinutes / data.attemptedCount)}m avg</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {statsTab === "readiness" && (
-                <>
-                  {/* Tier badge */}
-                  <div className="flex items-center gap-4 rounded-lg border border-border/50 bg-background/40 p-4">
-                    <span className={`inline-flex h-12 w-12 items-center justify-center rounded-lg text-lg font-bold ${TIER_COLORS[data.readiness.tier]}`}>
-                      {data.readiness.tier}
-                    </span>
-                    <div>
-                      <p className="text-2xl font-bold tabular-nums">{data.readiness.score}<span className="text-sm text-muted-foreground font-normal">/100</span></p>
-                      <p className="text-[11px] text-muted-foreground">Readiness Score</p>
-                    </div>
-                  </div>
-
-                  {/* Breakdown with visual bars */}
-                  <div className="space-y-3">
-                    {[
-                      { label: "Coverage", value: data.readinessBreakdown.coverage, weight: "30%" },
-                      { label: "Retention", value: data.readinessBreakdown.retention, weight: "40%" },
-                      { label: "Category Balance", value: data.readinessBreakdown.categoryBalance, weight: "20%" },
-                      { label: "Consistency", value: data.readinessBreakdown.consistency, weight: "10%" },
-                    ].map(({ label, value, weight }) => (
-                      <div key={label}>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-muted-foreground">{label} <span className="text-muted-foreground/60">({weight})</span></span>
-                          <span className="font-medium tabular-nums">{Math.round(value * 100)}%</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-background overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              value >= 0.7 ? "bg-green-500" : value >= 0.4 ? "bg-amber-500" : "bg-red-500"
-                            }`}
-                            style={{ width: `${Math.round(value * 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Tier scale */}
-                  <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-                    <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Tier Scale</p>
-                    <div className="flex gap-2 text-[11px]">
-                      {[
-                        { tier: "S", min: "90+" },
-                        { tier: "A", min: "75+" },
-                        { tier: "B", min: "55+" },
-                        { tier: "C", min: "35+" },
-                        { tier: "D", min: "<35" },
-                      ].map(({ tier, min }) => (
-                        <div key={tier} className={`flex-1 text-center rounded-md py-1.5 ${
-                          data.readiness.tier === tier ? "ring-1 ring-accent" : ""
-                        }`}>
-                          <span className={`inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${TIER_COLORS[tier]}`}>{tier}</span>
-                          <p className="text-muted-foreground mt-0.5">{min}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </section>
-        ) : (
         <div className="flex flex-col gap-3 overflow-y-auto flex-1 min-h-0">
         {/* Countdown */}
         <section className="rounded-lg border border-border bg-muted p-3">
@@ -1432,19 +1183,11 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowSettings(!showSettings)}
-                className="text-xs text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Edit target settings"
                 title="Edit target"
               >
-                ⚙
-              </button>
-              <button
-                onClick={() => setShowStatsDetail(true)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="View all stats"
-                title="View all stats"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               </button>
             </div>
           </div>
@@ -1478,67 +1221,6 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             )}
           </div>
 
-          {/* Compact stats strip */}
-          <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
-            {/* Row 1: Key indicators */}
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <span className={`inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${TIER_COLORS[data.readiness.tier]}`}>
-                  {data.readiness.tier}
-                </span>
-                <span className="text-sm font-medium">{data.readiness.score}</span>
-                <span className="text-xs text-muted-foreground">Readiness</span>
-                <InfoTooltip
-                  content={
-                    <div className="space-y-1.5">
-                      <p className="font-medium">Readiness Score ({data.readiness.score}/100)</p>
-                      <p>Measures how prepared you are overall, based on:</p>
-                      <div className="space-y-1 text-[11px]">
-                        <div className="flex justify-between"><span>Coverage (30%)</span><span>{Math.round(data.readinessBreakdown.coverage * 100)}%</span></div>
-                        <div className="flex justify-between"><span>Retention (40%)</span><span>{Math.round(data.readinessBreakdown.retention * 100)}%</span></div>
-                        <div className="flex justify-between"><span>Category Balance (20%)</span><span>{Math.round(data.readinessBreakdown.categoryBalance * 100)}%</span></div>
-                        <div className="flex justify-between"><span>Consistency (10%)</span><span>{Math.round(data.readinessBreakdown.consistency * 100)}%</span></div>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground pt-1">S ≥ 90 · A ≥ 75 · B ≥ 55 · C ≥ 35 · D &lt; 35</p>
-                    </div>
-                  }
-                />
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-xs leading-none">🔥</span>
-                <span className="text-sm font-semibold tabular-nums">{data.currentStreak}</span>
-                <span className="text-xs text-muted-foreground">streak</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className={`text-sm font-semibold tabular-nums ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>{countdown.projectedRaw}/{targetCount}</span>
-                <span className="text-xs text-muted-foreground">projected</span>
-              </div>
-            </div>
-            {/* Row 2: Pace stats */}
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-semibold tabular-nums">{(showOverallPace ? data.overallReviewPerDay : data.avgReviewPerDay).toFixed(1)}</span>
-                <span className="text-xs text-muted-foreground">reviews/day</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-semibold tabular-nums">{(showOverallPace ? data.overallNewPerDay : data.avgNewPerDay).toFixed(1)}</span>
-                <span className="text-xs text-muted-foreground">new/day</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-semibold tabular-nums">{(showOverallPace ? data.overallPerDay : data.avgPerDay).toFixed(1)}</span>
-                <span className="text-xs text-muted-foreground">total/day</span>
-              </div>
-              <button
-                onClick={() => setShowOverallPace(!showOverallPace)}
-                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors ml-auto shrink-0"
-                title={showOverallPace ? "Showing overall averages — click for 14-day" : "Showing 14-day averages — click for overall"}
-              >
-                <span className="text-[10px] uppercase tracking-wider w-[3.5ch] text-right">{showOverallPace ? "all" : "14d"}</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-              </button>
-            </div>
-          </div>
-
           {/* Settings */}
           {showSettings && (
             <SettingsPanel
@@ -1552,7 +1234,145 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
           )}
         </section>
 
+        {/* Overview */}
+        <section className="rounded-lg border border-border bg-muted p-3">
+          <button onClick={() => toggleWidget("overview")} className="flex items-center justify-between w-full" aria-expanded={!collapsedWidgets.overview}>
+            <p className="text-xs font-medium text-muted-foreground">Overview</p>
+            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.overview ? "▼" : "▲"}</span>
+          </button>
+          {!collapsedWidgets.overview && (
+            <div className="mt-3 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border/50 bg-background/40 p-3">
+                  <p className="text-[11px] text-muted-foreground mb-1">Progress</p>
+                  <p className="text-2xl font-bold tabular-nums">{data.attemptedCount}<span className="text-sm text-muted-foreground font-normal">/{data.totalProblems}</span></p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">problems attempted</p>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-background/40 p-3">
+                  <p className="text-[11px] text-muted-foreground mb-1">Projection</p>
+                  <p className={`text-2xl font-bold tabular-nums ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>{countdown.projectedRaw}<span className="text-sm font-normal text-muted-foreground">/{targetCount}</span></p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">projected by target</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Retention</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div><p className="text-lg font-bold tabular-nums">{data.retainedCount}/{data.attemptedCount}</p><p className="text-[11px] text-muted-foreground">retained (R &gt; 70%)</p></div>
+                  <div><p className="text-lg font-bold tabular-nums text-green-500">{data.masteredCount}</p><p className="text-[11px] text-muted-foreground">mastered (S ≥ 30d)</p></div>
+                  <div><p className="text-lg font-bold tabular-nums text-accent">{data.learningCount}</p><p className="text-[11px] text-muted-foreground">learning</p></div>
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Consistency</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div><p className="text-lg font-bold tabular-nums">🔥 {data.currentStreak}</p><p className="text-[11px] text-muted-foreground">current streak</p></div>
+                  <div><p className="text-lg font-bold tabular-nums">{data.bestStreak}</p><p className="text-[11px] text-muted-foreground">best streak</p></div>
+                  <div><p className="text-lg font-bold tabular-nums">{data.avgConfidence > 0 ? `${data.avgConfidence.toFixed(1)}/5` : "—"}</p><p className="text-[11px] text-muted-foreground">avg confidence</p></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
 
+        {/* Pace */}
+        <section className="rounded-lg border border-border bg-muted p-3">
+          <button onClick={() => toggleWidget("pace")} className="flex items-center justify-between w-full" aria-expanded={!collapsedWidgets.pace}>
+            <p className="text-xs font-medium text-muted-foreground">Pace</p>
+            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.pace ? "▼" : "▲"}</span>
+          </button>
+          {!collapsedWidgets.pace && (
+            <div className="mt-3 space-y-3">
+              <div>
+                <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">Last 14 Days</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-2xl font-bold tabular-nums">{data.avgNewPerDay.toFixed(1)}</p><p className="text-[11px] text-muted-foreground">new/day</p></div>
+                  <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-2xl font-bold tabular-nums">{data.avgReviewPerDay.toFixed(1)}</p><p className="text-[11px] text-muted-foreground">reviews/day</p></div>
+                  <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-2xl font-bold tabular-nums">{data.avgPerDay.toFixed(1)}</p><p className="text-[11px] text-muted-foreground">total/day</p></div>
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">All Time</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-2xl font-bold tabular-nums">{data.overallNewPerDay.toFixed(1)}</p><p className="text-[11px] text-muted-foreground">new/day</p></div>
+                  <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-2xl font-bold tabular-nums">{data.overallReviewPerDay.toFixed(1)}</p><p className="text-[11px] text-muted-foreground">reviews/day</p></div>
+                  <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-2xl font-bold tabular-nums">{data.overallPerDay.toFixed(1)}</p><p className="text-[11px] text-muted-foreground">total/day</p></div>
+                </div>
+              </div>
+              <div className={`rounded-lg p-3 text-sm ${countdown.onTrack ? "bg-green-500/10 border border-green-500/20" : "bg-orange-500/10 border border-orange-500/20"}`}>
+                <p className={`font-medium ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>{countdown.onTrack ? "On track" : "Behind pace"}</p>
+                <p className="text-xs text-muted-foreground mt-1">Need <span className="font-medium text-foreground">{countdown.neededPerDay.toFixed(1)}</span> new/day to hit {targetCount} by target date</p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Time */}
+        <section className="rounded-lg border border-border bg-muted p-3">
+          <button onClick={() => toggleWidget("time")} className="flex items-center justify-between w-full" aria-expanded={!collapsedWidgets.time}>
+            <p className="text-xs font-medium text-muted-foreground">Time</p>
+            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.time ? "▼" : "▲"}</span>
+          </button>
+          {!collapsedWidgets.time && (
+            <div className="mt-3 space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-[11px] text-muted-foreground mb-1">Total Solve</p><p className="text-2xl font-bold">{formatMinutes(data.totalSolveMinutes)}</p></div>
+                <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-[11px] text-muted-foreground mb-1">Total Study</p><p className="text-2xl font-bold">{formatMinutes(data.totalStudyMinutes)}</p></div>
+                <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-[11px] text-muted-foreground mb-1">Avg Solve</p><p className="text-2xl font-bold">{data.avgSolveMinutes > 0 ? `${Math.round(data.avgSolveMinutes)}m` : "—"}</p></div>
+              </div>
+              {data.attemptedCount > 0 && (
+                <div className="rounded-lg border border-border/50 bg-background/40 p-3 text-xs text-muted-foreground space-y-1.5">
+                  {data.totalSolveMinutes > 0 && data.totalStudyMinutes > 0 && <div className="flex justify-between"><span>Solve efficiency</span><span className="font-medium text-foreground">{Math.round((data.totalSolveMinutes / data.totalStudyMinutes) * 100)}% of study time</span></div>}
+                  <div className="flex justify-between"><span>Study time per problem</span><span className="font-medium text-foreground">{Math.round(data.totalStudyMinutes / data.attemptedCount)}m avg</span></div>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Readiness */}
+        <section className="rounded-lg border border-border bg-muted p-3">
+          <button onClick={() => toggleWidget("readiness")} className="flex items-center justify-between w-full" aria-expanded={!collapsedWidgets.readiness}>
+            <p className="text-xs font-medium text-muted-foreground">Readiness</p>
+            <span className="text-[10px] text-muted-foreground">{collapsedWidgets.readiness ? "▼" : "▲"}</span>
+          </button>
+          {!collapsedWidgets.readiness && (
+            <div className="mt-3 space-y-3">
+              <div className="flex items-center gap-4 rounded-lg border border-border/50 bg-background/40 p-3">
+                <span className={`inline-flex h-12 w-12 items-center justify-center rounded-lg text-lg font-bold ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
+                <div>
+                  <p className="text-2xl font-bold tabular-nums">{data.readiness.score}<span className="text-sm text-muted-foreground font-normal">/100</span></p>
+                  <p className="text-[11px] text-muted-foreground">Readiness Score</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {[
+                  { label: "Coverage", value: data.readinessBreakdown.coverage, weight: "30%" },
+                  { label: "Retention", value: data.readinessBreakdown.retention, weight: "40%" },
+                  { label: "Category Balance", value: data.readinessBreakdown.categoryBalance, weight: "20%" },
+                  { label: "Consistency", value: data.readinessBreakdown.consistency, weight: "10%" },
+                ].map(({ label, value, weight }) => (
+                  <div key={label}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">{label} <span className="text-muted-foreground/60">({weight})</span></span>
+                      <span className="font-medium tabular-nums">{Math.round(value * 100)}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-background overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-500 ${value >= 0.7 ? "bg-green-500" : value >= 0.4 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.round(value * 100)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2 text-[11px]">
+                {[{ tier: "S", min: "90+" }, { tier: "A", min: "75+" }, { tier: "B", min: "55+" }, { tier: "C", min: "35+" }, { tier: "D", min: "<35" }].map(({ tier, min }) => (
+                  <div key={tier} className={`flex-1 text-center rounded-md py-1.5 ${data.readiness.tier === tier ? "ring-1 ring-accent" : ""}`}>
+                    <span className={`inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${TIER_COLORS[tier]}`}>{tier}</span>
+                    <p className="text-muted-foreground mt-0.5">{min}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* Activity Chart */}
         <section className="rounded-lg border border-border bg-muted p-3 shrink-0">
@@ -1769,7 +1589,6 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
         </section>
 
         </div>
-        )}
       </div>
     </div>
     </div>
