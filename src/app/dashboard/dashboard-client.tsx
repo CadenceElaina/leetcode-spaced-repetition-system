@@ -1533,23 +1533,39 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
         {!showStatsDetail && (<>
         {/* Activity Chart */}
         <section className="rounded-lg border border-border bg-muted p-3 shrink-0">
-          <button
-            onClick={() => toggleWidget("activity")}
-            className="flex items-center justify-between w-full"
-            aria-expanded={!collapsedWidgets.activity}
-            aria-label="Toggle activity chart"
-          >
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between w-full">
+            <button
+              onClick={() => toggleWidget("activity")}
+              className="flex items-center gap-2"
+              aria-expanded={!collapsedWidgets.activity}
+              aria-label="Toggle activity chart"
+            >
               <p className="text-sm font-semibold text-foreground">Activity</p>
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.activity ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            {/* Range selector inline with header */}
+            <div className="flex rounded-md border border-border p-0.5 gap-0.5">
+              {(["14d", "30d", "90d", "all"] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setActivityRange(r)}
+                  className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
+                    activityRange === r
+                      ? "bg-accent/20 text-accent font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {r === "all" ? "All" : r}
+                </button>
+              ))}
             </div>
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.activity ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
-          </button>
+          </div>
           {!collapsedWidgets.activity && (
             <div className="mt-2 space-y-3">
-              {/* 3-column stats row: Streak | Goals | Actuals */}
-              <div className="grid grid-cols-3 gap-2 text-xs">
+              {/* 2-column stats row: Streak | Pace comparison */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
                 {/* Col 1: Streak */}
-                <div className="flex flex-col gap-1 justify-center">
+                <div className="flex flex-col gap-1">
                   <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Streak</p>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Current</span>
@@ -1572,10 +1588,10 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                     </div>
                   )}
                 </div>
-                {/* Col 2: Goals */}
+                {/* Col 2: Goal vs Actual comparison table */}
                 <div className="flex flex-col gap-1 border-l border-border/50 pl-2">
                   <div className="flex items-center justify-between mb-0.5">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">Goals</p>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">Pace</p>
                     {editingPace ? (
                       <button
                         onClick={() => {
@@ -1591,56 +1607,40 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                       </button>
                     )}
                   </div>
-                  <div className="flex items-center justify-between">
+                  {/* Header row */}
+                  <div className="grid grid-cols-3 text-[10px] text-muted-foreground mb-0.5">
+                    <span></span>
+                    <span className="text-right">Goal</span>
+                    <span className="text-right">Actual</span>
+                  </div>
+                  {/* New row */}
+                  <div className="grid grid-cols-3 items-center">
                     <span className="text-xs text-muted-foreground">New</span>
                     {editingPace ? (
-                      <input type="number" min="0" step="0.5" value={plannedNewPerDay} onChange={(e) => setPlannedNewPerDay(parseFloat(e.target.value) || 0)} className="w-14 rounded border border-border bg-background px-1.5 py-0.5 text-right text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-accent" />
+                      <input type="number" min="0" step="0.5" value={plannedNewPerDay} onChange={(e) => setPlannedNewPerDay(parseFloat(e.target.value) || 0)} className="col-span-2 rounded border border-border bg-background px-1.5 py-0.5 text-right text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-accent" />
                     ) : (
-                      <span className="font-medium tabular-nums">{plannedNewPerDay.toFixed(1)}/day</span>
+                      <>
+                        <span className="text-right font-medium tabular-nums text-muted-foreground">{plannedNewPerDay.toFixed(1)}</span>
+                        <span className={`text-right font-medium tabular-nums ${data.avgNewPerDay >= plannedNewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgNewPerDay.toFixed(1)}</span>
+                      </>
                     )}
                   </div>
-                  <div className="flex items-center justify-between">
+                  {/* Review row */}
+                  <div className="grid grid-cols-3 items-center">
                     <span className="text-xs text-muted-foreground">Review</span>
                     {editingPace ? (
-                      <input type="number" min="0" step="0.5" value={plannedReviewPerDay} onChange={(e) => setPlannedReviewPerDay(parseFloat(e.target.value) || 0)} className="w-14 rounded border border-border bg-background px-1.5 py-0.5 text-right text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-accent" />
+                      <input type="number" min="0" step="0.5" value={plannedReviewPerDay} onChange={(e) => setPlannedReviewPerDay(parseFloat(e.target.value) || 0)} className="col-span-2 rounded border border-border bg-background px-1.5 py-0.5 text-right text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-accent" />
                     ) : (
-                      <span className="font-medium tabular-nums">{plannedReviewPerDay.toFixed(1)}/day</span>
+                      <>
+                        <span className="text-right font-medium tabular-nums text-muted-foreground">{plannedReviewPerDay.toFixed(1)}</span>
+                        <span className={`text-right font-medium tabular-nums ${data.avgReviewPerDay >= plannedReviewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgReviewPerDay.toFixed(1)}</span>
+                      </>
                     )}
-                  </div>
-                </div>
-                {/* Col 3: Actuals */}
-                <div className="flex flex-col gap-1 border-l border-border/50 pl-2">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Actual</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">New</span>
-                    <span className={`font-medium tabular-nums ${data.avgNewPerDay >= plannedNewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgNewPerDay.toFixed(1)}/day</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Review</span>
-                    <span className={`font-medium tabular-nums ${data.avgReviewPerDay >= plannedReviewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgReviewPerDay.toFixed(1)}/day</span>
                   </div>
                 </div>
               </div>
 
               <ActivityChart history={activityData} />
-              {/* Range selector below chart */}
-              <div className="flex justify-end pt-1">
-                <div className="flex rounded-md border border-border p-0.5 gap-0.5">
-                  {(["14d", "30d", "90d", "all"] as const).map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setActivityRange(r)}
-                      className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
-                        activityRange === r
-                          ? "bg-accent/20 text-accent font-semibold"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {r === "all" ? "All" : r}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
             </div>
           )}
@@ -1688,7 +1688,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 ) : (
                   <p className="text-sm font-semibold text-amber-500">Won&apos;t fully clear in 30d — lowest: {proj.minSize} items (day {proj.minDay})</p>
                 )}
-                <div className="relative flex items-end gap-px h-10">
+                <div className="relative flex items-end gap-px h-16">
                   {proj.dailyQueueSize.map((size, i) => {
                     const maxSize = Math.max(...proj.dailyQueueSize, 1);
                     const height = Math.max(2, (size / maxSize) * 100);
@@ -1703,8 +1703,8 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                   })}
                 </div>
                 <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>{proj.currentSize} due now · {proj.reviewsPerDay} reviews/day · {proj.newPerDay} new/day</span>
-                  <span>+30d</span>
+                  <span><span className="font-medium text-foreground">{proj.currentSize}</span> due now</span>
+                  <span>{proj.reviewsPerDay} rev/d · {proj.newPerDay} new/d · <span className="text-muted-foreground/60">+30d</span></span>
                 </div>
               </div>
             );
