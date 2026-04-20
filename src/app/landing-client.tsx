@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { SkyCanvas } from "@/components/sky-canvas";
 
 /* ── Types ── */
 
@@ -30,148 +31,6 @@ const HEADLINES: { top: string; bottom: string }[] = [
   { top: "The algorithm remembers", bottom: "what you forget." },
   { top: "Stop re-solving problems", bottom: "you already know." },
 ];
-
-/* ── Canvas Sky ── */
-
-function SkyCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animId: number;
-    let W = 0;
-    let H = 0;
-
-    function resize() {
-      W = canvas!.offsetWidth;
-      H = canvas!.offsetHeight;
-      canvas!.width = W * devicePixelRatio;
-      canvas!.height = H * devicePixelRatio;
-      ctx!.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    }
-
-    resize();
-    window.addEventListener("resize", resize);
-
-    // Stars
-    type FixedStar = { x: number; y: number; r: number; a: number; ts: number; to: number };
-    const stars: FixedStar[] = [];
-    function makeStars() {
-      stars.length = 0;
-      const count = Math.floor((W * H) / 2600);
-      for (let i = 0; i < count; i++) {
-        stars.push({
-          x: Math.random() * W,
-          y: Math.random() * H * 0.85,
-          r: Math.random() * 1.25 + 0.2,
-          a: Math.random() * 0.5 + 0.3,
-          ts: Math.random() * 0.018 + 0.004,
-          to: Math.random() * Math.PI * 2,
-        });
-      }
-    }
-    makeStars();
-    const resizeCb = () => {
-      resize();
-      makeStars();
-    };
-    window.removeEventListener("resize", resize);
-    window.addEventListener("resize", resizeCb);
-
-    // Shooting stars
-    type Shooter = { x: number; y: number; vx: number; vy: number; len: number; life: number };
-    const shooters: Shooter[] = [];
-    let lastShoot = 0;
-
-    const BG = ["#000008", "#04000f", "#07000e", "#0c0015"];
-    const STAR_COLOR = "#a78bfa";
-    const NEB = { xf: 0.26, yf: 0.40, rx: 200, ry: 110, col: "#7c3aed", al: 0.14 };
-
-    function hexAlpha(hex: string, a: number) {
-      return hex + Math.floor(a * 255).toString(16).padStart(2, "0");
-    }
-
-    function frame(ts: number) {
-      ctx!.clearRect(0, 0, W, H);
-
-      // Background gradient
-      const gr = ctx!.createLinearGradient(0, 0, 0, H);
-      BG.forEach((c, i) => gr.addColorStop(i / (BG.length - 1), c));
-      ctx!.fillStyle = gr;
-      ctx!.fillRect(0, 0, W, H);
-
-      // Nebula glow
-      const ox = W * NEB.xf;
-      const oy = H * NEB.yf;
-      const ng = ctx!.createRadialGradient(ox, oy, 0, ox, oy, Math.max(NEB.rx, NEB.ry));
-      ng.addColorStop(0, hexAlpha(NEB.col, NEB.al));
-      ng.addColorStop(1, "rgba(0,0,0,0)");
-      ctx!.save();
-      ctx!.scale(1, NEB.ry / NEB.rx);
-      ctx!.fillStyle = ng;
-      ctx!.beginPath();
-      ctx!.arc(ox, (oy * NEB.rx) / NEB.ry, NEB.rx, 0, Math.PI * 2);
-      ctx!.fill();
-      ctx!.restore();
-
-      // Stars
-      for (const s of stars) {
-        const a = s.a * (0.55 + 0.45 * Math.sin(ts * s.ts + s.to));
-        ctx!.beginPath();
-        ctx!.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx!.fillStyle = hexAlpha(STAR_COLOR, a);
-        ctx!.fill();
-      }
-
-      // Shooting stars
-      for (let i = shooters.length - 1; i >= 0; i--) {
-        const s = shooters[i];
-        const tail = ctx!.createLinearGradient(
-          s.x, s.y,
-          s.x - (s.vx * s.len) / 5, s.y - (s.vy * s.len) / 5,
-        );
-        tail.addColorStop(0, `rgba(255,255,255,${s.life * 0.8})`);
-        tail.addColorStop(1, "rgba(255,255,255,0)");
-        ctx!.beginPath();
-        ctx!.moveTo(s.x, s.y);
-        ctx!.lineTo(s.x - (s.vx * s.len) / 5, s.y - (s.vy * s.len) / 5);
-        ctx!.strokeStyle = tail;
-        ctx!.lineWidth = 1.3;
-        ctx!.stroke();
-        s.x += s.vx;
-        s.y += s.vy;
-        s.life -= 0.022;
-        if (s.life <= 0) shooters.splice(i, 1);
-      }
-      if (ts - lastShoot > 2800 + Math.random() * 4000) {
-        shooters.push({
-          x: Math.random() * W * 0.55 + 80,
-          y: Math.random() * H * 0.3 + 10,
-          vx: 4 + Math.random() * 3,
-          vy: 2 + Math.random() * 1.5,
-          len: 65 + Math.random() * 55,
-          life: 1,
-        });
-        lastShoot = ts;
-      }
-
-      animId = requestAnimationFrame(frame);
-    }
-
-    animId = requestAnimationFrame(frame);
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener("resize", resizeCb);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" aria-hidden="true" />;
-}
 
 /* ── SVG Constellation Map with Path Illumination ── */
 
@@ -435,23 +294,19 @@ export function LandingPage({ totalProblems, categories, isAuthenticated, authCo
 
   return (
     <div
-      className="flex h-[calc(100dvh-3.5rem)] flex-col relative overflow-hidden"
+      className="relative flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden"
       style={{ width: "calc(100vw - (100vw - 100%))", marginLeft: "calc(-50vw + 50%)", marginTop: "-2rem", marginBottom: "-2rem" }}
     >
-      {/* Canvas sky — fixed fullscreen behind everything */}
-      <div className="fixed inset-0 z-0">
-        <SkyCanvas />
-      </div>
+      <SkyCanvas />
 
-      {/* ── Main split: hero left, constellation right ── */}
-      <div className="flex flex-1 min-h-0 relative z-10">
-        {/* Left: Hero — pushed toward center */}
-        <div className="flex flex-col justify-center w-full lg:w-[45%] shrink-0 overflow-y-auto py-6 pl-[8vw] pr-8 lg:pl-[10vw] lg:pr-12">
-          <div className="space-y-3 max-w-lg">
-            {/* Tagline */}
-            <p className="text-xs font-medium uppercase tracking-widest text-accent">Spaced repetition for LeetCode</p>
+      {/* ── Main: hero + constellation centered together as a unit ── */}
+      <main className="relative z-10 flex-1 min-h-0 flex items-center justify-center">
+        <div className="mx-auto w-full max-w-6xl px-6 sm:px-8 flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-12">
+          {/* Hero */}
+          <div className="w-full max-w-lg shrink-0 space-y-2 sm:space-y-3">
+            <p className="text-[10px] sm:text-xs font-medium uppercase tracking-widest text-accent">Spaced repetition for LeetCode</p>
 
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl leading-tight min-h-[4.5rem] text-white" style={{ textShadow: "0 2px 24px rgba(0,0,0,0.9), 0 0 60px rgba(0,0,0,0.6)" }}>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-tight min-h-[4rem] sm:min-h-[4.5rem] text-white" style={{ textShadow: "0 2px 24px rgba(0,0,0,0.9), 0 0 60px rgba(0,0,0,0.6)" }}>
               <span
                 className="inline-block"
                 style={{
@@ -462,50 +317,48 @@ export function LandingPage({ totalProblems, categories, isAuthenticated, authCo
               >
                 {headline.top}
                 <br />
-                <span className="text-accent">
-                  {headline.bottom}
-                </span>
+                <span className="text-accent">{headline.bottom}</span>
               </span>
             </h1>
 
-            <p className="text-base leading-relaxed text-muted-foreground">
+            <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
               Like Anki, but for coding interviews. Solve problems, rate your recall —
               Aurora schedules your next review at the optimal time.
             </p>
 
             {isAuthenticated ? (
-            <div className="pt-2">
-              <Link
-                href="/dashboard"
-                className="inline-flex h-10 items-center rounded-md bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-[0_0_28px_var(--glow)] transition-all duration-150 hover:shadow-[0_0_40px_var(--glow)]"
-              >
-                Go to Dashboard
-              </Link>
-            </div>
+              <div className="pt-1">
+                <Link
+                  href="/dashboard"
+                  className="inline-flex h-10 items-center rounded-md bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-[0_0_28px_var(--glow)] transition-all duration-150 hover:shadow-[0_0_40px_var(--glow)]"
+                >
+                  Go to Dashboard
+                </Link>
+              </div>
             ) : (
-            <div className="flex items-center gap-4 pt-2">
-              {authConfigured ? (
-                <Link
-                  href="/auth/signin"
-                  className="inline-flex h-10 items-center rounded-md bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-[0_0_28px_var(--glow)] transition-all duration-150 hover:shadow-[0_0_40px_var(--glow)]"
-                >
-                  Get started — free
-                </Link>
-              ) : (
-                <Link
-                  href="/problems"
-                  className="inline-flex h-10 items-center rounded-md bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-[0_0_28px_var(--glow)] transition-all duration-150 hover:shadow-[0_0_40px_var(--glow)]"
-                >
-                  Browse Problems
-                </Link>
-              )}
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                {authConfigured ? (
+                  <Link
+                    href="/auth/signin"
+                    className="inline-flex h-10 items-center rounded-md bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-[0_0_28px_var(--glow)] transition-all duration-150 hover:shadow-[0_0_40px_var(--glow)]"
+                  >
+                    Get started — free
+                  </Link>
+                ) : (
+                  <Link
+                    href="/problems"
+                    className="inline-flex h-10 items-center rounded-md bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-[0_0_28px_var(--glow)] transition-all duration-150 hover:shadow-[0_0_40px_var(--glow)]"
+                  >
+                    Browse Problems
+                  </Link>
+                )}
                 <Link
                   href="/dashboard"
                   className="inline-flex h-10 items-center rounded-md border border-accent/30 px-5 text-sm font-medium text-foreground transition-all duration-150 hover:border-accent/60 hover:shadow-[0_0_20px_var(--glow)]"
                 >
                   View demo
                 </Link>
-            </div>
+              </div>
             )}
 
             {/* Stats row */}
@@ -530,7 +383,6 @@ export function LandingPage({ totalProblems, categories, isAuthenticated, authCo
                   </button>
                 </div>
                 <p className="text-[11px] text-muted-foreground">algorithm</p>
-                {/* Tooltip */}
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 rounded-lg border border-border/60 bg-muted/95 p-3 text-left text-xs text-foreground shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150 z-50">
                   <p className="font-semibold mb-1">Free Spaced Repetition Scheduler</p>
                   <p className="text-muted-foreground leading-relaxed">An open-source algorithm that schedules reviews at growing intervals based on how well you retain each problem. Aurora adapts it using solve outcome, confidence, and solve speed.</p>
@@ -546,19 +398,19 @@ export function LandingPage({ totalProblems, categories, isAuthenticated, authCo
               <FeatureCard icon="⏱️" title="Mock Interviews" desc="Timed sessions from your weak spots" />
             </div>
           </div>
-        </div>
 
-        {/* Right: Floating constellation — fills space, overflow visible */}
-        <div className="hidden lg:flex flex-1 items-center justify-center min-h-0 overflow-visible">
-          <div className="w-full h-full max-w-[600px] max-h-[560px] overflow-visible" style={{ filter: "drop-shadow(0 0 50px rgba(167, 139, 250, 0.08))" }}>
-            <ConstellationMap />
+          {/* Constellation — hidden below lg */}
+          <div className="hidden lg:flex items-center justify-center shrink-0">
+            <div className="w-[480px] xl:w-[540px] aspect-[10/9]" style={{ filter: "drop-shadow(0 0 50px rgba(167, 139, 250, 0.08))" }}>
+              <ConstellationMap />
+            </div>
           </div>
         </div>
-      </div>
+      </main>
 
       {/* ── Bottom bar ── */}
-      <div className="px-6 py-4 pb-6 shrink-0 relative z-10">
-        <div className="mx-auto flex max-w-4xl items-center justify-between">
+      <footer className="relative z-10 shrink-0 px-6 py-3 sm:py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
           <a
             href="https://github.com/CadenceElaina/aurora"
             target="_blank"
@@ -566,18 +418,18 @@ export function LandingPage({ totalProblems, categories, isAuthenticated, authCo
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-            Free & open source
+            Free &amp; open source
           </a>
           <div className="flex items-center gap-4">
             <Link href="/info" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
               How it works
             </Link>
-<Link href="/problems" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="/problems" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
               Browse problems
             </Link>
           </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
