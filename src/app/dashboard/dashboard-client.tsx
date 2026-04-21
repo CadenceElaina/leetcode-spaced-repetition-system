@@ -1723,7 +1723,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 ) : (
                   <p className="text-sm font-semibold text-amber-500">Won&apos;t fully clear in 30d — lowest: {proj.minSize} items (day {proj.minDay})</p>
                 )}
-                <div className="relative flex items-end gap-px h-16">
+                <div className="relative flex items-end gap-px h-28">
                   {proj.dailyQueueSize.map((size, i) => {
                     const maxSize = Math.max(...proj.dailyQueueSize, 1);
                     const height = Math.max(2, (size / maxSize) * 100);
@@ -1848,7 +1848,7 @@ function ActivityChart({ history, mode = "auto" }: { history: AttemptDay[]; mode
   }, [history, shouldAggregate, shouldMonthly]);
 
   const max = Math.max(...buckets.map((d) => d.count), 1);
-  const MAX_BAR_PX = 44;
+  const MAX_BAR_PX = 72;
   const showCounts = buckets.length <= 21;
 
   return (

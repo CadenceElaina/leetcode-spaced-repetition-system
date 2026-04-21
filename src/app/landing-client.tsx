@@ -384,7 +384,7 @@ export function LandingPage({ totalProblems, categories, isAuthenticated, authCo
                   <div className="h-5 w-px bg-border/50" />
                   <Link
                     href="/dashboard"
-                    className="inline-flex h-8 items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-[0_0_20px_var(--glow)] transition-all duration-150 hover:shadow-[0_0_32px_var(--glow)] flex-1"
+                    className="inline-flex h-8 items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-[0_0_20px_var(--glow)] transition-all duration-150 hover:shadow-[0_0_32px_var(--glow)] shrink-0"
                   >
                     Go to Dashboard
                   </Link>
