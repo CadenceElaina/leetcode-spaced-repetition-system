@@ -7,7 +7,7 @@ const GITHUB_README = "https://github.com/CadenceElaina/aurora#getting-started";
 const POS_KEY = "aurora_guide_pos";
 const FLOAT_W = 460;
 
-type Mode = "closed" | "modal" | "float" | "minimized";
+type Mode = "closed" | "modal" | "float";
 
 /* ── Small reusable primitives ── */
 
@@ -424,12 +424,11 @@ interface PanelHeaderProps {
   onClose: () => void;
   onPopOut?: () => void;
   onPopIn?: () => void;
-  onMinimize?: () => void;
   onDragStart?: (e: React.MouseEvent) => void;
   onNavigateInstall?: () => void;
 }
 
-function PanelHeader({ onClose, onPopOut, onPopIn, onMinimize, onDragStart, onNavigateInstall }: PanelHeaderProps) {
+function PanelHeader({ onClose, onPopOut, onPopIn, onDragStart, onNavigateInstall }: PanelHeaderProps) {
   const draggable = !!onDragStart;
   return (
     <div
@@ -489,17 +488,6 @@ function PanelHeader({ onClose, onPopOut, onPopIn, onMinimize, onDragStart, onNa
             ↙ Modal
           </button>
         )}
-        {onMinimize && (
-          <button
-            onClick={onMinimize}
-            title="Minimize"
-            className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-          </button>
-        )}
         <button
           onClick={onClose}
           className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -555,13 +543,13 @@ export function SetupGuide({ trigger }: SetupGuideProps = {}) {
   }, [pos, mode]);
 
   useEffect(() => {
-    if (mode === "closed" || mode === "minimized") return;
+    if (mode === "closed") return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setMode(mode === "float" ? "minimized" : "closed");
+      if (e.key === "Escape") close();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [mode]);
+  }, [mode, close]);
 
   const handleDragStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -595,10 +583,6 @@ export function SetupGuide({ trigger }: SetupGuideProps = {}) {
     justSwitchedRef.current = true;
     setMode("modal");
     setTimeout(() => { justSwitchedRef.current = false; }, 150);
-  }, []);
-
-  const minimize = useCallback(() => {
-    setMode("minimized");
   }, []);
 
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
@@ -664,7 +648,6 @@ export function SetupGuide({ trigger }: SetupGuideProps = {}) {
           <PanelHeader
             onClose={close}
             onPopIn={popIn}
-            onMinimize={minimize}
             onDragStart={handleDragStart}
             onNavigateInstall={() => setActiveIdx(SECTIONS.findIndex(s => s.id === "install"))}
           />
@@ -674,29 +657,6 @@ export function SetupGuide({ trigger }: SetupGuideProps = {}) {
               <GuideContent activeIdx={activeIdx} setActiveIdx={setActiveIdx} />
             </div>
           </div>
-        </div>,
-        portalTarget
-      )}
-
-      {/* Minimized tab — portaled to body */}
-      {mode === "minimized" && portalTarget && createPortal(
-        <div className="fixed bottom-4 right-4 z-[200] flex items-center gap-1">
-          <button
-            onClick={() => setMode("float")}
-            className="flex items-center gap-2 rounded-full border border-border/60 bg-muted/95 shadow-lg px-4 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-          >
-            <span className="text-muted-foreground/70">{Icons.wrench}</span>
-            Setup Guide
-          </button>
-          <button
-            onClick={close}
-            title="Dismiss"
-            className="rounded-full p-2 border border-border/50 bg-muted/90 shadow-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
         </div>,
         portalTarget
       )}

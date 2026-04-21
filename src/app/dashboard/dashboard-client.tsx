@@ -1310,10 +1310,23 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             </div>
           </div>
 
-          {/* Days left */}
-          <div className="flex items-baseline gap-2 mb-0.5">
-            <span className="text-3xl font-bold tabular-nums">{countdown.daysLeft}</span>
-            <span className="text-sm text-muted-foreground">days left</span>
+          {/* Days left + pace inline */}
+          <div className="flex items-center justify-between gap-3 mb-0.5">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-bold tabular-nums">{countdown.daysLeft}</span>
+              <span className="text-sm text-muted-foreground">days left</span>
+            </div>
+            <div className="text-right shrink-0">
+              <p className={`text-sm font-semibold tabular-nums ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>
+                {countdown.onTrack ? "On track" : "Behind pace"}
+                {!countdown.onTrack && (
+                  <span className="text-muted-foreground font-normal"> · Need <span className="font-semibold text-foreground">{countdown.neededPerDay.toFixed(1)}/day</span></span>
+                )}
+              </p>
+              <p className="text-[11px] text-muted-foreground tabular-nums">
+                Projected <span className="font-medium text-foreground">{countdown.projectedRaw}/{targetCount}</span>
+              </p>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground mb-2">
             {targetCount} problems by {new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -1363,9 +1376,9 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
               {/* Two-column: grade+score left (narrow) | bars right */}
               <div className="flex gap-3 items-start">
                 {/* Left: grade badge + score only */}
-                <div className="flex flex-col items-center gap-1 shrink-0 w-11 pt-0.5">
-                  <span className={`inline-flex h-10 w-10 items-center justify-center rounded text-lg font-bold ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
-                  <span className="text-sm font-bold tabular-nums leading-none">{data.readiness.score}<span className="text-[10px] text-muted-foreground font-normal">/100</span></span>
+                <div className="flex flex-col items-center gap-1 shrink-0 w-14 pt-0.5">
+                  <span className={`inline-flex h-12 w-12 items-center justify-center rounded-lg text-2xl font-black ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
+                  <span className="text-base font-bold tabular-nums leading-none">{data.readiness.score}<span className="text-[11px] text-muted-foreground font-normal">/100</span></span>
                 </div>
                 {/* Right: readiness bars — weight in tooltip, not label */}
                 <div className="flex-1 min-w-0 space-y-1.5">
@@ -1390,20 +1403,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                   ))}
                 </div>
               </div>
-              {/* Pace status — full-width bottom row, easy to scan */}
-              <div className="mt-2 pt-2 border-t border-border/50 flex items-center justify-between text-xs">
-                <span className={`font-semibold ${countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>
-                  {countdown.onTrack ? "On track" : "Behind pace"}
-                </span>
-                <span className="text-muted-foreground">
-                  Projected <span className="font-medium text-foreground tabular-nums">{countdown.projectedRaw}/{targetCount}</span>
-                </span>
-                {!countdown.onTrack && (
-                  <span className="text-muted-foreground">
-                    Need <span className="font-medium text-foreground tabular-nums">{countdown.neededPerDay.toFixed(1)}/day</span>
-                  </span>
-                )}
-              </div>
+
             </div>
           )}
         </section>
