@@ -15,12 +15,10 @@ export default async function ProblemsPage({
   searchParams: Promise<{ category?: string; difficulty?: string; status?: string }>;
 }) {
   const params = await searchParams;
-  const allProblems = await db
-    .select()
-    .from(problems)
-    .orderBy(asc(problems.id));
-
-  const session = await auth();
+  const [allProblems, session] = await Promise.all([
+    db.select().from(problems).orderBy(asc(problems.id)),
+    auth(),
+  ]);
   let problemStates: Record<number, { retention: number; totalAttempts: number; lastReviewed: string | null; bestQuality: string | null }> = {};
   let isDemo = false;
 

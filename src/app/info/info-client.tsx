@@ -415,7 +415,7 @@ export default function InfoClient() {
               <strong>Weak category</strong>: +0.3 if your average retention in that category is below 60% — this
               helps shore up gaps (e.g., if your Stack problems are all fading, they get prioritized)
             </li>
-
+          </ul>
 
           <h3 className="text-sm font-semibold pt-2">Why is my queue smaller than my total attempts?</h3>
           <p>
@@ -426,6 +426,7 @@ export default function InfoClient() {
             you skip sessions and shrinks as you clear it. A small queue does <em>not</em> mean you have less work
             to do — it means the work is spread across time as intended.
           </p>
+        </section>
 
         {/* ── Readiness ── */}
         <section id="readiness" className="space-y-3">

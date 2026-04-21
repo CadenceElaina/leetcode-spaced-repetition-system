@@ -1314,13 +1314,8 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
             </span>
           </div>
 
-          {/* Progress bar */}
-          <div className="h-2 overflow-hidden rounded-full bg-background">
-            <div
-              className={`h-full rounded-full transition-all duration-300 ${countdown.onTrack ? "bg-green-500" : "bg-orange-500"}`}
-              style={{ width: `${Math.min(100, (data.attemptedCount / targetCount) * 100)}%` }}
-            />
-          </div>
+          {/* Donut progress */}
+          <SolvedDonut breakdown={data.difficultyBreakdown} totalSolved={data.attemptedCount} />
           <div className="flex justify-between mt-1">
             <span className="text-xs text-muted-foreground tabular-nums">{data.attemptedCount} solved · {countdown.remaining} to go</span>
             <span className="text-xs text-muted-foreground tabular-nums">Projected <span className="font-medium text-foreground">{countdown.projectedRaw}/{targetCount}</span></span>
@@ -2085,6 +2080,47 @@ function SettingsPanel({
 }
 
 /* ── Info Tooltip ── */
+
+function SolvedDonut({ breakdown, totalSolved }: { breakdown: DifficultyBreakdown[]; totalSolved: number }) {
+  const r = 18;
+  const C = 2 * Math.PI * r;
+  const TOTAL_PROBLEMS = 150;
+  const easy = breakdown.find(d => d.difficulty === "Easy");
+  const medium = breakdown.find(d => d.difficulty === "Medium");
+  const hard = breakdown.find(d => d.difficulty === "Hard");
+  const eA = easy?.attempted ?? 0;
+  const mA = medium?.attempted ?? 0;
+  const hA = hard?.attempted ?? 0;
+  const segs = [
+    { color: "#22c55e", len: (eA / TOTAL_PROBLEMS) * C, start: 0 },
+    { color: "#f59e0b", len: (mA / TOTAL_PROBLEMS) * C, start: (eA / TOTAL_PROBLEMS) * C },
+    { color: "#ef4444", len: (hA / TOTAL_PROBLEMS) * C, start: ((eA + mA) / TOTAL_PROBLEMS) * C },
+  ].filter(s => s.len > 0);
+  return (
+    <div className="flex items-center gap-3 mt-2">
+      <svg width="48" height="48" viewBox="0 0 48 48" className="shrink-0">
+        <circle cx={24} cy={24} r={r} fill="none" strokeWidth={4} stroke="hsl(var(--background))" />
+        {segs.map(({ color, len, start }) => (
+          <circle
+            key={color} cx={24} cy={24} r={r} fill="none"
+            stroke={color} strokeWidth={4}
+            strokeDasharray={`${len} ${C - len}`}
+            strokeDashoffset={0}
+            transform={`rotate(${-90 + (start / C) * 360} 24 24)`}
+          />
+        ))}
+        <text x={24} y={25} textAnchor="middle" dominantBaseline="central" fill="currentColor" fontSize="9" fontWeight="700">{totalSolved}</text>
+      </svg>
+      <div className="flex-1 space-y-1.5">
+        <div className="flex gap-2.5">
+          <span className="text-[11px] text-green-500 tabular-nums">E {eA}<span className="text-muted-foreground">/{easy?.count ?? 0}</span></span>
+          <span className="text-[11px] text-amber-500 tabular-nums">M {mA}<span className="text-muted-foreground">/{medium?.count ?? 0}</span></span>
+          <span className="text-[11px] text-red-500 tabular-nums">H {hA}<span className="text-muted-foreground">/{hard?.count ?? 0}</span></span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function InfoTooltip({ content }: { content: React.ReactNode }) {
   const [open, setOpen] = useState(false);
