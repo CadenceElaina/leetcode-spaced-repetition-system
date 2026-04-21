@@ -542,6 +542,9 @@ export function SetupGuide({ trigger }: SetupGuideProps = {}) {
     }
   }, [pos, mode]);
 
+  const open = useCallback(() => { setMode(isDesktop ? "float" : "modal"); }, [isDesktop]);
+  const close = useCallback(() => setMode("closed"), []);
+
   useEffect(() => {
     if (mode === "closed") return;
     function onKey(e: KeyboardEvent) {
@@ -569,9 +572,6 @@ export function SetupGuide({ trigger }: SetupGuideProps = {}) {
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }, [pos.x, pos.y]);
-
-  const open = useCallback(() => { setMode(isDesktop ? "float" : "modal"); }, [isDesktop]);
-  const close = useCallback(() => setMode("closed"), []);
 
   const popOut = useCallback(() => {
     justSwitchedRef.current = true;
