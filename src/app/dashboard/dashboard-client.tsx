@@ -517,11 +517,11 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
         item.dueInDays = day + Math.round(item.stability);
       }
 
-      // Add new problems (each becomes a review in ~1 day)
+      // Add new problems — use the same initial stability base as computeInitialStability
       if (newPerDay > 0) {
         const newCount = Math.round(newPerDay);
         for (let i = 0; i < newCount; i++) {
-          items.push({ stability: 0.5, dueInDays: day + 1 });
+          items.push({ stability: 2.0, dueInDays: day + 2 });
         }
       }
     }
@@ -568,10 +568,11 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
         item.dueInDays = day + Math.round(item.stability);
       }
 
+      // Add new problems — use the same initial stability base as computeInitialStability
       if (newPerDay > 0) {
         const newCount = Math.round(newPerDay);
         for (let i = 0; i < newCount; i++) {
-          items.push({ stability: 0.5, dueInDays: day + 1 });
+          items.push({ stability: 2.0, dueInDays: day + 2 });
         }
       }
     }

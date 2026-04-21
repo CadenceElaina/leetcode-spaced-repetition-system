@@ -130,11 +130,11 @@ $$S_{\text{new}} = S_{\text{old}} \times \text{multiplier} \times \text{modifier
 
 **Multipliers** (by outcome × quality):
 
-| Outcome    | Optimal | Brute Force | No Solution |
-| ---------- | :-----: | :---------: | :---------: |
-| Solved     |  2.5×   |    1.5×     |      —      |
-| Partial    |  1.1×   |    1.1×     |      —      |
-| Not solved |    —    |    0.8×     |    0.5×     |
+| Outcome    | Optimal | Suboptimal | Brute Force | No Solution |
+| ---------- | :-----: | :--------: | :---------: | :---------: |
+| Solved     |  2.5×   |    2.0×    |    1.5×     |      —      |
+| Partial    |  1.1×   |    1.1×    |    1.1×     |      —      |
+| Not solved |    —    |     —      |    0.8×     |    0.5×     |
 
 > Partial solves use 1.1× regardless of quality — needing help means quality is irrelevant.
 
@@ -149,11 +149,9 @@ $$S_{\text{new}} = S_{\text{old}} \times \text{multiplier} \times \text{modifier
 | Confidence 2                       |   −0.2   |
 | Confidence 1                       |   −0.4   |
 
-> **Note:** Time/space complexity correctness bonuses (+0.2 each) were removed. Complexity columns remain in the DB but always store N/A/null. Quality is now binary: Optimal or Not Optimal.
+**Bounds:** Initial stability = `INITIAL_STABILITY_BASE (2.0) × (baseMultiplier + modifier)`. Range: typical first solve ~2–5 days. All stability clamped to [0.5, 365] days.
 
-**Bounds:** Stability clamped to [0.5, 365] days. Initial stability = 0.5 days.
-
-**Special rules:**
+> **Rationale for 2.0 base:** Coding reviews take 15–30 min each. Using `MIN_STABILITY (0.5)` as the base produced next-review intervals of ~1 day even for perfect solves, creating unsustainable queue growth. The 2.0 base targets ~5 days for a strong first solve — consistent with skill-based SRS research and practical daily capacity.
 
 - Partial + confidence ≤ 2 forces next review in 1 day
 - "Could not solve" is due immediately

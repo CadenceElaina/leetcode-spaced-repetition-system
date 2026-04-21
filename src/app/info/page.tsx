@@ -83,9 +83,11 @@ export default function InfoPage() {
 
         <h3 className="text-sm font-semibold pt-2">First Attempt</h3>
         <p>
-          For your very first attempt at a problem, initial stability starts at <strong>0.5 days</strong> (12 hours)
-          multiplied by the same formula. Even a perfect first solve (0.5 × 2.5 = 1.25 days) means you review
-          within a day or two — because one solve doesn&apos;t prove long-term retention.
+          For your very first attempt at a problem, initial stability starts at a base of <strong>2.0 days</strong>
+          multiplied by the same formula. A perfect first solve (2.0 × 2.5 = <strong>5 days</strong>) schedules your
+          next review in about 5 days. A typical solve without modifiers lands at ~2–5 days depending on outcome and
+          confidence. This spacing reflects the real cost of coding reviews (15–30 min each) — daily recall is
+          counterproductive and builds queue debt faster than it can be cleared.
         </p>
 
         <p className="text-xs text-muted-foreground">
@@ -197,6 +199,7 @@ export default function InfoPage() {
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="py-2 pr-4">Outcome</th>
                 <th className="py-2 pr-4">Optimal</th>
+                <th className="py-2 pr-4">Suboptimal</th>
                 <th className="py-2 pr-4">Brute Force</th>
                 <th className="py-2 pr-4">No Solution</th>
               </tr>
@@ -205,16 +208,18 @@ export default function InfoPage() {
               <tr className="border-b border-border">
                 <td className="py-2 pr-4 font-medium">Solved independently</td>
                 <td className="py-2 pr-4 font-mono text-green-500">2.5×</td>
+                <td className="py-2 pr-4 font-mono text-emerald-400">2.0×</td>
                 <td className="py-2 pr-4 font-mono text-amber-500">1.5×</td>
                 <td className="py-2 pr-4 text-muted-foreground">—</td>
               </tr>
               <tr className="border-b border-border">
                 <td className="py-2 pr-4 font-medium">Needed help (Partial)</td>
-                <td className="py-2 pr-4 font-mono text-muted-foreground" colSpan={2}>1.1× (quality ignored)</td>
+                <td className="py-2 pr-4 font-mono text-muted-foreground" colSpan={3}>1.1× (quality ignored)</td>
                 <td className="py-2 pr-4 text-muted-foreground">—</td>
               </tr>
               <tr className="border-b border-border">
                 <td className="py-2 pr-4 font-medium">Could not solve</td>
+                <td className="py-2 pr-4 text-muted-foreground">—</td>
                 <td className="py-2 pr-4 text-muted-foreground">—</td>
                 <td className="py-2 pr-4 font-mono text-orange-500">0.8×</td>
                 <td className="py-2 pr-4 font-mono text-red-500">0.5×</td>
@@ -241,8 +246,6 @@ export default function InfoPage() {
             </thead>
             <tbody>
               <tr className="border-b border-border"><td className="py-2 pr-4">Rewrote from scratch</td><td className="py-2 pr-4 font-mono text-green-500">+0.5</td><td className="py-2 pr-4">Proves you can write it clean, not just fix old code</td></tr>
-              <tr className="border-b border-border"><td className="py-2 pr-4">Correct time complexity</td><td className="py-2 pr-4 font-mono text-green-500">+0.2</td><td className="py-2 pr-4">You understand the algorithm&apos;s efficiency</td></tr>
-              <tr className="border-b border-border"><td className="py-2 pr-4">Correct space complexity</td><td className="py-2 pr-4 font-mono text-green-500">+0.2</td><td className="py-2 pr-4">You understand the memory usage</td></tr>
               <tr className="border-b border-border"><td className="py-2 pr-4">Fast solve (Medium &lt; 10 min)</td><td className="py-2 pr-4 font-mono text-green-500">+0.2</td><td className="py-2 pr-4">Speed indicates strong recall</td></tr>
             </tbody>
           </table>

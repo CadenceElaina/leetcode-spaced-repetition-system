@@ -24,11 +24,19 @@ const MIN_STABILITY = 0.5; // days
 const MAX_STABILITY = 365; // days
 const RETRIEVABILITY_FLOOR = 0.3;
 
+// Base for first-attempt stability. Using 2.0 rather than MIN_STABILITY (0.5)
+// because coding problems require ~5-30 min to review — aggressive daily recall
+// is counterproductive and builds queue debt faster than the user can clear it.
+// FSRS calibration for "good" first recall targets ~15 days; 2.0 × 2.5 = 5 days
+// is a deliberate conservative choice for a skill-heavy domain.
+const INITIAL_STABILITY_BASE = 2.0; // days
+
 /* ── Base multipliers (§6.2) ── */
 
 const BASE_MULTIPLIERS: Record<string, number> = {
   // solved=YES — quality matters
   "YES:OPTIMAL": 2.5,
+  "YES:SUBOPTIMAL": 2.0,
   "YES:BRUTE_FORCE": 1.5,
   "YES:NONE": 1.0,
   // solved=PARTIAL — needed help, quality is irrelevant
@@ -100,7 +108,7 @@ export function computeInitialStability(signals: AttemptSignals): number {
   const baseMultiplier = BASE_MULTIPLIERS[key] ?? 1.0;
   const modifier = computeModifier(signals);
 
-  const s = MIN_STABILITY * (baseMultiplier + modifier);
+  const s = INITIAL_STABILITY_BASE * (baseMultiplier + modifier);
   return clampStability(s);
 }
 

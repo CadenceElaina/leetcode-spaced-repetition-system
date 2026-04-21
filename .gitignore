@@ -13,6 +13,9 @@ out/
 # hidden docs
 hidden-docs/
 
+# private planning / handoff docs
+HANDOFF.md
+
 # personal data scripts (not for public repo)
 scripts/seed-my-history.ts
 
