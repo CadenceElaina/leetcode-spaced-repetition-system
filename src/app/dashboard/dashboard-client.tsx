@@ -1449,8 +1449,8 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 <button onClick={() => setCategoryView("all")} className={`text-[10px] px-1.5 py-0.5 rounded ${categoryView === "all" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}>All</button>
               </div>
             </div>
-            <div className="max-h-[140px] overflow-y-auto pr-1.5 space-y-1.5">
-              {displayCategories.map((cat) => (
+            <div className="space-y-1.5">
+              {displayCategories.slice(0, 5).map((cat) => (
                 <Link key={cat.category} href={`/problems?category=${encodeURIComponent(cat.category)}`} className="flex items-center gap-2 group/cat cursor-pointer">
                   <span className="text-xs w-24 shrink-0 truncate group-hover/cat:text-foreground transition-colors" title={cat.category}>{cat.category}</span>
                   <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background group-hover/cat:h-2 transition-all duration-150">
@@ -2213,10 +2213,10 @@ function MasteryProgress({
         </div>
       )}
 
-      {/* Learning problems — stability progress toward 30d */}
+      {/* Learning problems — stability progress toward 45d */}
       {learningList.length > 0 && (
         <div className="mt-2 rounded-md border border-border/40 bg-background/30 p-2">
-          <p className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-1.5">Learning — stability toward 30d</p>
+          <p className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-1.5">Learning — stability toward 45d</p>
           <div className="space-y-1">
             {displayLearning.map((item) => {
               const pct = Math.min(100, (item.stability / MASTERY_THRESHOLD) * 100);
