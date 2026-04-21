@@ -1413,9 +1413,9 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
           </div>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-xs text-foreground mb-1">Total Solve</p><p className="text-2xl font-bold">{formatMinutes(data.totalSolveMinutes)}</p></div>
-              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-xs text-foreground mb-1">Total Study</p><p className="text-2xl font-bold">{formatMinutes(data.totalStudyMinutes)}</p></div>
-              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-xs text-foreground mb-1">Avg Solve</p><p className="text-2xl font-bold">{data.avgSolveMinutes > 0 ? `${Math.round(data.avgSolveMinutes)}m` : "—"}</p></div>
+              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-xs text-foreground mb-1">Total Solve</p><p className="text-xl font-bold">{formatMinutes(data.totalSolveMinutes)}</p></div>
+              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-xs text-foreground mb-1">Total Study</p><p className="text-xl font-bold">{formatMinutes(data.totalStudyMinutes)}</p></div>
+              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-xs text-foreground mb-1">Avg Solve</p><p className="text-xl font-bold">{data.avgSolveMinutes > 0 ? `${Math.round(data.avgSolveMinutes)}m` : "—"}</p></div>
             </div>
           </div>
         </section>
