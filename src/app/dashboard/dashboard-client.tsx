@@ -308,7 +308,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
   const [showQueueForecast, setShowQueueForecast] = useState(true);
   const [forecastMode, setForecastMode] = useState<"actual" | "goals">("actual");
   const [countdownTitle, setCountdownTitle] = useState("Fall Recruiting Countdown");
-  const [forecastReviewPerDay, setForecastReviewPerDay] = useState(5);
+  const [forecastReviewPerDay, setForecastReviewPerDay] = useState(2);
   const [forecastNewPerDay, setForecastNewPerDay] = useState(2);
 
 
@@ -355,7 +355,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
     const savedGoalForCount = localStorage.getItem("srs_goal_type");
     if (savedGoalForCount === "blind75" && !saved) setTargetCount(75);
     const savedForecastReview = localStorage.getItem("aurora_forecast_review_per_day");
-    if (savedForecastReview) setForecastReviewPerDay(parseFloat(savedForecastReview));
+    if (savedForecastReview) setForecastReviewPerDay(parseInt(savedForecastReview, 10));
     const savedForecastNew = localStorage.getItem("aurora_forecast_new_per_day");
     if (savedForecastNew) setForecastNewPerDay(parseInt(savedForecastNew, 10));
     const savedForecastMode = localStorage.getItem("aurora_forecast_mode");
