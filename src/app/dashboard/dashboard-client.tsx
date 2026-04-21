@@ -358,7 +358,13 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
     if (savedForecastReview) setForecastReviewPerDay(parseFloat(savedForecastReview));
     const savedForecastNew = localStorage.getItem("aurora_forecast_new_per_day");
     if (savedForecastNew) setForecastNewPerDay(parseFloat(savedForecastNew));
-  }, []);
+    const savedForecastMode = localStorage.getItem("aurora_forecast_mode");
+    if (savedForecastMode === "actual" || savedForecastMode === "goals") {
+      setForecastMode(savedForecastMode);
+    } else if (reviewItems.length === 0) {
+      setForecastMode("goals");
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist active tab (don't persist mock — always start fresh on load)
   useEffect(() => {
@@ -1635,7 +1641,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                 {(["actual", "goals"] as const).map((m) => (
                   <button
                     key={m}
-                    onClick={() => setForecastMode(m)}
+                    onClick={() => { setForecastMode(m); localStorage.setItem("aurora_forecast_mode", m); }}
                     className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
                       forecastMode === m
                         ? "bg-accent/20 text-accent font-semibold"
