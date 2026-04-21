@@ -489,54 +489,43 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
     const queue = reviewItems.map((r) => ({ stability: r.stability, daysOverdue: r.daysOverdue }));
     if (queue.length === 0) return null;
 
-    const reviewsPerDay = Math.max(1, data.avgReviewPerDay);
+    const reviewsPerDay = Math.max(0.1, data.avgReviewPerDay);
     const newPerDay = data.avgNewPerDay;
-    // Average stability multiplier based on typical outcomes (solved + confidence 3-4)
     const AVG_MULTIPLIER = 2.0;
 
-    // Simulate: each day, review N items (lowest stability first).
-    // After review, item re-enters queue after newStability days.
-    // New problems add ~1 review on day 2.
+    // Simulate backlog draining only — new items are not included because
+    // they generate reviews on their own schedule and are not part of the
+    // current overdue pile. Use a fractional accumulator so 1.9 rev/day
+    // properly clears 10 items over ~6 days instead of rounding per day.
     type QueueItem = { stability: number; dueInDays: number };
     const items: QueueItem[] = queue.map((q) => ({ stability: q.stability, dueInDays: 0 }));
 
     const dailyQueueSize: number[] = [];
     const MAX_DAYS = 30;
+    let reviewBudget = 0;
 
     for (let day = 0; day < MAX_DAYS; day++) {
-      // Count items due today or earlier
       const due = items.filter((it) => it.dueInDays <= day);
       dailyQueueSize.push(due.length);
 
-      // Review the lowest-stability items first
+      reviewBudget += reviewsPerDay;
       due.sort((a, b) => a.stability - b.stability);
-      const toReview = due.slice(0, Math.round(reviewsPerDay));
+      const toReview = Math.min(Math.floor(reviewBudget), due.length);
+      reviewBudget -= toReview;
 
-      for (const item of toReview) {
+      const reviewing = due.slice(0, toReview);
+      for (const item of reviewing) {
         item.stability = Math.min(365, item.stability * AVG_MULTIPLIER);
         item.dueInDays = day + Math.round(item.stability);
       }
-
-      // Add new problems — use the same initial stability base as computeInitialStability
-      if (newPerDay > 0) {
-        const newCount = Math.round(newPerDay);
-        for (let i = 0; i < newCount; i++) {
-          items.push({ stability: 2.0, dueInDays: day + 2 });
-        }
-      }
     }
 
-    // Find when queue clears (first day with 0 items, or min)
     const clearDay = dailyQueueSize.findIndex((size) => size === 0);
-    const minSize = Math.min(...dailyQueueSize);
-    const minDay = dailyQueueSize.indexOf(minSize);
 
     return {
       currentSize: queue.length,
       dailyQueueSize,
       clearDay: clearDay === -1 ? null : clearDay,
-      minSize,
-      minDay,
       reviewsPerDay: Math.round(reviewsPerDay * 10) / 10,
       newPerDay: Math.round(newPerDay * 10) / 10,
     };
@@ -546,7 +535,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
     const queue = reviewItems.map((r) => ({ stability: r.stability, daysOverdue: r.daysOverdue }));
     if (queue.length === 0) return null;
 
-    const reviewsPerDay = Math.max(1, forecastReviewPerDay);
+    const reviewsPerDay = Math.max(0.1, forecastReviewPerDay);
     const newPerDay = forecastNewPerDay;
     const AVG_MULTIPLIER = 2.0;
 
@@ -555,38 +544,30 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
 
     const dailyQueueSize: number[] = [];
     const MAX_DAYS = 30;
+    let reviewBudget = 0;
 
     for (let day = 0; day < MAX_DAYS; day++) {
       const due = items.filter((it) => it.dueInDays <= day);
       dailyQueueSize.push(due.length);
 
+      reviewBudget += reviewsPerDay;
       due.sort((a, b) => a.stability - b.stability);
-      const toReview = due.slice(0, Math.round(reviewsPerDay));
+      const toReview = Math.min(Math.floor(reviewBudget), due.length);
+      reviewBudget -= toReview;
 
-      for (const item of toReview) {
+      const reviewing = due.slice(0, toReview);
+      for (const item of reviewing) {
         item.stability = Math.min(365, item.stability * AVG_MULTIPLIER);
         item.dueInDays = day + Math.round(item.stability);
-      }
-
-      // Add new problems — use the same initial stability base as computeInitialStability
-      if (newPerDay > 0) {
-        const newCount = Math.round(newPerDay);
-        for (let i = 0; i < newCount; i++) {
-          items.push({ stability: 2.0, dueInDays: day + 2 });
-        }
       }
     }
 
     const clearDay = dailyQueueSize.findIndex((size) => size === 0);
-    const minSize = Math.min(...dailyQueueSize);
-    const minDay = dailyQueueSize.indexOf(minSize);
 
     return {
       currentSize: queue.length,
       dailyQueueSize,
       clearDay: clearDay === -1 ? null : clearDay,
-      minSize,
-      minDay,
       reviewsPerDay: Math.round(reviewsPerDay * 10) / 10,
       newPerDay: Math.round(newPerDay * 10) / 10,
     };
@@ -1626,7 +1607,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                   </div>
                   {/* New row */}
                   <div className="grid grid-cols-3 items-center">
-                    <span className="text-xs text-muted-foreground">New</span>
+                    <span className="text-xs text-green-500 font-medium">New</span>
                     {editingPace ? (
                       <>
                         <span className="text-right font-medium text-sm tabular-nums text-muted-foreground">{plannedNewPerDay.toFixed(1)}</span>
@@ -1641,7 +1622,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
                   </div>
                   {/* Review row */}
                   <div className="grid grid-cols-3 items-center">
-                    <span className="text-xs text-muted-foreground">Review</span>
+                    <span className="text-xs text-accent font-medium">Review</span>
                     {editingPace ? (
                       <>
                         <span className="text-right font-medium text-sm tabular-nums text-muted-foreground">{plannedReviewPerDay.toFixed(1)}</span>
