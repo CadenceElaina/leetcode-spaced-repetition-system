@@ -1398,11 +1398,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
               <div className="flex gap-3 items-start">
                 {/* Left: grade badge + score only */}
                 <div className="flex flex-col items-center gap-1 shrink-0 w-14 pt-0.5">
-                  {data.attemptedCount < 5 ? (
-                    <span title="Log at least 5 problems to unlock your readiness tier" className="inline-flex h-12 w-12 items-center justify-center rounded-lg text-2xl font-black bg-muted text-muted-foreground cursor-help">—</span>
-                  ) : (
-                    <span className={`inline-flex h-12 w-12 items-center justify-center rounded-lg text-2xl font-black ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
-                  )}
+                  <span className={`inline-flex h-12 w-12 items-center justify-center rounded-lg text-2xl font-black ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
                   <span className="text-base font-bold tabular-nums leading-none">{data.readiness.score}<span className="text-[11px] text-muted-foreground font-normal">/100</span></span>
                 </div>
                 {/* Right: readiness bars — weight in tooltip, not label */}
