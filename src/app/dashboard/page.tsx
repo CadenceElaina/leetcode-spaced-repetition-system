@@ -304,12 +304,17 @@ export default async function DashboardPage() {
   const totalScheduled = recentAttemptCount + scheduledInWindow;
   const consistencyPct = totalScheduled > 0 ? recentAttemptCount / totalScheduled : 0;
 
+  // Scale retention/catbal/consistency by data confidence so cold-start users
+  // don't score 60-70/100 on vacuously perfect components with 1-2 problems.
+  // Full weight at 10+ problems; linearly ramps up below that.
+  const sampleWeight = Math.min(1, userStates.length / 10);
+
   const readiness = computeReadiness({
     totalProblems: allProblems.length,
     attemptedCount: userStates.length,
-    retainedCount,
-    lowestCategoryAvgR,
-    reviewsCompletedPct: Math.min(1, consistencyPct),
+    retainedCount: Math.round(retainedCount * sampleWeight),
+    lowestCategoryAvgR: lowestCategoryAvgR * sampleWeight,
+    reviewsCompletedPct: Math.min(1, consistencyPct) * sampleWeight,
   });
 
   // Streak calculation
