@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { ChevronRight, Github, LogOut, Trash2 } from "lucide-react";
 import { SetupGuide } from "@/components/setup-guide";
 import { DeleteAccountModal } from "@/components/delete-account-modal";
 
@@ -95,7 +96,7 @@ function useGreeting(userName?: string): string | null {
   return greeting;
 }
 
-export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = false, userName }: { isAuthenticated?: boolean; authConfigured?: boolean; isDemo?: boolean; userName?: string }) {
+export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = false, userName, userEmail, userImage }: { isAuthenticated?: boolean; authConfigured?: boolean; isDemo?: boolean; userName?: string; userEmail?: string; userImage?: string }) {
   const pathname = usePathname();
   const [logoHovered, setLogoHovered] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -173,7 +174,7 @@ export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = f
           <span className="hidden sm:inline text-sm text-muted-foreground">{greeting}</span>
         )}
         {isAuthenticated ? (
-          <UserMenu userName={userName} />
+          <UserMenu userName={userName} userEmail={userEmail} userImage={userImage} />
         ) : authConfigured ? (
           <div className="flex items-center gap-1.5">
             {isDemo && !isLanding && (
@@ -225,7 +226,7 @@ export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = f
 
 /* ── User Menu ── Signed-in avatar dropdown with sign-out + destructive actions */
 
-function UserMenu({ userName }: { userName?: string }) {
+function UserMenu({ userName, userEmail, userImage }: { userName?: string; userEmail?: string; userImage?: string }) {
   const [open, setOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -239,49 +240,68 @@ function UserMenu({ userName }: { userName?: string }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  const initial = userName?.trim()?.[0]?.toUpperCase() ?? "?";
+  const displayName = userName || userEmail || "Account";
+  const initial = displayName.trim()?.[0]?.toUpperCase() ?? "?";
 
   return (
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-border/60 bg-muted text-xs font-semibold text-foreground transition-colors hover:border-accent/60 hover:bg-accent/10 hover:text-accent"
+        className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-muted text-xs font-semibold text-foreground transition-colors hover:border-accent/60 hover:bg-accent/10 hover:text-accent"
         aria-label="Account menu"
         aria-haspopup="menu"
         aria-expanded={open}
-        title={userName ? `Signed in as ${userName}` : "Account"}
+        title={`Signed in as ${displayName}`}
       >
-        {initial}
+        {userImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={userImage} alt="" className="h-full w-full object-cover" />
+        ) : initial}
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-1 w-52 rounded-lg border border-border bg-background shadow-lg z-50 py-1"
+          className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-border bg-background p-1.5 shadow-xl"
         >
-          {userName && (
-            <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border/60 truncate">
-              Signed in as <span className="text-foreground font-medium">{userName}</span>
+          <div className="flex items-center gap-3 rounded-md bg-muted/45 px-3 py-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/70 bg-background text-sm font-semibold text-foreground">
+              {userImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={userImage} alt="" className="h-full w-full object-cover" />
+              ) : initial}
             </div>
-          )}
-          <button
-            role="menuitem"
-            onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }}
-            className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-muted transition-colors"
-          >
-            Sign out
-          </button>
-          <div className="my-1 h-px bg-border/60" />
-          <div className="px-1">
-            <GitHubSyncDropdown menuItem />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
+              {userEmail && userEmail !== displayName ? (
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{userEmail}</p>
+              ) : (
+                <p className="mt-0.5 text-xs text-muted-foreground">Signed in</p>
+              )}
+            </div>
           </div>
-          <div className="my-1 h-px bg-border/60" />
+
+          <div className="mt-1.5 space-y-1">
+            <button
+              role="menuitem"
+              onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+            >
+              <LogOut className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <span>Sign out</span>
+            </button>
+          </div>
+
+          <div className="my-1.5 h-px bg-border/60" />
+          <GitHubSyncDropdown menuItem />
+          <div className="my-1.5 h-px bg-border/60" />
           <button
             role="menuitem"
             onClick={() => { setOpen(false); setDeleteOpen(true); }}
-            className="w-full px-3 py-2 text-left text-sm text-destructive/80 hover:bg-destructive/10 hover:text-destructive transition-colors"
+            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-destructive/75 transition-colors hover:bg-destructive/10 hover:text-destructive"
           >
-            Delete account
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            <span>Delete account</span>
           </button>
         </div>
       )}
@@ -344,12 +364,13 @@ function GitHubSyncDropdown({ menuItem = false }: { menuItem?: boolean }) {
     // Cache miss on first ever load — show a minimal placeholder that opens setup
     if (!menuItem) return null;
     return (
-      <div className="px-2 py-2">
-        <div className="flex items-center gap-2 opacity-50 text-sm text-foreground">
-          <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-          </svg>
-          GitHub Sync
+      <div className="rounded-md px-3 py-2.5 opacity-60">
+        <div className="flex items-center gap-3 text-sm text-foreground">
+          <Github className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">GitHub Sync</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Checking status...</p>
+          </div>
         </div>
       </div>
     );
@@ -405,23 +426,24 @@ function GitHubSyncDropdown({ menuItem = false }: { menuItem?: boolean }) {
       <button
         onClick={() => setOpen(!open)}
         className={menuItem
-          ? "w-full rounded-md px-2 py-2 text-left hover:bg-muted transition-colors"
+          ? "w-full rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted"
           : "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"}
         aria-label={status.connected ? `GitHub sync: ${status.repo}` : "GitHub sync"}
         title={status.connected ? `GitHub sync: ${status.repo}` : "GitHub sync"}
       >
         {menuItem ? (
-          <div className="w-full">
-            <div className="flex items-center gap-2">
-              <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-              </svg>
-              <span className="text-sm text-foreground">GitHub Sync</span>
-              {status.connected && <span className="ml-auto h-2 w-2 rounded-full bg-green-500" />}
+          <div className="flex w-full items-center gap-3">
+            <Github className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-foreground">GitHub Sync</span>
+                <span className={`h-1.5 w-1.5 rounded-full ${status.connected ? "bg-green-500" : "bg-muted-foreground/60"}`} />
+              </div>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                {status.connected && status.repo ? status.repo : "Not connected"}
+              </p>
             </div>
-            {status.connected && status.repo && (
-              <p className="mt-1 pl-6 text-[11px] text-muted-foreground truncate">{status.repo}</p>
-            )}
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
           </div>
         ) : (
           <>

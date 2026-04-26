@@ -16,11 +16,15 @@ export default async function RootLayout({
 }>) {
   let isAuthenticated = false;
   let userName: string | undefined;
+  let userEmail: string | undefined;
+  let userImage: string | undefined;
   if (isAuthConfigured) {
     try {
       const session = await auth();
       isAuthenticated = !!session?.user?.id;
       userName = session?.user?.name ?? undefined;
+      userEmail = session?.user?.email ?? undefined;
+      userImage = session?.user?.image ?? undefined;
     } catch {
       // Auth call failed — treat as unauthenticated
     }
@@ -30,7 +34,14 @@ export default async function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className="min-h-screen overflow-x-hidden bg-background text-foreground antialiased">
         <ThemeProvider>
-          <Nav isAuthenticated={isAuthenticated} authConfigured={isAuthConfigured} isDemo={!isAuthenticated} userName={userName} />
+          <Nav
+            isAuthenticated={isAuthenticated}
+            authConfigured={isAuthConfigured}
+            isDemo={!isAuthenticated}
+            userName={userName}
+            userEmail={userEmail}
+            userImage={userImage}
+          />
           <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
         </ThemeProvider>
       </body>
