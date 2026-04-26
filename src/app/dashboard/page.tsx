@@ -81,7 +81,7 @@ export default async function DashboardPage() {
           lt(attempts.createdAt, tomorrowStart),
         ),
       ),
-    db.select({ autoDeferHards: users.autoDeferHards }).from(users).where(eq(users.id, userId)).limit(1),
+    db.select({ autoDeferHards: users.autoDeferHards, onboardingComplete: users.onboardingComplete }).from(users).where(eq(users.id, userId)).limit(1),
     db
       .select({
         problemId: attempts.problemId,
@@ -95,6 +95,7 @@ export default async function DashboardPage() {
   const stateMap = new Map(userStates.map((s) => [s.problemId, s]));
   const attemptedIds = new Set(userStates.map((s) => s.problemId));
   const autoDeferHards = userRow[0]?.autoDeferHards ?? false;
+  const onboardingComplete = userRow[0]?.onboardingComplete ?? false;
 
   // Helper: check if a problem is currently deferred
   const isDeferred = (s: typeof userStates[number], difficulty?: string) => {
@@ -430,6 +431,7 @@ export default async function DashboardPage() {
     <Suspense>
     <DashboardClient
       userId={userId}
+      onboardingComplete={onboardingComplete}
       data={{
         reviewQueue,
         deferredProblems,

@@ -67,6 +67,7 @@ export const users = pgTable("user", {
   image: text("image"),
   targetDate: date("target_date"),
   autoDeferHards: boolean("auto_defer_hards").notNull().default(false),
+  onboardingComplete: boolean("onboarding_complete").notNull().default(false),
   githubRepo: varchar("github_repo", { length: 255 }),
   githubWebhookSecret: varchar("github_webhook_secret", { length: 255 }),
   githubConnectedAt: timestamp("github_connected_at"),

@@ -4,6 +4,22 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
+export async function PATCH(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json();
+
+  if (body.action === "complete-onboarding") {
+    await db.update(users).set({ onboardingComplete: true }).where(eq(users.id, session.user.id));
+    return NextResponse.json({ ok: true });
+  }
+
+  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+}
+
 export async function DELETE(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 
-const ONBOARDING_KEY = "aurora_onboarding_complete";
+
 
 /* ── Simulated review queue data ── */
 const MOCK_REVIEW_ITEMS = [
@@ -70,13 +70,12 @@ const STEPS = [
   },
 ];
 
-export function Onboarding({ isDemo = false, userId, onPreferences }: {
+export function Onboarding({ isDemo = false, onboardingComplete = false, onPreferences }: {
   isDemo?: boolean;
-  userId?: string;
+  onboardingComplete?: boolean;
   onPreferences?: (prefs: { targetCount: number; targetDate: string; autoDeferHards: boolean; goalType: "blind75" | "neetcode150" | "none" }) => void;
 }) {
   const [show, setShow] = useState(false);
-  const storageKey = userId ? `${ONBOARDING_KEY}_${userId}` : ONBOARDING_KEY;
   const [step, setStep] = useState(0);
   const [rects, setRects] = useState<{ queue: Rect | null; stats: Rect | null }>({ queue: null, stats: null });
   const [logFrame, setLogFrame] = useState(0);
@@ -100,11 +99,11 @@ export function Onboarding({ isDemo = false, userId, onPreferences }: {
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem(storageKey)) {
+    if (!isDemo && !onboardingComplete) {
       const t = setTimeout(() => { setShow(true); measure(); }, 400);
       return () => clearTimeout(t);
     }
-  }, [measure, storageKey]);
+  }, [isDemo, onboardingComplete, measure]);
 
   useEffect(() => {
     if (!show) return;
@@ -144,19 +143,19 @@ export function Onboarding({ isDemo = false, userId, onPreferences }: {
 
   function finish() {
     const targetCount = selectedGoal === "blind75" ? 75 : selectedGoal === "neetcode150" ? 150 : 0;
-    if (targetCount > 0) {
-      localStorage.setItem("srs_target", JSON.stringify({ date: selectedDate, count: targetCount }));
-    }
     if (!isDemo) {
       fetch("/api/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "toggle-auto-defer-hards", enabled: deferHards }),
-      }).catch(() => {/* ignore errors during onboarding save */});
+      }).catch(() => {/* ignore */});
+      fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "complete-onboarding" }),
+      }).catch(() => {/* ignore */});
     }
-    localStorage.setItem("srs_goal_type", selectedGoal);
     onPreferences?.({ targetCount, targetDate: selectedDate, autoDeferHards: deferHards, goalType: selectedGoal });
-    localStorage.setItem(storageKey, "1");
     setShow(false);
   }
 
@@ -326,11 +325,10 @@ export function Onboarding({ isDemo = false, userId, onPreferences }: {
                 {logFrame >= 4 && (
                   <div className="pt-2 border-t border-border/50 text-center">
                     {logFrame === 4 ? (
-                      <p className="text-xs text-muted-foreground animate-pulse">Saving\u2026</p>
+                      <p className="text-xs text-muted-foreground animate-pulse">Saving…</p>
                     ) : (
                       <>
-                        <p className="text-xs text-green-400 font-medium">\u2713 Logged — Stability 1.2 \u2192 3.6</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">Next review scheduled in 4 days</p>
+                        <p className="text-xs text-green-400 font-medium">✓ Logged — next review in 4 days</p>
                       </>
                     )}
                   </div>
@@ -338,7 +336,7 @@ export function Onboarding({ isDemo = false, userId, onPreferences }: {
               </div>
               {/* Modal footer */}
               <div className="flex items-center justify-between px-4 py-2.5 border-t border-border">
-                <span className="text-[10px] text-muted-foreground">Full form \u2192</span>
+                <span className="text-[10px] text-muted-foreground">Full form →</span>
                 <div className="flex gap-2">
                   <span className="inline-flex h-7 items-center rounded-md border border-border px-3 text-[11px] text-muted-foreground">Cancel</span>
                   <span className={`inline-flex h-7 items-center rounded-md px-3 text-[11px] font-medium transition-all duration-300 ${
@@ -392,7 +390,7 @@ export function Onboarding({ isDemo = false, userId, onPreferences }: {
             </p>
             {logFrame >= 5 && (
               <div className="rounded-md bg-green-500/10 border border-green-500/20 p-2 text-center">
-                <p className="text-xs text-green-400 font-medium">\u2713 Stability 1.2 \u2192 3.6 \u00b7 Next review in 4d</p>
+                <p className="text-xs text-green-400 font-medium">✓ Logged — next review in 4 days</p>
               </div>
             )}
           </div>

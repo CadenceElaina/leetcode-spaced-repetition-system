@@ -268,7 +268,7 @@ function getDefaultTargetDate(): string {
 
 /* ── Main Component ── */
 
-export function DashboardClient({ data, isDemo = false, userId }: { data: DashboardData; isDemo?: boolean; userId?: string }) {
+export function DashboardClient({ data, isDemo = false, userId, onboardingComplete = false }: { data: DashboardData; isDemo?: boolean; userId?: string; onboardingComplete?: boolean }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [srsBanner, setSrsBanner] = useState<{ oldS: number; newS: number; next: string; pct: number; attemptId: string; pName: string; pNum: string } | null>(null);
@@ -777,7 +777,7 @@ export function DashboardClient({ data, isDemo = false, userId }: { data: Dashbo
   return (
     <>
     {/* Onboarding Walkthrough */}
-    <Onboarding isDemo={isDemo} userId={userId} onPreferences={(prefs) => {
+    <Onboarding isDemo={isDemo} onboardingComplete={onboardingComplete} onPreferences={(prefs) => {
       if (prefs.targetCount > 0) {
         setTargetCount(prefs.targetCount);
         setTargetDate(prefs.targetDate);

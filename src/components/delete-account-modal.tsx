@@ -46,8 +46,8 @@ export function DeleteAccountModal({ open, onClose }: { open: boolean; onClose: 
         return;
       }
 
-      localStorage.removeItem("aurora_onboarding_complete");
       localStorage.removeItem("srs_target");
+      localStorage.removeItem("srs_goal_type");
       localStorage.removeItem("aurora_greeting");
       localStorage.removeItem("aurora_guide_pos");
 
