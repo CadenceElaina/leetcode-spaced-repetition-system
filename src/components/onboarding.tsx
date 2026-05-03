@@ -86,7 +86,11 @@ export function Onboarding({ isDemo = false, onboardingComplete = false, onPrefe
 
   // Preference state for goal step
   const [selectedGoal, setSelectedGoal] = useState<"blind75" | "neetcode150" | "none">("neetcode150");
-  const [selectedDate, setSelectedDate] = useState("2026-09-01");
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    const year = now.getMonth() >= 8 ? now.getFullYear() + 1 : now.getFullYear();
+    return `${year}-09-01`;
+  });
   const [deferHards, setDeferHards] = useState(true);
 
   const measure = useCallback(() => {
@@ -252,7 +256,7 @@ export function Onboarding({ isDemo = false, onboardingComplete = false, onPrefe
                 Review <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full bg-accent-foreground/20">{MOCK_REVIEW_ITEMS.length}</span>
               </span>
               <span className="text-sm px-2.5 py-1 rounded text-muted-foreground">New <span className="ml-1 text-xs">43</span></span>
-              <span className="text-sm px-2.5 py-1 rounded text-muted-foreground">Done <span className="ml-1 text-xs">7</span></span>
+              <span className="text-sm px-2.5 py-1 rounded text-muted-foreground">Completed <span className="ml-1 text-xs">7</span></span>
               <span className="text-sm px-2.5 py-1 rounded text-muted-foreground">Deferred</span>
               <span className="text-sm px-2.5 py-1 rounded text-muted-foreground">Import</span>
             </div>
@@ -436,7 +440,7 @@ export function Onboarding({ isDemo = false, onboardingComplete = false, onPrefe
                   style={{ colorScheme: "dark" }}
                   className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50"
                 />
-                <p className="text-[11px] text-muted-foreground mt-1">Default: Sep 1, 2026 (Fall recruiting season)</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Default: Sep 1 (Fall recruiting season)</p>
               </div>
             )}
             {/* Defer hards toggle */}
