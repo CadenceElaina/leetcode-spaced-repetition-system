@@ -508,7 +508,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
   const [showStatsDetail, setShowStatsDetail] = useState(false);
   const [pendingItems, setPendingItems] = useState<PendingItem[]>(data.pendingSubmissions);
   const [logModalProblem, setLogModalProblem] = useState<LogModalProblem | null>(null);
-  const [collapsedWidgets, setCollapsedWidgets] = useState<Record<string, boolean>>({});
+  const [collapsedWidgets, setCollapsedWidgets] = useState<Record<string, boolean>>({ mastery: true });
   const [activityViewMode, setActivityViewMode] = useState<"14d" | "monthly" | "heatmap">("14d");
   const [activityPage, setActivityPage] = useState(0);
   const [deferredItems, setDeferredItems] = useState(data.deferredProblems);
@@ -1033,7 +1033,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
         ]);
       }
     }} />
-    <div className="relative lg:h-[calc(100dvh-7.5rem)]">
+    <div className="relative md:h-[calc(100dvh-7.5rem)]">
     {/* Subtle ambient starfield — fixed, full-viewport, behind all content */}
     <SkyCanvas />
     {/* All interactive content above the starfield */}
@@ -1083,9 +1083,9 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
         }}
       />
     )}
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:flex-1 lg:min-h-0 lg:grid-rows-1">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-12 md:flex-1 md:min-h-0 md:grid-rows-1">
       {/* ── Combined Problem Queue ── */}
-      <div className="flex flex-col lg:min-h-0 lg:h-full lg:col-span-6" data-onboarding="queue">
+      <div className="flex flex-col md:min-h-0 md:h-full md:col-span-7 lg:col-span-6" data-onboarding="queue">
         {/* Pending GitHub submissions banner */}
         {pendingItems.length > 0 && (
           <PendingBanner
@@ -1551,12 +1551,12 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
       </div>
 
       {/* ── Right Column ── */}
-      <div className="flex flex-col lg:col-span-6 lg:min-h-0 lg:h-full overflow-hidden" data-onboarding="stats">
+      <div className="flex flex-col md:col-span-5 md:min-h-0 md:h-full lg:col-span-6 overflow-hidden" data-onboarding="stats">
         <div className="flex flex-col gap-3 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
         {!showStatsDetail && (<>
         {/* Countdown */}
         <section className="rounded-lg border border-border bg-muted p-3">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-semibold text-foreground">{countdownTitle}</p>
             <div className="flex items-center gap-2">
               <button
@@ -1578,19 +1578,17 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
             </div>
           </div>
 
-          {/* Main body: left info + right donut */}
-          <div className="flex items-start gap-3 mt-1">
-            {/* Left: days + date + chips + streak */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold tabular-nums leading-none">{countdown.daysLeft}</span>
-                <span className="text-sm text-muted-foreground">days left</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {targetCount} problems by {new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-              </p>
-              {/* Chip row: on-track + projected — suppress urgency before enough data */}
-              <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+          {/* Main body — compact two-row layout */}
+          <div className="flex items-center gap-3 mt-1.5">
+            <div className="flex-1 min-w-0 space-y-1.5">
+              {/* Row 1: days count + date + status chips */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-2xl font-bold tabular-nums leading-none">
+                  {countdown.daysLeft}<span className="text-xs font-normal text-muted-foreground ml-0.5">d</span>
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {targetCount} by {new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </span>
                 <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${data.attemptedCount < 5 ? "bg-muted text-muted-foreground" : countdown.onTrack ? "bg-green-500/15 text-green-500" : "bg-orange-500/15 text-orange-500"}`}>
                   <span className={`h-1.5 w-1.5 rounded-full ${data.attemptedCount < 5 ? "bg-muted-foreground/50" : countdown.onTrack ? "bg-green-500" : "bg-orange-500"}`} />
                   {data.attemptedCount < 5 ? "Getting started" : countdown.onTrack ? "On track" : `Need ${countdown.neededPerDay.toFixed(1)}/day`}
@@ -1602,8 +1600,8 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                   </span>
                 )}
               </div>
-              {/* Streak + confidence row */}
-              <div className="flex items-center gap-3 mt-2 text-xs">
+              {/* Row 2: streak + best + confidence */}
+              <div className="flex items-center gap-3 text-xs">
                 <span className="flex items-center gap-1">
                   <span className="text-muted-foreground">Streak</span>
                   <span className="font-semibold tabular-nums">
@@ -2585,7 +2583,7 @@ function SettingsPanel({
 /* ── Info Tooltip ── */
 
 function SolvedDonut({ breakdown, totalSolved, totalTarget }: { breakdown: DifficultyBreakdown[]; totalSolved: number; totalTarget: number }) {
-  const r = 34;
+  const r = 27;
   const C = 2 * Math.PI * r;
   const TOTAL_PROBLEMS = 150;
   const easy = breakdown.find(d => d.difficulty === "Easy");
@@ -2603,20 +2601,20 @@ function SolvedDonut({ breakdown, totalSolved, totalTarget }: { breakdown: Diffi
     { color: "#ef4444", len: (hA / TOTAL_PROBLEMS) * C, start: ((eA + mA) / TOTAL_PROBLEMS) * C },
   ].filter(s => s.len > 0);
   return (
-    <div className="flex items-center gap-2.5 shrink-0">
-      <svg width="84" height="84" viewBox="0 0 84 84">
-        <circle cx={42} cy={42} r={r} fill="none" strokeWidth={7} stroke="#374151" />
+    <div className="flex items-center gap-2 shrink-0">
+      <svg width="68" height="68" viewBox="0 0 68 68">
+        <circle cx={34} cy={34} r={r} fill="none" strokeWidth={6} stroke="#374151" />
         {segs.map(({ color, len, start }) => (
           <circle
-            key={color} cx={42} cy={42} r={r} fill="none"
-            stroke={color} strokeWidth={7}
+            key={color} cx={34} cy={34} r={r} fill="none"
+            stroke={color} strokeWidth={6}
             strokeDasharray={`${len} ${C - len}`}
             strokeDashoffset={0}
-            transform={`rotate(${-90 + (start / C) * 360} 42 42)`}
+            transform={`rotate(${-90 + (start / C) * 360} 34 34)`}
           />
         ))}
-        <text x={42} y={42} textAnchor="middle" dominantBaseline="central" fill="#f9fafb" fontSize="20" fontWeight="700">{totalSolved}</text>
-        <text x={42} y={58} textAnchor="middle" dominantBaseline="central" fill="#9ca3af" fontSize="10">/{totalTarget}</text>
+        <text x={34} y={34} textAnchor="middle" dominantBaseline="central" fill="#f9fafb" fontSize="16" fontWeight="700">{totalSolved}</text>
+        <text x={34} y={47} textAnchor="middle" dominantBaseline="central" fill="#9ca3af" fontSize="9">/{totalTarget}</text>
       </svg>
       <div className="flex flex-col gap-1.5 text-xs">
         <div className="flex items-center gap-1">

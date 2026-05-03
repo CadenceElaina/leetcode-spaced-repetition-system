@@ -183,14 +183,14 @@ export function ProblemsTable({
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">#</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Title</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Difficulty</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Category</th>
+              <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Category</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 <span className="flex items-center gap-1">
                   Status
                   <StatusInfoTooltip />
                 </span>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Last</th>
+              <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Last</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
@@ -212,7 +212,7 @@ export function ProblemsTable({
                     )}
                   </td>
                   <td className="px-4 py-3"><DifficultyBadge difficulty={p.difficulty} /></td>
-                  <td className="px-4 py-3 text-muted-foreground">{p.category}</td>
+                  <td className="hidden md:table-cell px-4 py-3 text-muted-foreground">{p.category}</td>
                   <td className="px-4 py-3">
                     {state ? (
                       <span className={`text-xs font-medium ${status!.className}`}>
@@ -223,7 +223,7 @@ export function ProblemsTable({
                       <span className="text-xs text-muted-foreground">New</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                  <td className="hidden sm:table-cell px-4 py-3 text-xs text-muted-foreground">
                     {state?.lastReviewed ? formatDate(state.lastReviewed) : "—"}
                   </td>
                   <td className="px-4 py-3">

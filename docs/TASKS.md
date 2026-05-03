@@ -27,13 +27,13 @@ Last updated: 2026-05-03 — all tasks complete
 
 ### UX / Feature Verification
 
-| ID    | Priority | Description                                                                                                                                                                                                                    | Scope Hints                                                    | Acceptance Criteria                                                                                                                           |
-| ----- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| ID  | Priority | Description | Scope Hints | Acceptance Criteria |
+| --- | -------- | ----------- | ----------- | ------------------- |
 
 ### Tests / Docs
 
-| ID    | Priority | Description                                                                                                                                                               | Scope Hints                                                         | Acceptance Criteria                                       |
-| ----- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------- |
+| ID  | Priority | Description | Scope Hints | Acceptance Criteria |
+| --- | -------- | ----------- | ----------- | ------------------- |
 
 ---
 
@@ -62,10 +62,10 @@ Last updated: 2026-05-03 — all tasks complete
 | T-003 | 2026-05-03 | `fix(srs)`: explicit `NO:OPTIMAL`=0.8 and `NO:SUBOPTIMAL`=0.8 entries (defensive against direct API calls); 2 new unit tests (55 total) |
 | T-011 | 2026-05-03 | `fix(srs)`: verified trace comment in `computeNewStability`; solved+optimal+confidence-5 → 5.6 days matches README table                |
 | T-015 | 2026-05-03 | `chore(meta)`: OG + Twitter card metadata added to layout.tsx                                                                           |
-| T-010 | 2026-05-03 | `fix(dashboard)`: Log button added to Completed tab; all three entry points verified |
-| T-012 | 2026-05-03 | `verified`: import parsing (tab + cell-per-line), dupe detection, SRS update all functional |
-| T-013 | 2026-05-03 | `verified`: video link prominent; optimal complexity shown on detail page; complexity comparison N/A (field deprecated) |
-| T-014 | 2026-05-03 | `test(api)`: 5 Vitest tests for POST /api/attempts (401, 400×2, 409, 201); 93 total tests passing |
+| T-010 | 2026-05-03 | `fix(dashboard)`: Log button added to Completed tab; all three entry points verified                                                    |
+| T-012 | 2026-05-03 | `verified`: import parsing (tab + cell-per-line), dupe detection, SRS update all functional                                             |
+| T-013 | 2026-05-03 | `verified`: video link prominent; optimal complexity shown on detail page; complexity comparison N/A (field deprecated)                 |
+| T-014 | 2026-05-03 | `test(api)`: 5 Vitest tests for POST /api/attempts (401, 400×2, 409, 201); 93 total tests passing                                       |
 | —     | 2026-04-22 | `fix(readiness)`: sample weight scales score with data volume                                                                           |
 | —     | 2026-04-22 | `fix(readiness)`: show tier from day one, D is honest starting grade                                                                    |
 | —     | 2026-04-22 | `feat(hosting)`: user cap, Supabase keep-alive cron, waitlist page                                                                      |
