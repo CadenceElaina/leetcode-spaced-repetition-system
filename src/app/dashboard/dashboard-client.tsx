@@ -1354,7 +1354,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                       : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
-                  Patterns ({todaySheets.length})
+                  Cheatsheets ({todaySheets.length})
                 </button>
               )}
             </div>
@@ -1720,7 +1720,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
       {/* ── Right Column ── */}
       <div className="flex flex-col md:col-span-5 md:min-h-0 md:h-full lg:col-span-6 overflow-hidden" data-onboarding="stats">
         {sheetDrawerOpen && todaySheets.length > 0 ? (
-          <InlinePatternPanel sheets={todaySheets} onClose={() => setSheetDrawerOpen(false)} />
+          <InlinePatternPanel sheets={todaySheets} onClose={() => setSheetDrawerOpen(false)} reviewCount={reviewItems.length} />
         ) : null}
         <div className={`flex flex-col gap-3 overflow-y-auto overflow-x-hidden flex-1 min-h-0 ${sheetDrawerOpen && todaySheets.length > 0 ? "hidden" : ""}`}>
         {!showStatsDetail && (<>

@@ -7,9 +7,11 @@ import { CheatsheetExpanded } from "@/app/cheatsheets/cheatsheets-client";
 export function InlinePatternPanel({
   sheets,
   onClose,
+  reviewCount,
 }: {
   sheets: Cheatsheet[];
   onClose: () => void;
+  reviewCount?: number;
 }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const active = sheets[Math.min(activeIdx, sheets.length - 1)] ?? sheets[0];
@@ -21,7 +23,12 @@ export function InlinePatternPanel({
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 shrink-0">
         <div>
           <p className="text-sm font-semibold text-foreground">{active.category}</p>
-          <p className="text-[11px] text-muted-foreground">Glance before attempting · then solve from memory</p>
+          <p className="text-[11px] text-muted-foreground">
+            Glance before attempting · then solve from memory
+            {reviewCount != null && reviewCount > 0 && (
+              <span className="ml-2 text-muted-foreground/60">{reviewCount} left</span>
+            )}
+          </p>
         </div>
         <button
           onClick={onClose}
