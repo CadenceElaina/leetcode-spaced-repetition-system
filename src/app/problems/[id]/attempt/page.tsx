@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { problems, userProblemStates } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { problems, userProblemStates, attempts } from "@/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { AttemptForm } from "./attempt-form";
 import { auth } from "@/auth";
@@ -21,18 +21,51 @@ export default async function AttemptPage({ params, searchParams }: { params: Pr
 
   const session = await auth();
   let isReview = false;
+  let priorAttempt: {
+    notes: string | null;
+    code: string | null;
+    confidence: number;
+    solvedIndependently: string;
+    solutionQuality: string;
+    createdAt: string;
+    solveTimeMinutes: number | null;
+  } | null = null;
+
   if (session?.user?.id) {
-    const existing = await db
-      .select({ id: userProblemStates.id })
-      .from(userProblemStates)
-      .where(
-        and(
-          eq(userProblemStates.userId, session.user.id),
-          eq(userProblemStates.problemId, problem.id),
-        ),
-      )
-      .limit(1);
+    const [existing, priorRows] = await Promise.all([
+      db
+        .select({ id: userProblemStates.id })
+        .from(userProblemStates)
+        .where(and(eq(userProblemStates.userId, session.user.id), eq(userProblemStates.problemId, problem.id)))
+        .limit(1),
+      db
+        .select({
+          notes: attempts.notes,
+          code: attempts.code,
+          confidence: attempts.confidence,
+          solvedIndependently: attempts.solvedIndependently,
+          solutionQuality: attempts.solutionQuality,
+          createdAt: attempts.createdAt,
+          solveTimeMinutes: attempts.solveTimeMinutes,
+        })
+        .from(attempts)
+        .where(and(eq(attempts.userId, session.user.id), eq(attempts.problemId, problem.id)))
+        .orderBy(desc(attempts.createdAt))
+        .limit(1),
+    ]);
     isReview = existing.length > 0;
+    if (isReview && priorRows[0]) {
+      const r = priorRows[0];
+      priorAttempt = {
+        notes: r.notes,
+        code: r.code,
+        confidence: r.confidence,
+        solvedIndependently: r.solvedIndependently,
+        solutionQuality: r.solutionQuality,
+        createdAt: r.createdAt.toISOString(),
+        solveTimeMinutes: r.solveTimeMinutes,
+      };
+    }
   }
 
   return (
@@ -49,6 +82,7 @@ export default async function AttemptPage({ params, searchParams }: { params: Pr
         leetcodeNumber={problem.leetcodeNumber}
         problemCategory={problem.category}
         isReview={isReview}
+        priorAttempt={priorAttempt}
         defaultAttemptDate={attemptDate ?? null}
       />
     </div>

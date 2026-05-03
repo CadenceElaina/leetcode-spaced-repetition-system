@@ -13,16 +13,89 @@ const CONFIDENCE_LABELS: Record<number, string> = {
   5: "Solve cold, no issues",
 };
 
+type PriorAttempt = {
+  notes: string | null;
+  code: string | null;
+  confidence: number;
+  solvedIndependently: string;
+  solutionQuality: string;
+  createdAt: string;
+  solveTimeMinutes: number | null;
+};
+
 type Props = {
   problemId: number;
   problemTitle: string;
   leetcodeNumber: number | null;
   problemCategory: string;
   isReview: boolean;
+  priorAttempt?: PriorAttempt | null;
   defaultAttemptDate?: string | null;
 };
 
-export function AttemptForm({ problemId, problemTitle, leetcodeNumber, problemCategory, isReview, defaultAttemptDate }: Props) {
+function PriorAttemptPanel({ prior }: { prior: PriorAttempt }) {
+  const [open, setOpen] = useState(false);
+  const [showCode, setShowCode] = useState(false);
+
+  const outcomeLabel =
+    prior.solvedIndependently === "YES" ? "Solved"
+    : prior.solvedIndependently === "PARTIAL" ? "Partial"
+    : "Could not solve";
+  const qualityLabel =
+    prior.solutionQuality === "OPTIMAL" ? " · Optimal"
+    : prior.solutionQuality === "BRUTE_FORCE" ? " · Brute force"
+    : "";
+  const date = new Date(prior.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  return (
+    <div className="rounded-md border border-border/60 bg-muted/20">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+      >
+        <span className="text-xs font-medium text-muted-foreground">Your last attempt</span>
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{date}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={`transition-transform ${open ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9"/></svg>
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-border/60 px-3 py-3 space-y-2.5">
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-foreground font-medium">{outcomeLabel}{qualityLabel}</span>
+            <span className="text-muted-foreground">Confidence {prior.confidence}/5</span>
+            {prior.solveTimeMinutes != null && (
+              <span className="text-muted-foreground">{prior.solveTimeMinutes} min</span>
+            )}
+          </div>
+          {prior.notes && (
+            <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">{prior.notes}</p>
+          )}
+          {!prior.notes && (
+            <p className="text-xs text-muted-foreground/50 italic">No notes recorded</p>
+          )}
+          {prior.code && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowCode(v => !v)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                {showCode ? "▾ Hide code" : "▸ Show code"}
+              </button>
+              {showCode && (
+                <pre className="mt-2 overflow-x-auto rounded-md border border-border bg-muted/40 p-3 text-xs text-foreground leading-relaxed">{prior.code}</pre>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function AttemptForm({ problemId, problemTitle, leetcodeNumber, problemCategory, isReview, priorAttempt, defaultAttemptDate }: Props) {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [peeked, setPeeked] = useState(false);
   const [quality, setQuality] = useState<Quality | null>(null);
@@ -168,6 +241,8 @@ export function AttemptForm({ problemId, problemTitle, leetcodeNumber, problemCa
 
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl space-y-5">
+      {/* Prior attempt — review only, collapsed by default */}
+      {isReview && priorAttempt && <PriorAttemptPanel prior={priorAttempt} />}
       {/* Outcome */}
       <div className="space-y-2">
         <p className="text-sm font-medium">How did it go?</p>
