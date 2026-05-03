@@ -440,7 +440,7 @@
       "videoId": "q6IEA26hvXc",
       "listSource": "NEETCODE_150",
       "blind75": false,
-      "optimalTimeComplexity": null,
+      "optimalTimeComplexity": "O(log(m + n))",
       "optimalSpaceComplexity": "O(1)",
       "patternTags": [],
       "id": 28
@@ -666,7 +666,7 @@
       "listSource": "NEETCODE_150",
       "blind75": false,
       "optimalTimeComplexity": "O(1)",
-      "optimalSpaceComplexity": null,
+      "optimalSpaceComplexity": "O(n)",
       "patternTags": [],
       "id": 43
     },
@@ -965,7 +965,7 @@
       "videoId": "asbcE9mZz_U",
       "listSource": "NEETCODE_150",
       "blind75": true,
-      "optimalTimeComplexity": null,
+      "optimalTimeComplexity": "O(m * n * 4 * 3^(t-1))",
       "optimalSpaceComplexity": "O(s)",
       "patternTags": [],
       "id": 63
@@ -1986,7 +1986,7 @@
       "listSource": "NEETCODE_150",
       "blind75": true,
       "optimalTimeComplexity": "O(n)",
-      "optimalSpaceComplexity": null,
+      "optimalSpaceComplexity": "O(n)",
       "patternTags": [],
       "id": 131
     },
@@ -2106,7 +2106,7 @@
       "listSource": "NEETCODE_150",
       "blind75": true,
       "optimalTimeComplexity": "O(m*n)",
-      "optimalSpaceComplexity": null,
+      "optimalSpaceComplexity": "O(m*n)",
       "patternTags": [],
       "id": 139
     },
