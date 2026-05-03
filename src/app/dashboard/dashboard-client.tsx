@@ -2571,7 +2571,7 @@ function SolvedDonut({ breakdown, totalSolved, totalTarget }: { breakdown: Diffi
   return (
     <div className="flex items-center gap-2 shrink-0">
       <svg width="68" height="68" viewBox="0 0 68 68">
-        <circle cx={34} cy={34} r={r} fill="none" strokeWidth={6} stroke="#374151" />
+        <circle cx={34} cy={34} r={r} fill="none" strokeWidth={6} style={{ stroke: "var(--border)" }} />
         {segs.map(({ color, len, start }) => (
           <circle
             key={color} cx={34} cy={34} r={r} fill="none"
@@ -2581,8 +2581,8 @@ function SolvedDonut({ breakdown, totalSolved, totalTarget }: { breakdown: Diffi
             transform={`rotate(${-90 + (start / C) * 360} 34 34)`}
           />
         ))}
-        <text x={34} y={34} textAnchor="middle" dominantBaseline="central" fill="#f9fafb" fontSize="16" fontWeight="700">{totalSolved}</text>
-        <text x={34} y={47} textAnchor="middle" dominantBaseline="central" fill="#9ca3af" fontSize="9">/{totalTarget}</text>
+        <text x={34} y={34} textAnchor="middle" dominantBaseline="central" fontSize="16" fontWeight="700" style={{ fill: "var(--foreground)" }}>{totalSolved}</text>
+        <text x={34} y={47} textAnchor="middle" dominantBaseline="central" fontSize="9" style={{ fill: "var(--muted-foreground)" }}>/{totalTarget}</text>
       </svg>
       <div className="flex flex-col gap-1.5 text-xs">
         <div className="flex items-center gap-1">

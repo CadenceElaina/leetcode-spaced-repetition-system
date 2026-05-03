@@ -13,6 +13,8 @@ export function SkyCanvas() {
 
     let animId: number;
     let W = 0, H = 0;
+    // Pick star color based on current theme: muted purple for light, soft purple for dark
+    let starColor = document.documentElement.classList.contains("dark") ? "#a78bfa" : "#7c3aed";
 
     function resize() {
       W = canvas!.offsetWidth;
@@ -45,6 +47,12 @@ export function SkyCanvas() {
     const resizeCb = () => { resize(); makeStars(); };
     window.addEventListener("resize", resizeCb);
 
+    // Watch for .dark class changes on <html> and update star color
+    const observer = new MutationObserver(() => {
+      starColor = document.documentElement.classList.contains("dark") ? "#a78bfa" : "#7c3aed";
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
     function hexAlpha(hex: string, a: number) {
       return hex + Math.floor(a * 255).toString(16).padStart(2, "0");
     }
@@ -55,7 +63,7 @@ export function SkyCanvas() {
         const a = s.a * (0.5 + 0.5 * Math.sin(ts * s.ts + s.to));
         ctx!.beginPath();
         ctx!.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx!.fillStyle = hexAlpha("#a78bfa", a);
+        ctx!.fillStyle = hexAlpha(starColor, a);
         ctx!.fill();
       }
       animId = requestAnimationFrame(frame);
@@ -65,6 +73,7 @@ export function SkyCanvas() {
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", resizeCb);
+      observer.disconnect();
     };
   }, []);
 

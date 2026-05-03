@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Make Tailwind's dark: variant respond to .dark class rather than OS media query */
+@variant dark (&:where(.dark, .dark *));
+
 /* ── Light theme (default) — Lavender Nebula ── */
 :root {
   --background: #faf8ff;
