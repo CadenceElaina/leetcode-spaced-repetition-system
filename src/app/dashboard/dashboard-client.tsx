@@ -10,6 +10,8 @@ import { ImportClient } from "@/app/import/import-client";
 import { LogAttemptModal, type LogModalProblem, type LogModalResult } from "@/components/log-attempt-modal";
 import { Onboarding } from "@/components/onboarding";
 import { SkyCanvas } from "@/components/sky-canvas";
+import { CheatsheetDrawer } from "./cheatsheet-drawer";
+import { CHEATSHEET_MAP } from "@/lib/cheatsheets";
 
 /* ── Types ── */
 
@@ -504,6 +506,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
   const [reviewSort, setReviewSort] = useState<ReviewSort>("urgency");
   const [newDifficultyFilter, setNewDifficultyFilter] = useState<NewDifficultyFilter>("all");
   const [completedSort, setCompletedSort] = useState<CompletedSort>("retention");
+  const [sheetDrawerOpen, setSheetDrawerOpen] = useState(false);
   const [queueSearch, setQueueSearch] = useState("");
   const [showStatsDetail, setShowStatsDetail] = useState(false);
   const [pendingItems, setPendingItems] = useState<PendingItem[]>(data.pendingSubmissions);
@@ -1066,6 +1069,15 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
         onLogged={handleLoggedFromModal}
       />
     )}
+    {/* Cheatsheet drawer */}
+    {sheetDrawerOpen && (() => {
+      const todaySheets = [...new Set(data.reviewQueue.map((r) => r.category))]
+        .map((cat) => CHEATSHEET_MAP.get(cat))
+        .filter(Boolean) as import("@/lib/cheatsheets").Cheatsheet[];
+      return todaySheets.length > 0
+        ? <CheatsheetDrawer sheets={todaySheets} onClose={() => setSheetDrawerOpen(false)} />
+        : null;
+    })()}
     {/* SRS Feedback Banner */}
     {srsBanner && <SrsFeedbackBanner {...srsBanner} onDismiss={() => setSrsBanner(null)} onUndo={async () => {
       if (!srsBanner.attemptId) return;
@@ -1223,6 +1235,25 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                   className="h-8 flex-1 min-w-0 rounded border border-border bg-background px-2.5 text-xs placeholder:text-muted-foreground focus:outline-none"
                 />
               )}
+              {/* Cheatsheets button — only when review queue has items */}
+              {(() => {
+                const todaySheets = [...new Set(data.reviewQueue.map((r) => r.category))]
+                  .map((cat) => CHEATSHEET_MAP.get(cat))
+                  .filter(Boolean) as import("@/lib/cheatsheets").Cheatsheet[];
+                if (todaySheets.length === 0) return null;
+                return (
+                  <button
+                    onClick={() => setSheetDrawerOpen((o) => !o)}
+                    className={`h-8 shrink-0 rounded border px-2.5 text-xs transition-colors ${
+                      sheetDrawerOpen
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    Patterns ({todaySheets.length})
+                  </button>
+                );
+              })()}
             </div>
           </div>
 
