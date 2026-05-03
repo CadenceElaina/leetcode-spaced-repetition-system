@@ -12,7 +12,7 @@ export default function PrivacyPage() {
       <div className="max-w-2xl mx-auto px-6 py-16 space-y-10">
         <div>
           <h1 className="text-2xl font-bold tracking-tight mb-2">Privacy</h1>
-          <p className="text-sm text-muted-foreground">Last updated: May 2025</p>
+          <p className="text-sm text-muted-foreground">Last updated: May 2026</p>
         </div>
 
         <section className="space-y-3">
@@ -69,7 +69,7 @@ export default function PrivacyPage() {
               <a
                 href="/api/export"
                 download
-                className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-accent-foreground hover:underline"
+                className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
               >
                 Download my data
               </a>
@@ -98,7 +98,7 @@ export default function PrivacyPage() {
             Questions or data requests:{" "}
             <a
               href="mailto:cadenceelaina7@gmail.com"
-              className="text-accent-foreground hover:underline"
+              className="text-accent hover:underline"
             >
               cadenceelaina7@gmail.com
             </a>
