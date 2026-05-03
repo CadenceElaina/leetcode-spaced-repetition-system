@@ -393,7 +393,7 @@ function computePracticeRecommendation({
     };
   }
 
-  if (data.attemptedCount === 0) {
+  if (data.attemptedCount < 5) {
     return {
       tone: "neutral",
       title: "Start with new coverage",
@@ -565,6 +565,8 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     const savedTab = localStorage.getItem("aurora_tab_mode");
     if (savedTab && ["review", "new", "completed", "import"].includes(savedTab)) {
       setListMode(savedTab as ListMode);
+    } else if (reviewItems.length === 0) {
+      setListMode("new");
     }
     const savedNewPace = localStorage.getItem("aurora_planned_new_per_day");
     if (savedNewPace) setPlannedNewPerDay(parseFloat(savedNewPace));

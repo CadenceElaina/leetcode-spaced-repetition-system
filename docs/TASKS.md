@@ -68,7 +68,7 @@ Last updated: 2026-05-03 — merged root + docs queues after multi-agent audit
 
 | ID | Agent | Description |
 |----|-------|-------------|
-| —  | —     | —           |
+| T-005 | Claude (session 2026-05-03) | Cold start: fix new user default tab + suppress urgency indicators |
 
 ---
 
@@ -78,6 +78,7 @@ Last updated: 2026-05-03 — merged root + docs queues after multi-agent audit
 |-------|------------|-------------|
 | T-001 | 2026-05-03 | `fix(dashboard)`: `pickMockProblems` always returns 2; Medium+Medium fallback when no Hards; `pickTwo` deduplication via index-swap |
 | T-002 | 2026-05-03 | `fix(srs)`: `PARTIAL:NONE` multiplier corrected 1.0→1.1; unit tests covering all four PARTIAL combos |
+| T-004 | 2026-05-03 | `chore(theme)`: verified casual elements (CatGreeting, "powered by cats") already removed; --accent-secondary unused in components |
 | T-003 | 2026-05-03 | `fix(srs)`: explicit `NO:OPTIMAL`=0.8 and `NO:SUBOPTIMAL`=0.8 entries (defensive against direct API calls); 2 new unit tests (55 total) |
 | —     | 2026-04-22 | `fix(readiness)`: sample weight scales score with data volume |
 | —     | 2026-04-22 | `fix(readiness)`: show tier from day one, D is honest starting grade |
