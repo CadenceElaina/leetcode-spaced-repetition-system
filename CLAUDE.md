@@ -112,6 +112,7 @@ See `TASKS.md` for the prioritized task queue.
 - Demo mode (`isDemo = !isAuthenticated`) must keep working — every feature has a demo fallback
 - `npm test` (52 SRS unit tests) must pass after every change to `src/lib/srs.ts`
 - Never commit `DATABASE_URL`, `AUTH_SECRET`, or OAuth credentials
+- Run the pre-commit checklist in `docs/agents/security-protocol.md` before every commit
 
 # Project instructions
 

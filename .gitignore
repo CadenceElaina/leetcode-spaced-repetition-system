@@ -5,10 +5,17 @@ node_modules/
 .next/
 out/
 
-# environment
+# environment — never commit real credentials
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+.env.staging
+.env.test
+
+# Claude Code local settings (contain machine-specific paths and permissions)
+.claude/
 
 # hidden docs
 hidden-docs/
