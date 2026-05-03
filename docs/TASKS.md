@@ -68,7 +68,7 @@ Last updated: 2026-05-03 — merged root + docs queues after multi-agent audit
 
 | ID | Agent | Description |
 |----|-------|-------------|
-| T-008 | Claude (session 2026-05-03) | Readiness widget "limited data" indicator + Consistency raw counts |
+| T-017 | Claude (session 2026-05-03) | Docs: sync CURRENT.md and CLAUDE.md |
 
 ---
 
@@ -78,6 +78,8 @@ Last updated: 2026-05-03 — merged root + docs queues after multi-agent audit
 |-------|------------|-------------|
 | T-001 | 2026-05-03 | `fix(dashboard)`: `pickMockProblems` always returns 2; Medium+Medium fallback when no Hards; `pickTwo` deduplication via index-swap |
 | T-002 | 2026-05-03 | `fix(srs)`: `PARTIAL:NONE` multiplier corrected 1.0→1.1; unit tests covering all four PARTIAL combos |
+| T-008 | 2026-05-03 | `fix(dashboard)`: readiness "limited data" label; consistency raw fraction; Setup Guide to user menu (T-006 covered) |
+| T-006 | 2026-05-03 | `fix(nav)`: Setup Guide moved to authenticated user menu dropdown; removed from primary nav slot |
 | T-016 | 2026-05-03 | `fix(nav)`: avatar `<img>` → `next/image`; add avatars.githubusercontent.com to remotePatterns |
 | T-009 | 2026-05-03 | `fix(dashboard)`: "Done" tab renamed to "Completed" |
 | T-007 | 2026-05-03 | `fix(dashboard)`: tone badge "Watch"→"Review first", "Plan"→"Getting started"; all 7 branches audited |

@@ -99,9 +99,9 @@ All mutations go through `/api/*` routes:
 
 ## Task Queue
 
-See `TASKS.md` for the prioritized task queue.
+See `docs/TASKS.md` for the prioritized task queue (root `TASKS.md` is a redirect).
 - **Session start:** `npx tsc --noEmit && npm test` — must be clean before touching anything
-- **Claim a task** before editing files (add your name to In Progress in TASKS.md)
+- **Claim a task** before editing files (add your name to In Progress in docs/TASKS.md)
 - **Commit format:** `feat(scope): description` / `fix(scope): description` — one logical change per commit
 - **Scope tokens:** `srs` · `dashboard` · `nav` · `api` · `db` · `ui` · `test` · `docs`
 
