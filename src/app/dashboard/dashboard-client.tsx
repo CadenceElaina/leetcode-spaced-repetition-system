@@ -530,6 +530,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
   const [mockSelectedProblems, setMockSelectedProblems] = useState<MockCandidate[]>([]);
   const [mockLoggedIds, setMockLoggedIds] = useState<Set<number>>(new Set());
   const [editingPace, setEditingPace] = useState(false);
+  const [reviewActionError, setReviewActionError] = useState<string | null>(null);
   const [showQueueForecast, setShowQueueForecast] = useState(true);
   const [showPracticeRecommendation, setShowPracticeRecommendation] = useState(true);
   const [forecastMode, setForecastMode] = useState<"actual" | "goals">("actual");
@@ -951,7 +952,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ problemId, action: "defer", ...(until && { until }) }),
     });
-    if (!res.ok) return;
+    if (!res.ok) { setReviewActionError("Failed to defer — try again"); return; }
     const data_resp = await res.json();
     // Move from review queue to deferred
     const item = reviewItems.find((r) => r.problemId === problemId);
@@ -978,7 +979,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ problemId, action: "undefer" }),
     });
-    if (!res.ok) return;
+    if (!res.ok) { setReviewActionError("Failed to undefer — try again"); return; }
     // Move from deferred back — need to refresh to get full review data
     setDeferredItems((prev) => prev.filter((d) => d.problemId !== problemId));
     router.refresh();
@@ -1099,6 +1100,12 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     <div className="grid grid-cols-1 gap-4 md:grid-cols-12 md:flex-1 md:min-h-0 md:grid-rows-1">
       {/* ── Combined Problem Queue ── */}
       <div className="flex flex-col md:min-h-0 md:h-full md:col-span-7 lg:col-span-6" data-onboarding="queue">
+        {reviewActionError && (
+          <div className="mb-1 flex items-center justify-between rounded-md border border-red-500/30 bg-red-500/5 px-3 py-1.5 text-xs text-red-500">
+            {reviewActionError}
+            <button onClick={() => setReviewActionError(null)} className="ml-2 text-red-400 hover:text-red-300">✕</button>
+          </div>
+        )}
         {/* Pending GitHub submissions banner */}
         {pendingItems.length > 0 && (
           <PendingBanner

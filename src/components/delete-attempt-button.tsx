@@ -6,13 +6,17 @@ import { useRouter } from "next/navigation";
 export function DeleteAttemptButton({ attemptId }: { attemptId: string }) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [failed, setFailed] = useState(false);
   const router = useRouter();
 
   async function handleDelete() {
     setDeleting(true);
+    setFailed(false);
     const res = await fetch(`/api/attempts?id=${attemptId}`, { method: "DELETE" });
     if (res.ok) {
       router.refresh();
+    } else {
+      setFailed(true);
     }
     setDeleting(false);
     setConfirming(false);
@@ -36,6 +40,10 @@ export function DeleteAttemptButton({ attemptId }: { attemptId: string }) {
         </button>
       </span>
     );
+  }
+
+  if (failed) {
+    return <span className="text-xs text-red-500" title="Delete failed — try again">✕ failed</span>;
   }
 
   return (

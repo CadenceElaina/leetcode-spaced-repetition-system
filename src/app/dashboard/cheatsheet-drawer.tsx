@@ -42,7 +42,7 @@ export function CheatsheetDrawer({
   if (!active) return null;
 
   return (
-    <div className="fixed inset-0 z-40 pointer-events-none">
+    <div className="fixed inset-0 z-[52] pointer-events-none">
       {/* Backdrop — transparent so dashboard remains visible */}
       <div
         className="absolute inset-0 pointer-events-auto"

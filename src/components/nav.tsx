@@ -367,6 +367,14 @@ function UserMenu({ userName, userEmail, userImage, analyticsOptOut: initialOptO
               <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${optOut ? "translate-x-3" : "translate-x-0.5"}`} />
             </span>
             <span className="flex-1">Opt out of analytics</span>
+            <span className="group relative shrink-0">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground/60">
+                <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+              </svg>
+              <span className="pointer-events-none absolute bottom-full right-0 mb-1.5 w-52 rounded-md border border-border bg-popover px-2.5 py-2 text-[11px] text-muted-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                Aurora logs aggregate usage (page views, feature clicks). No attempt content or personal data is shared. Opting out stops all event tracking.
+              </span>
+            </span>
           </button>
           <Link
             role="menuitem"

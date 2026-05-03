@@ -420,6 +420,9 @@ export function LandingPage({ totalProblems, categories, isAuthenticated, authCo
               <Link href="/problems" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                 Browse problems
               </Link>
+              <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                Privacy
+              </Link>
             </div>
           </div>
 
