@@ -295,6 +295,8 @@ export const DEMO_DASHBOARD_DATA = {
   retainedCount: 9,
   readiness: { score: 28, tier: "D" as const },
   readinessBreakdown: { coverage: 0.10, retention: 0.60, categoryBalance: 0.22, consistency: 0.71 },
+  consistencyReviewed: 10,
+  consistencyDue: 14,
   currentStreak: 4,
   bestStreak: 6,
   avgPerDay: 2.9,

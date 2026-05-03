@@ -137,6 +137,8 @@ type DashboardData = {
   retainedCount: number;
   readiness: ReadinessResult;
   readinessBreakdown: { coverage: number; retention: number; categoryBalance: number; consistency: number };
+  consistencyReviewed: number;
+  consistencyDue: number;
   currentStreak: number;
   bestStreak: number;
   avgPerDay: number;
@@ -564,7 +566,12 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     }
     const savedTab = localStorage.getItem("aurora_tab_mode");
     if (savedTab && ["review", "new", "completed", "import"].includes(savedTab)) {
-      setListMode(savedTab as ListMode);
+      // Don't restore "review" when queue is empty — drop new users on "new" tab
+      if (savedTab === "review" && reviewItems.length === 0) {
+        setListMode("new");
+      } else {
+        setListMode(savedTab as ListMode);
+      }
     } else if (reviewItems.length === 0) {
       setListMode("new");
     }
@@ -1570,16 +1577,18 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
               <p className="text-xs text-muted-foreground mt-0.5">
                 {targetCount} problems by {new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </p>
-              {/* Chip row: on-track + projected */}
+              {/* Chip row: on-track + projected — suppress urgency before enough data */}
               <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${countdown.onTrack ? "bg-green-500/15 text-green-500" : "bg-orange-500/15 text-orange-500"}`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${countdown.onTrack ? "bg-green-500" : "bg-orange-500"}`} />
-                  {countdown.onTrack ? "On track" : `Need ${countdown.neededPerDay.toFixed(1)}/day`}
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${data.attemptedCount < 5 ? "bg-muted text-muted-foreground" : countdown.onTrack ? "bg-green-500/15 text-green-500" : "bg-orange-500/15 text-orange-500"}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${data.attemptedCount < 5 ? "bg-muted-foreground/50" : countdown.onTrack ? "bg-green-500" : "bg-orange-500"}`} />
+                  {data.attemptedCount < 5 ? "Getting started" : countdown.onTrack ? "On track" : `Need ${countdown.neededPerDay.toFixed(1)}/day`}
                 </span>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${countdown.projectedRaw >= targetCount ? "bg-green-500/15 text-green-500" : "bg-orange-500/15 text-orange-500"}`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${countdown.projectedRaw >= targetCount ? "bg-green-500" : "bg-orange-500"}`} />
-                  Proj {countdown.projectedRaw}/{targetCount}
-                </span>
+                {data.attemptedCount >= 5 && (
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${countdown.projectedRaw >= targetCount ? "bg-green-500/15 text-green-500" : "bg-orange-500/15 text-orange-500"}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${countdown.projectedRaw >= targetCount ? "bg-green-500" : "bg-orange-500"}`} />
+                    Proj {countdown.projectedRaw}/{targetCount}
+                  </span>
+                )}
               </div>
               {/* Streak + confidence row */}
               <div className="flex items-center gap-3 mt-2 text-xs">
@@ -1641,6 +1650,9 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
           </button>
           {!collapsedWidgets.readiness && (
             <div className="mt-2">
+              {data.attemptedCount < 5 && (
+                <p className="text-[11px] text-muted-foreground mb-2 px-0.5">Limited data — score updates as you log more attempts.</p>
+              )}
               {/* Two-column: grade+score left (narrow) | bars right */}
               <div className="flex gap-3 items-start">
                 {/* Left: grade badge + score only */}
@@ -1651,18 +1663,21 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 {/* Right: readiness bars — weight in tooltip, not label */}
                 <div className="flex-1 min-w-0 space-y-1.5">
                   {[
-                    { label: "Coverage", value: data.readinessBreakdown.coverage, tooltip: "Coverage — 30% of score. What % of the 150 problems you’ve attempted at least once." },
-                    { label: "Retention", value: data.readinessBreakdown.retention, tooltip: "Retention — 40% of score. How well you remember the problems you’ve attempted, averaged across all solved problems." },
-                    { label: "Category Balance", value: data.readinessBreakdown.categoryBalance, tooltip: "Category Balance — 20% of score. How evenly your attempts are distributed across problem categories." },
-                    { label: "Consistency", value: data.readinessBreakdown.consistency, tooltip: "Consistency — 10% of score. Based on your current streak and practice frequency." },
-                  ].map(({ label, value, tooltip }) => (
+                    { label: "Coverage", value: data.readinessBreakdown.coverage, detail: null as string | null, tooltip: "Coverage — 30% of score. What % of the 150 problems you’ve attempted at least once." },
+                    { label: "Retention", value: data.readinessBreakdown.retention, detail: null, tooltip: "Retention — 40% of score. How well you remember the problems you’ve attempted, averaged across all solved problems." },
+                    { label: "Category Balance", value: data.readinessBreakdown.categoryBalance, detail: null, tooltip: "Category Balance — 20% of score. How evenly your attempts are distributed across problem categories." },
+                    { label: "Consistency", value: data.readinessBreakdown.consistency, detail: data.consistencyDue > 0 ? `${data.consistencyReviewed} of ${data.consistencyDue} reviews, 14d` : null, tooltip: "Consistency — 10% of score. % of scheduled reviews completed in the last 14 days." },
+                  ].map(({ label, value, detail, tooltip }) => (
                     <div key={label}>
                       <div className="flex items-center justify-between text-xs mb-0.5">
                         <span className="flex items-center gap-1 text-muted-foreground">
                           {label}
                           <InfoTooltip content={<p className="max-w-[220px]">{tooltip}</p>} />
                         </span>
-                        <span className="font-medium tabular-nums">{Math.round(value * 100)}%</span>
+                        <span className="font-medium tabular-nums">
+                          {detail ? <span className="text-[10px] text-muted-foreground mr-1">{detail}</span> : null}
+                          {Math.round(value * 100)}%
+                        </span>
                       </div>
                       <div className="h-1.5 rounded-full bg-background overflow-hidden">
                         <div className={`h-full rounded-full transition-[width] duration-500 ${value >= 0.7 ? "bg-green-500" : value >= 0.4 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.round(value * 100)}%` }} />

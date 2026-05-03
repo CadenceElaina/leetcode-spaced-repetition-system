@@ -448,6 +448,8 @@ export default async function DashboardPage() {
           categoryBalance: readiness.categoryBalance,
           consistency: readiness.consistency,
         },
+        consistencyReviewed: recentAttemptCount,
+        consistencyDue: totalScheduled,
         currentStreak: streaks.current,
         bestStreak: streaks.best,
         avgPerDay,

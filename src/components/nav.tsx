@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { ChevronRight, Github, LogOut, Trash2 } from "lucide-react";
+import { ChevronRight, Download, Github, LogOut, Settings, Trash2 } from "lucide-react";
 import { SetupGuide } from "@/components/setup-guide";
 import { DeleteAccountModal } from "@/components/delete-account-modal";
 
@@ -169,7 +169,7 @@ export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = f
             )}
           </button>
         )}
-        <SetupGuide />
+        {!isAuthenticated && <SetupGuide />}
         {isDemo && !isLanding && <DemoGitHubBadge />}
         {greeting && !isLanding && (
           <span className="hidden sm:inline text-sm text-muted-foreground">{greeting}</span>
@@ -293,6 +293,29 @@ function UserMenu({ userName, userEmail, userImage }: { userName?: string; userE
 
           <div className="my-1.5 h-px bg-border/60" />
           <GitHubSyncDropdown menuItem />
+          <div className="my-1.5 h-px bg-border/60" />
+          <SetupGuide
+            trigger={({ onClick }) => (
+              <button
+                role="menuitem"
+                onClick={() => { setOpen(false); onClick(); }}
+                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+              >
+                <Settings className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <span>Setup Guide</span>
+              </button>
+            )}
+          />
+          <a
+            role="menuitem"
+            href="/api/export"
+            download
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+          >
+            <Download className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <span>Export Data</span>
+          </a>
           <div className="my-1.5 h-px bg-border/60" />
           <button
             role="menuitem"
