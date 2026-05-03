@@ -49,12 +49,12 @@ export function CheatsheetExpanded({ sheet }: { sheet: Cheatsheet }) {
       </div>
 
       {/* Complexity + Canonical — always visible; quick reference facts */}
-      <div className="flex gap-5 border-t border-border/40 pt-3">
-        <div className="shrink-0">
+      <div className="space-y-2.5 border-t border-border/40 pt-3">
+        <div>
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Complexity</p>
           <p className="font-mono text-xs text-foreground">{sheet.complexity}</p>
         </div>
-        <div className="min-w-0">
+        <div>
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Canonical</p>
           <ul className="space-y-0.5">
             {sheet.canonicalProblems.map((p, i) => (
