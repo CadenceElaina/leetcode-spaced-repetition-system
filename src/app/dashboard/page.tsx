@@ -9,11 +9,10 @@ import { computeRetrievability, computeReadiness } from "@/lib/srs";
 import { DashboardClient } from "./dashboard-client";
 import { DEMO_DASHBOARD_DATA } from "./demo-data";
 
-// Problems are seeded once and never change at runtime — cache indefinitely.
 const getCachedProblems = unstable_cache(
   () => db.select().from(problems).orderBy(asc(problems.id)),
   ["all-problems"],
-  { revalidate: false },
+  { revalidate: 3600 },
 );
 
 export const dynamic = "force-dynamic";
@@ -105,6 +104,16 @@ export default async function DashboardPage() {
   const autoDeferHards = userRow[0]?.autoDeferHards ?? false;
   const onboardingComplete = userRow[0]?.onboardingComplete ?? false;
 
+  // Retrievability pre-computed once per state — avoids redundant exponential-decay calls
+  // across reviewQueue, completedProblems, and retentions below.
+  const retrievabilityMap = new Map<number, number>();
+  for (const s of userStates) {
+    const daysSince = s.lastReviewedAt
+      ? (now.getTime() - s.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24)
+      : 999;
+    retrievabilityMap.set(s.problemId, computeRetrievability(s.stability, daysSince));
+  }
+
   // Helper: check if a problem is currently deferred
   const isDeferred = (s: typeof userStates[number], difficulty?: string) => {
     // Explicitly deferred with a future date
@@ -126,13 +135,10 @@ export default async function DashboardPage() {
     .map((s) => {
       const p = allProblems.find((prob) => prob.id === s.problemId);
       if (!p) return null;
-      const daysSince = s.lastReviewedAt
-        ? (now.getTime() - s.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24)
-        : 999;
       const daysOverdue = Math.floor(
         (now.getTime() - s.nextReviewAt!.getTime()) / (1000 * 60 * 60 * 24),
       );
-      const retrievability = computeRetrievability(s.stability, daysSince);
+      const retrievability = retrievabilityMap.get(s.problemId)!;
       return {
         stateId: s.id,
         problemId: s.problemId,
@@ -219,10 +225,7 @@ export default async function DashboardPage() {
     .map((s) => {
       const p = allProblems.find((prob) => prob.id === s.problemId);
       if (!p) return null;
-      const daysSince = s.lastReviewedAt
-        ? (now.getTime() - s.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24)
-        : 999;
-      const retrievability = computeRetrievability(s.stability, daysSince);
+      const retrievability = retrievabilityMap.get(s.problemId)!;
       const daysUntilReview = s.nextReviewAt
         ? Math.ceil((s.nextReviewAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         : null;
@@ -259,17 +262,11 @@ export default async function DashboardPage() {
   // Compute retrievability for each attempted problem
   const retentions = allProblems
     .filter((p) => stateMap.has(p.id))
-    .map((p) => {
-      const state = stateMap.get(p.id)!;
-      const daysSince = state.lastReviewedAt
-        ? (now.getTime() - state.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24)
-        : 999;
-      return {
-        problemId: p.id,
-        r: computeRetrievability(state.stability, daysSince),
-        category: p.category,
-      };
-    });
+    .map((p) => ({
+      problemId: p.id,
+      r: retrievabilityMap.get(p.id) ?? 0,
+      category: p.category,
+    }));
 
   const retainedCount = retentions.filter((r) => r.r > 0.5).length;
 

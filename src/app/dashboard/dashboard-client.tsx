@@ -872,6 +872,27 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     [data.categoryStats],
   );
 
+  // O(1) category lookup used in the review list render
+  const categoryStatsMap = useMemo(
+    () => new Map(data.categoryStats.map((c) => [c.category, c])),
+    [data.categoryStats],
+  );
+
+  // Memoize deferred-search filter to avoid two passes through reviewItems per render
+  const deferSearchFiltered = useMemo(() => {
+    if (!deferSearch.trim()) return [];
+    const s = deferSearch.toLowerCase();
+    return reviewItems.filter(
+      (r) => r.title.toLowerCase().includes(s) || String(r.leetcodeNumber ?? "").includes(s) || r.category.toLowerCase().includes(s),
+    );
+  }, [reviewItems, deferSearch]);
+
+  // Max queue size for the forecast bar chart — avoids O(n²) recompute inside .map()
+  const forecastMaxSize = useMemo(() => {
+    const proj = forecastMode === "actual" ? queueProjection : queueProjectionGoals;
+    return proj ? Math.max(...proj.dailyQueueSize, 1) : 1;
+  }, [forecastMode, queueProjection, queueProjectionGoals]);
+
   const displayCategories = categoryView === "weak" ? weakCategories : data.categoryStats;
 
   const sortedReviewQueue = useMemo(() => {
@@ -1394,7 +1415,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 <div className="overflow-y-auto flex-1 min-h-0">
                   {filteredReviewQueue.map((item) => {
                     const prio = priorityLevel(item);
-                    const catStat = data.categoryStats.find(c => c.category === item.category);
+                    const catStat = categoryStatsMap.get(item.category);
                     const isWeakCategory = catStat && catStat.avgRetention < 0.6;
                     // Build concise "why" reason
                     const reasons: string[] = [];
@@ -1489,11 +1510,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                         />
                         {deferSearch.trim() && (
                           <div className="absolute top-full left-0 right-0 z-10 mt-1 rounded-md border border-border bg-background shadow-lg max-h-48 overflow-y-auto">
-                            {reviewItems
-                              .filter((r) => {
-                                const s = deferSearch.toLowerCase();
-                                return r.title.toLowerCase().includes(s) || String(r.leetcodeNumber ?? "").includes(s) || r.category.toLowerCase().includes(s);
-                              })
+                            {deferSearchFiltered
                               .slice(0, 10)
                               .map((item) => (
                                 <button
@@ -1507,10 +1524,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                                   <span className="text-[10px] text-muted-foreground">Defer</span>
                                 </button>
                               ))}
-                            {reviewItems.filter((r) => {
-                              const s = deferSearch.toLowerCase();
-                              return r.title.toLowerCase().includes(s) || String(r.leetcodeNumber ?? "").includes(s) || r.category.toLowerCase().includes(s);
-                            }).length === 0 && (
+                            {deferSearchFiltered.length === 0 && (
                               <p className="px-2.5 py-2 text-xs text-muted-foreground">No matching review items</p>
                             )}
                           </div>
@@ -2148,8 +2162,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
               <div className="mt-2 space-y-2">
                 <div className="relative flex items-end gap-px h-36">
                   {proj.dailyQueueSize.map((size, i) => {
-                    const maxSize = Math.max(...proj.dailyQueueSize, 1);
-                    const height = Math.max(2, (size / maxSize) * 100);
+                    const height = Math.max(2, (size / forecastMaxSize) * 100);
                     const isToday = i === 0;
                     return (
                       <div key={i} className={`relative flex-1 rounded-t-sm group/bar ${isToday ? "bg-accent" : size === 0 ? "bg-green-500/60" : "bg-orange-500/60"}`} style={{ height: `${height}%` }}>

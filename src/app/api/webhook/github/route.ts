@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import { db } from "@/db";
 import { users, problems, pendingSubmissions, userProblemStates } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import crypto from "crypto";
 import { decryptWebhookSecret } from "@/lib/webhook-crypto";
+
+const getCachedProblemsForWebhook = unstable_cache(
+  () => db.select({ id: problems.id, neetcodeUrl: problems.neetcodeUrl }).from(problems),
+  ["webhook-problems-map"],
+  { revalidate: 3600 },
+);
 
 /**
  * GitHub webhook endpoint for NeetCode submission sync.
@@ -63,8 +70,8 @@ export async function POST(req: NextRequest) {
   // Only process commits after user connected
   const connectedAt = user.githubConnectedAt;
 
-  // Build slug → problemId map from neetcodeUrl
-  const allProblems = await db.select({ id: problems.id, neetcodeUrl: problems.neetcodeUrl }).from(problems);
+  // Build slug → problemId map from neetcodeUrl (cached 1 hour — problems are static)
+  const allProblems = await getCachedProblemsForWebhook();
   const slugMap = new Map<string, number>();
   for (const p of allProblems) {
     if (p.neetcodeUrl) {
