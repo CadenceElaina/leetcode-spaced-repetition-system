@@ -217,4 +217,176 @@ describe("POST /api/attempts", () => {
     const json = await res.json();
     expect(json).toMatchObject({ error: "duplicate" });
   });
+
+  /* ── 6. Missing problemId (omitted from body) → 400 ──────────────────── */
+
+  it("returns 400 when problemId is missing from the body", async () => {
+    auth.mockResolvedValue({ user: { id: "user-1" } });
+
+    // JSON.stringify with undefined value omits the key entirely
+    const body = { ...VALID_BODY, problemId: undefined };
+    const res = await POST(makeRequest(body));
+    expect(res.status).toBe(400);
+
+    const json = await res.json();
+    expect(json).toMatchObject({ error: "Invalid input" });
+  });
+
+  /* ── 7. problemId is a string → 400 ──────────────────────────────────── */
+
+  it("returns 400 when problemId is a string instead of a number", async () => {
+    auth.mockResolvedValue({ user: { id: "user-1" } });
+
+    const res = await POST(makeRequest({ ...VALID_BODY, problemId: "abc" }));
+    expect(res.status).toBe(400);
+
+    const json = await res.json();
+    expect(json).toMatchObject({ error: "Invalid input" });
+  });
+
+  /* ── 8. Invalid solutionQuality enum value → 400 ─────────────────────── */
+
+  it("returns 400 when solutionQuality is an invalid enum value", async () => {
+    auth.mockResolvedValue({ user: { id: "user-1" } });
+
+    const res = await POST(makeRequest({ ...VALID_BODY, solutionQuality: "PERFECT" }));
+    expect(res.status).toBe(400);
+
+    const json = await res.json();
+    expect(json).toMatchObject({ error: "Invalid input" });
+  });
+});
+
+/* ── DELETE /api/attempts ─────────────────────────────────────────────────── */
+
+/**
+ * A more flexible DB mock that handles both:
+ *   - `.where().limit(n)` (most selects)
+ *   - `.where().orderBy()` (the remaining-attempts query in DELETE)
+ *
+ * Each call to `from()` advances the sequence index and captures the data for
+ * that call.  The returned chain object is both awaitable (thenable) and
+ * supports further chaining with `.where()`, `.limit()`, `.orderBy()`.
+ */
+function buildFlexibleDbMock(selectResponses: unknown[][]) {
+  let idx = 0;
+  function makeChain(data: unknown[]): any {
+    const p = Promise.resolve(data);
+    return {
+      then: (res: any, rej?: any) => p.then(res, rej),
+      catch: (fn: any) => p.catch(fn),
+      finally: (fn: any) => p.finally(fn),
+      where: () => makeChain(data),
+      limit: (n: number) => Promise.resolve(data.slice(0, n)),
+      orderBy: () => makeChain(data),
+    };
+  }
+  return {
+    select: vi.fn(() => ({ from: vi.fn(() => makeChain(selectResponses[idx++] ?? [])) })),
+    insert: vi.fn(() => ({
+      values: vi.fn(() => ({
+        returning: vi.fn(() => Promise.resolve([{ id: "new-id" }])),
+      })),
+    })),
+    update: vi.fn(() => ({
+      set: vi.fn(() => ({ where: vi.fn(() => Promise.resolve([])) })),
+    })),
+    delete: vi.fn(() => ({ where: vi.fn(() => Promise.resolve([])) })),
+  };
+}
+
+function makeDeleteRequest(attemptId?: string): NextRequest {
+  const url = attemptId
+    ? `http://localhost/api/attempts?id=${attemptId}`
+    : "http://localhost/api/attempts";
+  return new NextRequest(url, { method: "DELETE" });
+}
+
+describe("DELETE /api/attempts", () => {
+  let auth: ReturnType<typeof vi.fn>;
+  let DELETE: (req: NextRequest) => Promise<Response>;
+
+  const MOCK_ATTEMPT = {
+    id: "attempt-1",
+    problemId: 1,
+    userId: "user-1",
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    // Default: attempt found, belongs to user, no remaining attempts
+    mockDb = buildFlexibleDbMock([
+      [MOCK_ATTEMPT], // select attempt by id
+      [],             // remaining attempts (empty → delete state path)
+    ]) as any;
+
+    const authModule = await import("@/auth");
+    auth = authModule.auth as ReturnType<typeof vi.fn>;
+
+    const route = await import("@/app/api/attempts/route");
+    DELETE = route.DELETE;
+  });
+
+  /* ── 1. Unauthenticated → 401 ─────────────────────────────────────────── */
+
+  it("returns 401 when not authenticated", async () => {
+    auth.mockResolvedValue(null);
+
+    const res = await DELETE(makeDeleteRequest("attempt-1"));
+    expect(res.status).toBe(401);
+
+    const json = await res.json();
+    expect(json).toMatchObject({ error: "Unauthorized" });
+  });
+
+  /* ── 2. Attempt not found → 404 ───────────────────────────────────────── */
+
+  it("returns 404 when the attempt does not exist", async () => {
+    auth.mockResolvedValue({ user: { id: "user-1" } });
+
+    mockDb = buildFlexibleDbMock([
+      [], // select attempt → not found
+    ]) as any;
+
+    const res = await DELETE(makeDeleteRequest("nonexistent-id"));
+    expect(res.status).toBe(404);
+
+    const json = await res.json();
+    expect(json).toMatchObject({ error: "Attempt not found" });
+  });
+
+  /* ── 3. Attempt belongs to different user → 404 ───────────────────────── */
+
+  it("returns 404 when the attempt belongs to a different user", async () => {
+    auth.mockResolvedValue({ user: { id: "user-2" } });
+
+    mockDb = buildFlexibleDbMock([
+      [{ ...MOCK_ATTEMPT, userId: "user-1" }], // attempt owned by user-1
+    ]) as any;
+
+    const res = await DELETE(makeDeleteRequest("attempt-1"));
+    expect(res.status).toBe(404);
+
+    const json = await res.json();
+    expect(json).toMatchObject({ error: "Attempt not found" });
+  });
+
+  /* ── 4. Successful delete (no remaining attempts) → 200 ───────────────── */
+
+  it("returns 200 ok when attempt is deleted and no remaining attempts exist", async () => {
+    auth.mockResolvedValue({ user: { id: "user-1" } });
+
+    // attempt found → remaining attempts empty → state deleted
+    mockDb = buildFlexibleDbMock([
+      [MOCK_ATTEMPT], // select attempt by id
+      [],             // remaining attempts → empty → delete state path
+    ]) as any;
+
+    const res = await DELETE(makeDeleteRequest("attempt-1"));
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json).toMatchObject({ ok: true });
+  });
 });
