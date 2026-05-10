@@ -7,9 +7,11 @@ import { eq, and, like, notLike, count, asc } from "drizzle-orm";
 import {
   computeCohortStats,
   computeCategoryStats,
+  computeMultiplierOutcomes,
   type AttemptRecord,
   type StateRecord,
 } from "@/lib/analytics";
+import { BASE_MULTIPLIERS } from "@/lib/srs";
 import { AdminClient } from "./admin-client";
 import type { AdminData } from "./admin-client";
 
@@ -59,18 +61,19 @@ export default async function AdminPage() {
     // Add pagination or aggregate-only queries beyond that.
     db
       .select({
-        userId:                attempts.userId,
-        problemId:             attempts.problemId,
-        category:              problems.category,
-        difficulty:            problems.difficulty,
-        outcome:               attempts.solvedIndependently,
-        quality:               attempts.solutionQuality,
-        confidence:            attempts.confidence,
-        solveTimeMinutes:      attempts.solveTimeMinutes,
-        rewroteFromScratch:    attempts.rewroteFromScratch,
-        timeComplexityCorrect: attempts.timeComplexityCorrect,
+        userId:                 attempts.userId,
+        problemId:              attempts.problemId,
+        category:               problems.category,
+        difficulty:             problems.difficulty,
+        outcome:                attempts.solvedIndependently,
+        quality:                attempts.solutionQuality,
+        confidence:             attempts.confidence,
+        solveTimeMinutes:       attempts.solveTimeMinutes,
+        rewroteFromScratch:     attempts.rewroteFromScratch,
+        timeComplexityCorrect:  attempts.timeComplexityCorrect,
         spaceComplexityCorrect: attempts.spaceComplexityCorrect,
-        createdAt:             attempts.createdAt,
+        predictedR:             attempts.predictedR,
+        createdAt:              attempts.createdAt,
       })
       .from(attempts)
       .innerJoin(users,    eq(attempts.userId,    users.id))
@@ -108,17 +111,18 @@ export default async function AdminPage() {
   for (const a of allRealAttempts) {
     if (!realUserIds.has(a.userId)) continue;
     attemptsByUser.get(a.userId)!.push({
-      problemId:             a.problemId,
-      category:              a.category,
-      difficulty:            a.difficulty,
-      outcome:               a.outcome,
-      quality:               a.quality,
-      confidence:            a.confidence,
-      solveTimeMinutes:      a.solveTimeMinutes,
-      rewroteFromScratch:    a.rewroteFromScratch,
-      timeComplexityCorrect: a.timeComplexityCorrect,
+      problemId:              a.problemId,
+      category:               a.category,
+      difficulty:             a.difficulty,
+      outcome:                a.outcome,
+      quality:                a.quality,
+      confidence:             a.confidence,
+      solveTimeMinutes:       a.solveTimeMinutes,
+      rewroteFromScratch:     a.rewroteFromScratch,
+      timeComplexityCorrect:  a.timeComplexityCorrect,
       spaceComplexityCorrect: a.spaceComplexityCorrect,
-      createdAt:             a.createdAt,
+      predictedR:             a.predictedR,
+      createdAt:              a.createdAt,
     });
   }
   for (const s of allRealStates) {
@@ -170,17 +174,18 @@ export default async function AdminPage() {
 
   const cohortStats   = computeCohortStats(allUserAttempts, allUserStates, now);
   const flatAttempts  = allRealAttempts.map((a) => ({
-    problemId:             a.problemId,
-    category:              a.category,
-    difficulty:            a.difficulty,
-    outcome:               a.outcome,
-    quality:               a.quality,
-    confidence:            a.confidence,
-    solveTimeMinutes:      a.solveTimeMinutes,
-    rewroteFromScratch:    a.rewroteFromScratch,
-    timeComplexityCorrect: a.timeComplexityCorrect,
+    problemId:              a.problemId,
+    category:               a.category,
+    difficulty:             a.difficulty,
+    outcome:                a.outcome,
+    quality:                a.quality,
+    confidence:             a.confidence,
+    solveTimeMinutes:       a.solveTimeMinutes,
+    rewroteFromScratch:     a.rewroteFromScratch,
+    timeComplexityCorrect:  a.timeComplexityCorrect,
     spaceComplexityCorrect: a.spaceComplexityCorrect,
-    createdAt:             a.createdAt,
+    predictedR:             a.predictedR,
+    createdAt:              a.createdAt,
   } as AttemptRecord));
   const flatStates = allRealStates.map((s) => ({
     problemId:           s.problemId,
@@ -201,8 +206,9 @@ export default async function AdminPage() {
     }))
     .sort((a, b) => b.noOutcomeRate - a.noOutcomeRate);
 
-  const newThisWeek  = realUsers.filter((u) => u.createdAt >= ago7).length;
-  const newThisMonth = realUsers.filter((u) => u.createdAt >= ago30).length;
+  const newThisWeek    = realUsers.filter((u) => u.createdAt >= ago7).length;
+  const newThisMonth   = realUsers.filter((u) => u.createdAt >= ago30).length;
+  const multiplierStats = computeMultiplierOutcomes(flatAttempts, BASE_MULTIPLIERS);
 
   const data: AdminData = {
     overview: {
@@ -214,9 +220,10 @@ export default async function AdminPage() {
       totalAttempts:       allRealAttempts.length,
       demoUsersExcluded:   demoUserCount[0]?.n ?? 0,
     },
-    users:          userRoster,
-    cohortProblems: enrichedCohort,
-    categoryStats:  catStats.sort((a, b) => a.avgR - b.avgR),
+    users:           userRoster,
+    cohortProblems:  enrichedCohort,
+    categoryStats:   catStats.sort((a, b) => a.avgR - b.avgR),
+    multiplierStats,
   };
 
   return (

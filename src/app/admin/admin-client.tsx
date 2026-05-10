@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { CategoryStat, ProblemCohortStat } from "@/lib/analytics";
+import type { CategoryStat, ProblemCohortStat, MultiplierKeyStat } from "@/lib/analytics";
+import type { BacktestResult } from "@/lib/srs-simulator";
+import { BASE_MULTIPLIERS } from "@/lib/srs";
 
 export interface AdminData {
   overview: {
@@ -28,7 +30,8 @@ export interface AdminData {
     difficulty: string;
     category:   string;
   }>;
-  categoryStats: CategoryStat[];
+  categoryStats:   CategoryStat[];
+  multiplierStats: MultiplierKeyStat[];
 }
 
 function StatCard({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
@@ -61,9 +64,174 @@ const DIFF_COLOR: Record<string, string> = {
   Hard:   "text-red-400",
 };
 
+/* ── Backtest tab ── */
+
+const DEFAULT_OVERRIDES = JSON.stringify(BASE_MULTIPLIERS, null, 2);
+
+function BacktestTab() {
+  const [overridesText, setOverridesText] = useState(DEFAULT_OVERRIDES);
+  const [status, setStatus]  = useState<"idle" | "running" | "done" | "error">("idle");
+  const [result, setResult]  = useState<BacktestResult | null>(null);
+  const [errMsg, setErrMsg]  = useState("");
+
+  async function runBacktest() {
+    let overrides: Record<string, number>;
+    try {
+      overrides = JSON.parse(overridesText);
+      if (typeof overrides !== "object" || Array.isArray(overrides)) throw new Error();
+    } catch {
+      setErrMsg("Invalid JSON — must be an object mapping keys to numbers.");
+      setStatus("error");
+      return;
+    }
+
+    setStatus("running");
+    setErrMsg("");
+    try {
+      const res = await fetch(
+        `/api/admin/backtest?overrides=${encodeURIComponent(JSON.stringify(overrides))}`,
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? `HTTP ${res.status}`);
+      }
+      setResult(await res.json());
+      setStatus("done");
+    } catch (e) {
+      setErrMsg(e instanceof Error ? e.message : "Unknown error");
+      setStatus("error");
+    }
+  }
+
+  const deltaColor = (d: number) =>
+    Math.abs(d) < 0.5 ? "text-muted-foreground"
+    : d > 0 ? "text-green-400"
+    : "text-red-400";
+
+  return (
+    <section className="space-y-5">
+      <p className="text-xs text-muted-foreground">
+        Re-run every user&apos;s attempt history through a modified multiplier table. The tool computes
+        what final stability and calibration MAE would have been under the alternate formula, then
+        compares them to the actual results. Edit only the keys you want to change.
+      </p>
+
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+          Multiplier overrides (JSON)
+        </label>
+        <textarea
+          className="w-full rounded-md border border-border/60 bg-muted/20 px-3 py-2 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+          rows={14}
+          spellCheck={false}
+          value={overridesText}
+          onChange={(e) => setOverridesText(e.target.value)}
+        />
+      </div>
+
+      <button
+        onClick={runBacktest}
+        disabled={status === "running"}
+        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:opacity-50"
+      >
+        {status === "running" ? "Running…" : "Run backtest"}
+      </button>
+
+      {status === "error" && (
+        <p className="text-sm text-red-400">{errMsg}</p>
+      )}
+
+      {status === "done" && result && (
+        <div className="space-y-5">
+          {/* Summary */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <StatCard label="Problems" value={result.summary.totalProblems} />
+            <StatCard
+              label="Avg Δ Stability"
+              value={
+                <span className={result.summary.avgDelta > 0.5 ? "text-green-400" : result.summary.avgDelta < -0.5 ? "text-red-400" : "text-foreground"}>
+                  {result.summary.avgDelta > 0 ? "+" : ""}{result.summary.avgDelta.toFixed(2)}d
+                </span>
+              }
+            />
+            <StatCard
+              label="Calibration MAE"
+              value={
+                <span>
+                  {result.calibration.actualMAE != null
+                    ? result.calibration.actualMAE.toFixed(3)
+                    : "—"}
+                  {" → "}
+                  {result.calibration.simulatedMAE != null
+                    ? result.calibration.simulatedMAE.toFixed(3)
+                    : "—"}
+                </span>
+              }
+              sub={
+                result.calibration.actualMAE != null && result.calibration.simulatedMAE != null
+                  ? result.calibration.simulatedMAE < result.calibration.actualMAE
+                    ? "sim is better calibrated"
+                    : result.calibration.simulatedMAE > result.calibration.actualMAE
+                    ? "sim is worse calibrated"
+                    : "no change"
+                  : `${result.calibration.reviewCount} reviews`
+              }
+            />
+            <StatCard
+              label="Higher / Lower"
+              value={`${result.summary.higherCount} / ${result.summary.lowerCount}`}
+              sub={`${result.summary.noChangeCount} within 5%`}
+            />
+          </div>
+
+          {/* Per-problem table */}
+          {result.perProblem.length > 0 && (
+            <div className="overflow-hidden rounded-lg border border-border/60">
+              <table className="w-full text-sm">
+                <thead className="border-b border-border/60 bg-muted/30">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left   text-xs font-medium text-muted-foreground">Problem</th>
+                    <th className="px-4 py-2.5 text-right  text-xs font-medium text-muted-foreground">Attempts</th>
+                    <th className="px-4 py-2.5 text-right  text-xs font-medium text-muted-foreground">Actual S</th>
+                    <th className="px-4 py-2.5 text-right  text-xs font-medium text-muted-foreground">Sim S</th>
+                    <th className="px-4 py-2.5 text-right  text-xs font-medium text-muted-foreground">Δ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {result.perProblem.slice(0, 50).map((r, i) => (
+                    <tr key={i} className="hover:bg-muted/20">
+                      <td className="px-4 py-2.5">
+                        <p className="font-medium text-foreground">{r.problemTitle}</p>
+                        <p className={`text-xs ${DIFF_COLOR[r.difficulty]}`}>{r.difficulty}</p>
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{r.attemptCount}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{r.actualFinalStability.toFixed(1)}d</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{r.simulatedFinalStability.toFixed(1)}d</td>
+                      <td className={`px-4 py-2.5 text-right tabular-nums font-medium ${deltaColor(r.delta)}`}>
+                        {r.delta > 0 ? "+" : ""}{r.delta.toFixed(1)}d
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {result.perProblem.length > 50 && (
+                <p className="px-4 py-2 text-xs text-muted-foreground">
+                  Showing top 50 of {result.perProblem.length} (sorted by |Δ|).
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* ── Main component ── */
+
 export function AdminClient({ data }: { data: AdminData }) {
-  const { overview, users, cohortProblems, categoryStats } = data;
-  const [activeTab, setActiveTab] = useState<"users" | "cohort" | "categories">("users");
+  const { overview, users, cohortProblems, categoryStats, multiplierStats } = data;
+  const [activeTab, setActiveTab] = useState<"users" | "cohort" | "categories" | "multipliers" | "backtest">("users");
 
   return (
     <div className="space-y-8">
@@ -95,7 +263,7 @@ export function AdminClient({ data }: { data: AdminData }) {
       {/* Tab navigation */}
       <div className="border-b border-border/60">
         <nav className="-mb-px flex gap-6" aria-label="Admin sections">
-          {(["users", "cohort", "categories"] as const).map((tab) => (
+          {(["users", "cohort", "categories", "multipliers", "backtest"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -105,7 +273,11 @@ export function AdminClient({ data }: { data: AdminData }) {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab === "cohort" ? "Cohort Problems" : tab === "categories" ? "Categories" : "Users"}
+              {tab === "cohort" ? "Cohort Problems"
+               : tab === "categories" ? "Categories"
+               : tab === "multipliers" ? "Multipliers"
+               : tab === "backtest" ? "Backtest"
+               : "Users"}
             </button>
           ))}
         </nav>
@@ -271,6 +443,62 @@ export function AdminClient({ data }: { data: AdminData }) {
           )}
         </section>
       )}
+
+      {/* Multipliers tab */}
+      {activeTab === "multipliers" && (
+        <section>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Frequency of each (outcome × quality) multiplier key across all real attempts.
+            Avg R is the predicted retrievability at the time of the attempt (blank when predictedR
+            wasn&apos;t yet recorded for early attempts).
+          </p>
+          {multiplierStats.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No attempt data yet.</p>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-border/60">
+              <table className="w-full text-sm">
+                <thead className="border-b border-border/60 bg-muted/30">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left  text-xs font-medium text-muted-foreground">Key</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">Count</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">% of Total</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">Base ×</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">Avg Conf.</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">Avg R at review</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {multiplierStats.map((m) => {
+                    const [outcome, quality] = m.key.split(":");
+                    const outcomeColor =
+                      outcome === "YES" ? "text-green-400"
+                      : outcome === "PARTIAL" ? "text-amber-400"
+                      : "text-red-400";
+                    return (
+                      <tr key={m.key} className="hover:bg-muted/20">
+                        <td className="px-4 py-2.5 font-mono text-sm">
+                          <span className={outcomeColor}>{outcome}</span>
+                          <span className="text-muted-foreground">:{quality}</span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{m.count.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{pct(m.pctOfTotal)}</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums font-medium text-foreground">{m.baseMultiplier.toFixed(1)}×</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{m.avgConfidence.toFixed(1)}</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+                          {m.avgPredictedR != null ? pct(m.avgPredictedR) : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Backtest tab */}
+      {activeTab === "backtest" && <BacktestTab />}
     </div>
   );
 }

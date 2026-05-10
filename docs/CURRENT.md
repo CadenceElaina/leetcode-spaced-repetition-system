@@ -1,6 +1,6 @@
 # Current Implementation State — Aurora Ascent
 
-**Last updated: 2026-05-10 — predictedR logging live; ADAPTIVE_SRS Phase 1 complete; task queue empty**
+**Last updated: 2026-05-10 — SRS calibration tooling complete (chart, multiplier distribution, backtest engine)**
 
 Read this before every work session. Update it after every session.
 
@@ -24,6 +24,10 @@ _None — clean slate._
 
 | Date | Change |
 |---|---|
+| 2026-05-10 | `feat(srs)`: SVG calibration curve chart on Insights page — 5-bucket bar chart vs. perfect-calibration diagonal; wired to `computeModelCalibration` |
+| 2026-05-10 | `feat(admin)`: Multipliers tab — per-(outcome×quality) key frequency, base multiplier, avg confidence, avg predictedR |
+| 2026-05-10 | `feat(admin)`: Backtest tab + `GET /api/admin/backtest` — replay full attempt history under alternate multiplier table; MAE-vs-MAE comparison; per-problem stability delta table |
+| 2026-05-10 | `feat(srs)`: `src/lib/srs-simulator.ts` — pure `runBacktest()` engine; `computeMultiplierOutcomes` added to `analytics.ts`; 26 new tests (233 total) |
 | 2026-05-10 | `feat(srs)`: `predictedR` column on `attempt` table; logged on every review; Insights calibration card (MAE, n); ADAPTIVE_SRS Phase 1 complete |
 | 2026-05-10 | `feat(pacing)`: Phase 3 — budget mismatch detection banner; 14-day dismiss cooldown; `AVG_PROBLEM_SESSION_MINUTES=30` |
 | 2026-05-10 | `feat(pacing)`: Phase 4 — zone-colored forecast bars; capacity reference line (`~N/d cap`) |
@@ -91,7 +95,11 @@ _None — task queue empty. Next meaningful work: Pacing Phase 3 remainder (time
 
 ## Tests
 
-- `tests/unit/srs.test.ts` — **55 SRS unit tests** (all passing)
-- No API, component, or E2E tests yet
+- `tests/unit/srs.test.ts` — 55 SRS unit tests
+- `tests/unit/analytics.test.ts` — analytics engine tests (includes `computeMultiplierOutcomes`)
+- `tests/unit/srs-simulator.test.ts` — 14 backtest engine tests
+- `tests/api/` — API route integration tests
+- `src/app/dashboard/__tests__/` — pacing + capacity unit tests
+- **233 total, all passing**
 
 Run: `npm test`

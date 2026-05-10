@@ -3,6 +3,7 @@ import type {
   ComplianceResult,
   MetacognitionResult,
   CategoryStat,
+  CalibrationBucket,
 } from "@/lib/analytics";
 
 export interface StuckProblemDisplay {
@@ -22,7 +23,7 @@ export interface InsightsData {
   categoryStats: CategoryStat[];
   totalAttempts: number;
   totalProblems: number;
-  calibration: { n: number; mae: number | null };
+  calibration: { n: number; mae: number | null; buckets: CalibrationBucket[] };
 }
 
 export const DEMO_INSIGHTS_DATA: InsightsData = {
@@ -76,5 +77,15 @@ export const DEMO_INSIGHTS_DATA: InsightsData = {
   ],
   totalAttempts: 134,
   totalProblems: 44,
-  calibration: { n: 47, mae: 0.09 },
+  calibration: {
+    n: 47,
+    mae: 0.09,
+    buckets: [
+      { rRange: [0.3,  0.5 ], predictedMidpoint: 0.40,  actualSuccessRate: 0.36, count: 11 },
+      { rRange: [0.5,  0.65], predictedMidpoint: 0.575, actualSuccessRate: 0.60, count:  9 },
+      { rRange: [0.65, 0.8 ], predictedMidpoint: 0.725, actualSuccessRate: 0.71, count: 13 },
+      { rRange: [0.8,  0.9 ], predictedMidpoint: 0.85,  actualSuccessRate: 0.88, count:  8 },
+      { rRange: [0.9,  1.01], predictedMidpoint: 0.955, actualSuccessRate: 0.93, count:  6 },
+    ],
+  },
 };

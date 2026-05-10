@@ -25,6 +25,7 @@ export interface AttemptRecord {
   rewroteFromScratch: "YES" | "NO" | "DID_NOT_ATTEMPT" | null;
   timeComplexityCorrect: boolean | null;
   spaceComplexityCorrect: boolean | null;
+  predictedR?: number | null;
   createdAt: Date;
 }
 
@@ -551,4 +552,52 @@ export function computeCohortStats(
     noOutcomeRate: d.totalAttempts > 0 ? d.noOutcomes / d.totalAttempts : 0,
     complexityAccuracyRate: d.complexityTotal > 0 ? d.complexityCorrect / d.complexityTotal : 0,
   }));
+}
+
+/* ── Multiplier outcome distribution ── */
+
+export interface MultiplierKeyStat {
+  key: string;              // e.g. "YES:OPTIMAL"
+  count: number;
+  pctOfTotal: number;       // fraction 0–1
+  baseMultiplier: number;   // value from multiplierTable
+  avgConfidence: number;    // 1–5 average
+  avgPredictedR: number | null; // average predictedR at review time; null when none recorded
+}
+
+/**
+ * Groups attempts by (outcome × quality) key and returns frequency + signal stats.
+ * Pass BASE_MULTIPLIERS (or a custom table) as multiplierTable to include the
+ * configured base value for each key in the output.
+ */
+export function computeMultiplierOutcomes(
+  attempts: AttemptRecord[],
+  multiplierTable: Record<string, number>,
+): MultiplierKeyStat[] {
+  type Acc = { count: number; confidenceSum: number; predictedRSum: number; predictedRCount: number };
+  const acc = new Map<string, Acc>();
+
+  for (const a of attempts) {
+    const key = `${a.outcome}:${a.quality}`;
+    if (!acc.has(key)) acc.set(key, { count: 0, confidenceSum: 0, predictedRSum: 0, predictedRCount: 0 });
+    const d = acc.get(key)!;
+    d.count++;
+    d.confidenceSum += a.confidence;
+    if (a.predictedR != null) {
+      d.predictedRSum += a.predictedR;
+      d.predictedRCount++;
+    }
+  }
+
+  const total = attempts.length;
+  return Array.from(acc.entries())
+    .map(([key, d]) => ({
+      key,
+      count:         d.count,
+      pctOfTotal:    total > 0 ? d.count / total : 0,
+      baseMultiplier: multiplierTable[key] ?? 1.0,
+      avgConfidence: d.count > 0 ? d.confidenceSum / d.count : 0,
+      avgPredictedR: d.predictedRCount > 0 ? d.predictedRSum / d.predictedRCount : null,
+    }))
+    .sort((a, b) => b.count - a.count);
 }

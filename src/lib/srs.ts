@@ -20,8 +20,8 @@ export interface AttemptSignals {
 
 /* ── Constants ── */
 
-const MIN_STABILITY = 0.5; // days
-const MAX_STABILITY = 365; // days
+export const MIN_STABILITY = 0.5; // days
+export const MAX_STABILITY = 365; // days
 const RETRIEVABILITY_FLOOR = 0.3;
 export const MASTERY_THRESHOLD = 45; // stability (days) treated as 100% mastery
 
@@ -30,11 +30,11 @@ export const MASTERY_THRESHOLD = 45; // stability (days) treated as 100% mastery
 // is counterproductive and builds queue debt faster than the user can clear it.
 // FSRS calibration for "good" first recall targets ~15 days; 2.0 × 2.5 = 5 days
 // is a deliberate conservative choice for a skill-heavy domain.
-const INITIAL_STABILITY_BASE = 2.0; // days
+export const INITIAL_STABILITY_BASE = 2.0; // days
 
 /* ── Base multipliers (§6.2) ── */
 
-const BASE_MULTIPLIERS: Record<string, number> = {
+export const BASE_MULTIPLIERS: Record<string, number> = {
   // solved=YES — quality matters
   "YES:OPTIMAL": 2.5,
   "YES:SUBOPTIMAL": 2.0,
@@ -57,7 +57,7 @@ const BASE_MULTIPLIERS: Record<string, number> = {
 
 /* ── Modifier bonuses (§6.2) ── */
 
-function computeModifier(signals: AttemptSignals): number {
+export function computeModifier(signals: AttemptSignals): number {
   let mod = 0;
   const solvedAlone = signals.solvedIndependently === "YES";
 
@@ -135,7 +135,7 @@ export function computeNextReviewDate(
 }
 
 /** Clamp stability to valid range. */
-function clampStability(s: number): number {
+export function clampStability(s: number): number {
   return Math.max(MIN_STABILITY, Math.min(MAX_STABILITY, s));
 }
 

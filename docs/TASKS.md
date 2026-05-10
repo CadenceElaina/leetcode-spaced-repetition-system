@@ -3,7 +3,7 @@
 Agents and sessions pull from this file. Claim a task by adding your session ID to the Agent column.
 **Canonical task file** — root `TASKS.md` is a mirror. Edit only this one.
 
-Last updated: 2026-05-10 — T-023 complete
+Last updated: 2026-05-10 — T-024 complete
 
 ---
 
@@ -35,6 +35,7 @@ _None._
 
 | ID    | Completed  | Description                                                                                                                             |
 | ----- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| T-024 | 2026-05-10 | `feat(srs)`: Calibration tooling — SVG chart on Insights; Multipliers + Backtest tabs on Admin; `srs-simulator.ts` backtest engine; `computeMultiplierOutcomes`; `GET /api/admin/backtest`; 26 new tests (233 total) |
 | T-023 | 2026-05-10 | `feat(pacing)`: Phase 2 — 5-zone load ratio system in `computePracticeRecommendation`; `queueStability` dynamic split index; `MAX_DAYS` 30→60; chart back-half split + horizon label updated |
 | T-020 | 2026-05-09 | `perf(dashboard)`: problems cache TTL → 3600s; `unstable_cache` on webhook slug-map; `computeRetrievability` deduplicated to single Map; `useMemo` on top dashboard-client derived computations |
 | T-022 | 2026-05-09 | `test(api)`: attempts (POST 400×3, DELETE 401/404×2/200), review (defer/skip 401/400/200), notes (GET+PUT 401/400/200), webhook (sig/event/slug cases) — 165 tests passing |

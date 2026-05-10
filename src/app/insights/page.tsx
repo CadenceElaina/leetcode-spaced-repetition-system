@@ -9,8 +9,10 @@ import {
   computeMetacognitionGap,
   computeReviewCompliance,
   computeCategoryStats,
+  computeModelCalibration,
   type AttemptRecord,
   type StateRecord,
+  type ReviewPoint,
 } from "@/lib/analytics";
 import { InsightsClient } from "./insights-client";
 import { DEMO_INSIGHTS_DATA } from "./demo-data";
@@ -78,6 +80,7 @@ export default async function InsightsPage() {
     rewroteFromScratch:     a.rewroteFromScratch,
     timeComplexityCorrect:  a.timeComplexityCorrect,
     spaceComplexityCorrect: a.spaceComplexityCorrect,
+    predictedR:             a.predictedR,
     createdAt:              a.createdAt,
   }));
 
@@ -100,16 +103,20 @@ export default async function InsightsPage() {
 
   // Model calibration: compare predictedR (at review time) against actual outcome.
   // Only reviews with a prior attempt have predictedR; first-ever attempts are null.
-  const calibrationPoints = rawAttempts
+  const reviewPoints: ReviewPoint[] = rawAttempts
     .filter((a) => a.predictedR !== null)
     .map((a) => ({
-      predicted: a.predictedR!,
-      actual: a.outcome === "YES" ? 1.0 : a.outcome === "PARTIAL" ? 0.5 : 0.0,
+      predictedR: a.predictedR!,
+      outcome: a.outcome,
     }));
-  const calibrationN = calibrationPoints.length;
+  const calibrationN = reviewPoints.length;
   const calibrationMAE = calibrationN >= 20
-    ? calibrationPoints.reduce((s, p) => s + Math.abs(p.predicted - p.actual), 0) / calibrationN
+    ? reviewPoints.reduce((s, p) => {
+        const actual = p.outcome === "YES" ? 1.0 : p.outcome === "PARTIAL" ? 0.5 : 0.0;
+        return s + Math.abs(p.predictedR - actual);
+      }, 0) / calibrationN
     : null;
+  const { buckets: calibrationBuckets } = computeModelCalibration(reviewPoints);
 
   const stuckProblems: StuckProblemDisplay[] = rawStuck.map((s) => {
     const p = problemMap.get(s.problemId);
@@ -134,7 +141,7 @@ export default async function InsightsPage() {
           categoryStats: catStats.sort((a, b) => a.avgR - b.avgR),
           totalAttempts:  attemptRecords.length,
           totalProblems:  stateRecords.length,
-          calibration: { n: calibrationN, mae: calibrationMAE },
+          calibration: { n: calibrationN, mae: calibrationMAE, buckets: calibrationBuckets },
         }}
         isDemo={false}
       />

@@ -8,6 +8,7 @@ import {
   computeQualityProgression,
   computeModelCalibration,
   computeCohortStats,
+  computeMultiplierOutcomes,
   type AttemptRecord,
   type StateRecord,
   type ReviewPoint,
@@ -576,5 +577,104 @@ describe("computeCohortStats", () => {
     const p = result.find((r) => r.problemId === 1)!;
     expect(p.avgAttemptsToOptimal).toBeNull();
     expect(p.pctAchievedOptimal).toBe(0);
+  });
+});
+
+// ── computeMultiplierOutcomes ─────────────────────────────────────────────────
+
+const SAMPLE_TABLE: Record<string, number> = {
+  "YES:OPTIMAL": 2.5,
+  "YES:SUBOPTIMAL": 2.0,
+  "YES:BRUTE_FORCE": 1.5,
+  "YES:NONE": 1.0,
+  "PARTIAL:OPTIMAL": 1.1,
+  "PARTIAL:SUBOPTIMAL": 1.1,
+  "PARTIAL:BRUTE_FORCE": 1.1,
+  "PARTIAL:NONE": 1.1,
+  "NO:OPTIMAL": 0.8,
+  "NO:SUBOPTIMAL": 0.8,
+  "NO:BRUTE_FORCE": 0.8,
+  "NO:NONE": 0.5,
+};
+
+describe("computeMultiplierOutcomes", () => {
+  it("returns empty array for empty input", () => {
+    expect(computeMultiplierOutcomes([], SAMPLE_TABLE)).toHaveLength(0);
+  });
+
+  it("groups correctly by outcome:quality key", () => {
+    const attempts = [
+      attempt(1, daysAgo(2), { outcome: "YES", quality: "OPTIMAL" }),
+      attempt(2, daysAgo(1), { outcome: "YES", quality: "OPTIMAL" }),
+      attempt(3, daysAgo(3), { outcome: "NO", quality: "NONE" }),
+    ];
+    const result = computeMultiplierOutcomes(attempts, SAMPLE_TABLE);
+    const yesOpt = result.find((r) => r.key === "YES:OPTIMAL")!;
+    const noNone = result.find((r) => r.key === "NO:NONE")!;
+    expect(yesOpt.count).toBe(2);
+    expect(noNone.count).toBe(1);
+  });
+
+  it("assigns the correct baseMultiplier from the table", () => {
+    const attempts = [attempt(1, daysAgo(1), { outcome: "NO", quality: "NONE" })];
+    const result = computeMultiplierOutcomes(attempts, SAMPLE_TABLE);
+    expect(result[0].baseMultiplier).toBe(0.5);
+  });
+
+  it("falls back to 1.0 for a key not present in the table", () => {
+    const attempts = [attempt(1, daysAgo(1), { outcome: "YES", quality: "NONE" })];
+    const table = {}; // empty table → fallback
+    const result = computeMultiplierOutcomes(attempts, table);
+    expect(result[0].baseMultiplier).toBe(1.0);
+  });
+
+  it("pctOfTotal sums to 1 across all keys", () => {
+    const attempts = [
+      attempt(1, daysAgo(3), { outcome: "YES", quality: "OPTIMAL" }),
+      attempt(2, daysAgo(2), { outcome: "YES", quality: "SUBOPTIMAL" }),
+      attempt(3, daysAgo(1), { outcome: "NO",  quality: "NONE" }),
+    ];
+    const result = computeMultiplierOutcomes(attempts, SAMPLE_TABLE);
+    const total = result.reduce((s, r) => s + r.pctOfTotal, 0);
+    expect(total).toBeCloseTo(1.0, 5);
+  });
+
+  it("avgConfidence is computed per key", () => {
+    const attempts = [
+      attempt(1, daysAgo(2), { outcome: "YES", quality: "OPTIMAL", confidence: 2 }),
+      attempt(2, daysAgo(1), { outcome: "YES", quality: "OPTIMAL", confidence: 4 }),
+    ];
+    const result = computeMultiplierOutcomes(attempts, SAMPLE_TABLE);
+    const yesOpt = result.find((r) => r.key === "YES:OPTIMAL")!;
+    expect(yesOpt.avgConfidence).toBeCloseTo(3.0, 5);
+  });
+
+  it("avgPredictedR is null when no attempts have predictedR", () => {
+    const attempts = [attempt(1, daysAgo(1), { outcome: "YES", quality: "OPTIMAL" })];
+    const result = computeMultiplierOutcomes(attempts, SAMPLE_TABLE);
+    expect(result[0].avgPredictedR).toBeNull();
+  });
+
+  it("avgPredictedR averages only non-null predictedR values", () => {
+    const attempts = [
+      { ...attempt(1, daysAgo(2), { outcome: "YES", quality: "OPTIMAL" }), predictedR: 0.8 },
+      { ...attempt(2, daysAgo(1), { outcome: "YES", quality: "OPTIMAL" }), predictedR: null },
+      { ...attempt(3, daysAgo(3), { outcome: "YES", quality: "OPTIMAL" }), predictedR: 0.6 },
+    ];
+    const result = computeMultiplierOutcomes(attempts, SAMPLE_TABLE);
+    const yesOpt = result.find((r) => r.key === "YES:OPTIMAL")!;
+    expect(yesOpt.avgPredictedR).toBeCloseTo(0.7, 5); // (0.8 + 0.6) / 2
+  });
+
+  it("results are sorted by count descending", () => {
+    const attempts = [
+      attempt(1, daysAgo(4), { outcome: "NO", quality: "NONE" }),
+      attempt(2, daysAgo(3), { outcome: "YES", quality: "OPTIMAL" }),
+      attempt(3, daysAgo(2), { outcome: "YES", quality: "OPTIMAL" }),
+      attempt(4, daysAgo(1), { outcome: "YES", quality: "OPTIMAL" }),
+    ];
+    const result = computeMultiplierOutcomes(attempts, SAMPLE_TABLE);
+    expect(result[0].key).toBe("YES:OPTIMAL"); // count 3
+    expect(result[1].key).toBe("NO:NONE");     // count 1
   });
 });
