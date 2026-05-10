@@ -1,7 +1,7 @@
 # ADR: Daily Time Budget Goal System
 
 **Date:** 2026-05-10
-**Status:** Proposed
+**Status:** Phase 1 Implemented — Phase 2 pending
 **Scope:** Onboarding, `users` schema, dashboard pacing, recommendation engine
 
 ---

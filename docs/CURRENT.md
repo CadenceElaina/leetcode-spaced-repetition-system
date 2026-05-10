@@ -1,6 +1,6 @@
 # Current Implementation State — Aurora Ascent
 
-**Last updated: 2026-05-03 — cheatsheets + UX polish sprint**
+**Last updated: 2026-05-10 — pacing system Phase 1 complete; doc audit + pre-Phase-2 hardening**
 
 Read this before every work session. Update it after every session.
 
@@ -24,12 +24,8 @@ _None — clean slate._
 
 | Date | Change |
 |---|---|
-| 2026-05-03 | `perf(dashboard)`: loading skeleton (`loading.tsx`) + `unstable_cache` on static problems query |
-| 2026-05-03 | `feat(attempt)`: prior attempt notes shown (collapsed) on review problems |
-| 2026-05-03 | `ux(cheatsheets)`: surface complexity + canonical always-visible; simplify variants disclosure; stack layout |
-| 2026-05-03 | `ux(cheatsheets)`: rename "Patterns" → "Cheatsheets"; add review count to panel header |
-| 2026-05-03 | `refactor(cheatsheet)`: replace overlay drawer with in-column panel; redesign content hierarchy |
-| 2026-05-03 | `feat(cheatsheet)`: purpose framing, pattern link in log modal, template toggle |
+| 2026-05-10 | `fix(capacity)`: `reviewCapacity` floors at 1 (prevents Phase 2 division-by-zero); `timeBudget` state replaces stale `localStorage` read in `practiceRecommendation` memo; Intensive + zero-budget unit test cases added |
+| 2026-05-10 | `docs`: implementation status table updated to reflect Phase 1 complete; ADR status → "Phase 1 Implemented"; backAvg Phase 2 slice-index note added to CONSTANTS.md |
 
 ## Previously Completed (2026-05-03 polish sprint)
 
@@ -56,9 +52,8 @@ _None — clean slate._
 
 | Priority | Area | Task |
 |---|---|---|
+| P2 | pacing | T-023: Phase 2 load ratio zones — wire `queueLoadRatio` into `computePracticeRecommendation`; extend forecast 30→60 days; add overshoot tracking |
 | P2 | Bug | Fix cheatsheet panel z-index so Queue Forecast bars don't bleed through |
-| P2 | Demo | T-018: demo guard on attempt form + ProblemLogButton (sign-in prompt instead of silent 401) |
-| P3 | Tests | API route tests for `/api/attempts` |
 
 ---
 

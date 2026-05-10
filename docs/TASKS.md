@@ -20,7 +20,9 @@ Last updated: 2026-05-09 — T-019–T-022 all complete
 
 ## Open Tasks
 
-_None — all audit tasks complete._
+| ID | Priority | Area | Description |
+| --- | --- | --- | --- |
+| T-023 | P2 | pacing | Phase 2: wire load ratio zones into `computePracticeRecommendation` — replace `peakLoadDays`/`drainRate`/`acceleration` checks with `queueLoadRatio = backHalfAvg / reviewCapacity`; extend `MAX_DAYS` 30→60 (update `backAvg` slice index 15→30 in `queueStability()`); add overshoot tracking. See `PACING_SYSTEM.md` and `CONSTANTS.md`. |
 
 ---
 

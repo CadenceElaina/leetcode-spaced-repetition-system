@@ -75,12 +75,13 @@ These sections were added or significantly revised on 2026-05-10 based on a desi
 
 | Component | Status | Phase | Notes |
 |---|---|---|---|
-| Time budget selector (onboarding) | Not started | Phase 1 | |
-| `dailyTimeBudgetMinutes` schema field | Not started | Phase 1 | |
-| `deriveCapacity()` function | Not started | Phase 1 | Uses 25/45 session-time constants |
-| Load ratio zones in recommendation engine | Not started | Phase 2 | 5 zones: Green/Yellow/Amber/Orange/Red |
-| Overshoot tracking | Not started | Phase 2 | |
-| Extended forecast horizon (30 → 60 days) | Not started | Phase 2 | Code currently uses MAX_DAYS = 30 |
+| `dailyTimeBudgetMinutes` schema field | **Implemented** | Phase 1 | Added to `users` table; default 60 |
+| Time budget selector (onboarding) | **Implemented** | Phase 1 | Step 3 of onboarding flow |
+| Time budget in Settings panel | **Implemented** | Phase 1 | Gear icon on countdown widget |
+| `computeCapacity()` function | **Implemented** | Phase 1 | `src/lib/capacity.ts`; `reviewCapacity` floors at 1 to prevent Phase 2 division-by-zero |
+| Load ratio zones in recommendation engine | Not started | Phase 2 | 5 zones: Green/Yellow/Amber/Orange/Red; replaces ad hoc `peakLoadDays`/`drainRate` checks |
+| Overshoot tracking | Not started | Phase 2 | `OVERSHOOT_TOLERANCE_DAYS=3`, `OVERSHOOT_FIRM_DAYS=5` |
+| Extended forecast horizon (30 → 60 days) | Not started | Phase 2 | `MAX_DAYS = 30` in `dashboard-client.tsx`; see backAvg note in `CONSTANTS.md` |
 | Budget mismatch detection | Not started | Phase 3 | |
 | Goal adherence tracking | Not started | Phase 3 | |
 | Forecast zone coloring | Not started | Phase 4 | |

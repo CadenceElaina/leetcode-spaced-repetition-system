@@ -100,6 +100,8 @@ The primary signal for queue management recommendations. Ratio = `projectedDaily
 
 `projectedDailyDue` is the **back-half average** from the 60-day forecast — i.e., the average daily due count in days 31–60 of the simulation. This represents where the queue is *heading*, not where it is today.
 
+**Phase 2 implementation note:** The current `queueStability()` in `src/lib/capacity.ts` computes `backAvg` as `avg(days.slice(15))` — the back half of a 30-day window (days 16–30). When Phase 2 extends `MAX_DAYS` from 30 to 60, this slice index must change from `15` to `30` to match the spec (days 31–60). Failing to update the slice will silently compute the wrong window.
+
 ---
 
 ## Absolute Guardrails
