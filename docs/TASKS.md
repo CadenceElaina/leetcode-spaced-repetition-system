@@ -3,7 +3,7 @@
 Agents and sessions pull from this file. Claim a task by adding your session ID to the Agent column.
 **Canonical task file** — root `TASKS.md` is a mirror. Edit only this one.
 
-Last updated: 2026-05-09 — T-019–T-022 all complete
+Last updated: 2026-05-10 — T-023 complete
 
 ---
 
@@ -20,9 +20,7 @@ Last updated: 2026-05-09 — T-019–T-022 all complete
 
 ## Open Tasks
 
-| ID | Priority | Area | Description |
-| --- | --- | --- | --- |
-| T-023 | P2 | pacing | Phase 2: wire load ratio zones into `computePracticeRecommendation` — replace `peakLoadDays`/`drainRate`/`acceleration` checks with `queueLoadRatio = backHalfAvg / reviewCapacity`; extend `MAX_DAYS` 30→60 (update `backAvg` slice index 15→30 in `queueStability()`); add overshoot tracking. See `PACING_SYSTEM.md` and `CONSTANTS.md`. |
+_None._
 
 ---
 
@@ -37,6 +35,7 @@ Last updated: 2026-05-09 — T-019–T-022 all complete
 
 | ID    | Completed  | Description                                                                                                                             |
 | ----- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| T-023 | 2026-05-10 | `feat(pacing)`: Phase 2 — 5-zone load ratio system in `computePracticeRecommendation`; `queueStability` dynamic split index; `MAX_DAYS` 30→60; chart back-half split + horizon label updated |
 | T-020 | 2026-05-09 | `perf(dashboard)`: problems cache TTL → 3600s; `unstable_cache` on webhook slug-map; `computeRetrievability` deduplicated to single Map; `useMemo` on top dashboard-client derived computations |
 | T-022 | 2026-05-09 | `test(api)`: attempts (POST 400×3, DELETE 401/404×2/200), review (defer/skip 401/400/200), notes (GET+PUT 401/400/200), webhook (sig/event/slug cases) — 165 tests passing |
 | T-021 | 2026-05-09 | `fix(api)`: unique index on attempts (userId, problemId, date) + 23505 catch; input length caps (repo 200, code 50k, notes 2k); CSRF documented; webhook HMAC comment block; aurora-research excluded from tsconfig |

@@ -197,6 +197,12 @@ export const AVG_REVIEW_SESSION_MINUTES = 25;
 export const AVG_NEW_SESSION_MINUTES = 45;
 export const AVG_EASY_NEW_SESSION_MINUTES = 25;
 
+export const QUEUE_GREEN_RATIO  = 0.6;   // freely add new problems
+export const QUEUE_YELLOW_RATIO = 0.85;  // add 1–2 new/day max
+export const QUEUE_AMBER_RATIO  = 1.1;   // review first before any new
+export const QUEUE_ORANGE_RATIO = 1.5;   // queue heavy — stop new entirely
+export const QUEUE_RED_RATIO    = 2.0;   // overloaded threshold
+
 /* ── Helpers ── */
 
 export function avg(values: number[]): number {
@@ -209,8 +215,9 @@ export function queueStability(projection: QueueProjection): QueueStability {
   const first14 = days.slice(0, 14);
   const firstWeek = days.slice(0, 7);
   const secondWeek = days.slice(7, 14);
-  const front15 = days.slice(0, 15);
-  const back15 = days.slice(15);
+  const splitIdx = Math.floor(days.length / 2);
+  const frontHalf = days.slice(0, splitIdx);
+  const backHalf = days.slice(splitIdx);
   const start = days[0] ?? 0;
   const end14 = first14[first14.length - 1] ?? start;
   const firstWeekSlope = firstWeek.length > 1 ? (firstWeek[firstWeek.length - 1] - firstWeek[0]) / (firstWeek.length - 1) : 0;
@@ -218,8 +225,8 @@ export function queueStability(projection: QueueProjection): QueueStability {
   const avg14 = avg(first14);
   const max14 = Math.max(...first14, 0);
   const reviewsPerDay = Math.max(1, projection.reviewsPerDay);
-  const frontAvg = front15.length > 0 ? avg(front15) : 0;
-  const backAvg = back15.length > 0 ? avg(back15) : frontAvg;
+  const frontAvg = frontHalf.length > 0 ? avg(frontHalf) : 0;
+  const backAvg = backHalf.length > 0 ? avg(backHalf) : frontAvg;
 
   return {
     avg14,
@@ -233,7 +240,7 @@ export function queueStability(projection: QueueProjection): QueueStability {
     peakLoadDays: max14 / reviewsPerDay,
     frontAvg,
     backAvg,
-    drainRate: (frontAvg - backAvg) / 15,
+    drainRate: splitIdx > 0 ? (frontAvg - backAvg) / splitIdx : 0,
   };
 }
 
@@ -321,16 +328,15 @@ export function computePracticeRecommendation({
   }
 
   const metrics = queueStability(actualProjection);
-  const queueHeavy = metrics.peakLoadDays > 2.5;
-  const queueCritical = metrics.drainRate < -0.5 || (metrics.peakLoadDays > 4 && metrics.drainRate < 0) || (metrics.acceleration >= 1.25 && metrics.secondWeekSlope > 1);
-  const queueGrowing = metrics.drainRate < -0.5 || metrics.growth14 >= 8 || metrics.acceleration >= 0.75;
-  const queueStable = Math.abs(metrics.drainRate) < 0.5 && metrics.peakLoadDays <= 2.5;
-  const activeLoadHigh = data.learningCount / Math.max(1, actualProjection.reviewsPerDay) > 14;
+  const capacity = computeCapacity(dailyTimeBudgetMinutes, metrics.backAvg);
+  const queueLoadRatio = metrics.backAvg / capacity.reviewCapacity;
   const avgQueueLabel = metrics.avg14.toFixed(metrics.avg14 >= 10 ? 0 : 1);
   const peakQueueLabel = metrics.max14.toFixed(0);
-  const capacity = computeCapacity(dailyTimeBudgetMinutes, metrics.backAvg);
+  const lostMinutesSuffix = capacity.canFitEasy && capacity.newCapacity === 0
+    ? " Your remaining budget fits one Easy (~25 min)."
+    : "";
 
-  if (onBreak && (queueCritical || queueGrowing || queueHeavy || activeLoadHigh)) {
+  if (onBreak) {
     const warmupTarget = Math.min(data.reviewQueue.length, 10);
     return {
       tone: "watch",
@@ -343,11 +349,12 @@ export function computePracticeRecommendation({
     };
   }
 
-  if (queueCritical) {
+  // RED — queue exceeds capacity by 50%+
+  if (queueLoadRatio > QUEUE_ORANGE_RATIO) {
     return {
       tone: "danger",
       title: "Review first",
-      body: "Your review forecast is rising faster than your recent review capacity. Review first and pause new problems for now.",
+      body: `Your queue is projecting ~${Math.round(metrics.backAvg)} due/day against your ~${capacity.reviewCapacity}/day capacity. Pause new problems and clear reviews.`,
       reason: `At your current pace, the next 14 days average ${avgQueueLabel} due reviews and peak near ${peakQueueLabel}.`,
       actionLabel: "Review first",
       actionMode: "review",
@@ -355,58 +362,71 @@ export function computePracticeRecommendation({
     };
   }
 
-  if (queueGrowing || queueHeavy || activeLoadHigh || retentionRisk) {
-    const queueEasingButHeavy = queueHeavy && metrics.drainRate > -0.5;
+  // ORANGE — queue heavy (1.1–1.5×)
+  if (queueLoadRatio > QUEUE_AMBER_RATIO) {
+    const clearTarget = Math.round(capacity.reviewCapacity * 0.85);
+    return {
+      tone: "danger",
+      title: "Review first",
+      body: `Queue is above your review capacity. Stop adding new problems until it drops to ~${clearTarget}/day.`,
+      reason: `Projected due reviews average ${avgQueueLabel} against your ~${capacity.reviewCapacity}/day capacity.`,
+      actionLabel: "Review first",
+      actionMode: "review",
+      metrics,
+    };
+  }
+
+  // AMBER — near capacity (0.85–1.1×)
+  if (queueLoadRatio > QUEUE_YELLOW_RATIO) {
+    const growing = metrics.drainRate < 0;
     return {
       tone: "watch",
       title: "Review first",
-      body: queueEasingButHeavy
-        ? "Your forecast is easing, but the queue is still active. Review what is due before adding more."
-        : "Keep new problems optional until the review forecast flattens. The goal is a sustainable queue, not an empty one.",
-      reason: queueEasingButHeavy
-        ? metrics.drainRate > 0.5
-          ? `Queue is trending down — averaging ~${Math.round(metrics.backAvg)}/day in the back half of the forecast.`
-          : `Queue is roughly flat at this pace — averaging ~${Math.round(metrics.backAvg)}/day over 30 days.`
-        : activeLoadHigh
-        ? `You have ${data.learningCount} active learning problems, which is a lot for ${actualProjection.reviewsPerDay.toFixed(1)} reviews/day.`
-        : retentionRisk
-          ? "Retention is below 50%, so adding coverage now may make the queue noisier before it gets useful."
-          : `The forecast is growing — averaging ~${Math.round(metrics.backAvg)}/day by the end of the forecast.`,
+      body: growing
+        ? "Queue is near your review capacity and trending up. Finish reviews before adding new problems."
+        : "Queue is near capacity but holding steady. Add new problems only after today's reviews are done.",
+      reason: growing
+        ? `Projected load is ~${Math.round(metrics.backAvg)}/day — close to your ~${capacity.reviewCapacity}/day capacity and still growing.`
+        : `Projected load is ~${Math.round(metrics.backAvg)}/day — roughly at your ~${capacity.reviewCapacity}/day capacity.`,
       actionLabel: "Review queue",
       actionMode: "review",
       metrics,
     };
   }
 
-  if (queueStable && behindCoverage) {
-    const lostMinutesSuffix = capacity.canFitEasy && capacity.newCapacity === 0
-      ? " Your remaining budget fits one Easy (~25 min)."
-      : "";
+  // YELLOW — healthy with headroom (0.6–0.85×)
+  if (queueLoadRatio > QUEUE_GREEN_RATIO) {
     return {
       tone: "good",
-      title: "Add coverage carefully",
-      body: `Your review load looks stable, and ${targetLabel} needs about ${requiredNewPerDay.toFixed(1)} new/day from here.`,
+      title: behindCoverage ? "Add coverage carefully" : "Keep current pace",
+      body: behindCoverage
+        ? `Your review load looks stable, and ${targetLabel} needs about ${requiredNewPerDay.toFixed(1)} new/day from here.`
+        : "Your queue is healthy. Add a new problem when you have focus time, or review to strengthen retention.",
       reason: (weakCategoryRisk
         ? "Prefer a weak or under-covered category so coverage improves without hiding a blind spot."
-        : `Projected due reviews average ${avgQueueLabel}, which is within your recent review capacity.`) + lostMinutesSuffix,
-      actionLabel: "Browse new",
-      actionMode: "new",
+        : retentionRisk
+          ? "Retention is still developing — log confidence carefully after each attempt."
+          : `Projected due reviews average ${avgQueueLabel}, within your ~${capacity.reviewCapacity}/day capacity.`) + lostMinutesSuffix,
+      actionLabel: behindCoverage ? "Browse new" : actualProjection.currentSize > 0 ? "Review queue" : "Browse new",
+      actionMode: behindCoverage ? "new" : actualProjection.currentSize > 0 ? "review" : "new",
       metrics,
     };
   }
 
-  const lostMinutesSuffix = capacity.canFitEasy && capacity.newCapacity === 0
-    ? " Your remaining budget fits one Easy (~25 min)."
-    : "";
+  // GREEN — queue light (< 0.6×)
   return {
     tone: dataLight ? "neutral" : "good",
-    title: "Keep current pace",
+    title: behindCoverage ? "Add coverage" : "Keep current pace",
     body: dataLight
       ? "Aurora has limited history, but your current queue does not look unstable yet."
-      : "Your queue is active without accelerating. Review what is due, then add new only when you have focus time.",
-    reason: `Projected due reviews average ${avgQueueLabel} and peak near ${peakQueueLabel} over the next 14 days.` + lostMinutesSuffix,
-    actionLabel: actualProjection.currentSize > 0 ? "Review queue" : "Browse new",
-    actionMode: actualProjection.currentSize > 0 ? "review" : "new",
+      : behindCoverage
+        ? `Your review queue is light — ${targetLabel} needs about ${requiredNewPerDay.toFixed(1)} new/day from here.`
+        : "Your queue is light. Add new problems when you have real focus time, or review weak categories.",
+    reason: retentionRisk
+      ? "Retention is still low — log confidence carefully after each attempt."
+      : `Projected due reviews average ${avgQueueLabel} and peak near ${peakQueueLabel} over the next 14 days.` + lostMinutesSuffix,
+    actionLabel: behindCoverage ? "Browse new" : actualProjection.currentSize > 0 ? "Review queue" : "Browse new",
+    actionMode: behindCoverage ? "new" : actualProjection.currentSize > 0 ? "review" : "new",
     metrics,
   };
 }

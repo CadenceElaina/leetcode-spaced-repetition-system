@@ -454,7 +454,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     const items: QueueItem[] = queue.map((q) => ({ stability: q.stability, dueInDays: 0 }));
 
     const dailyQueueSize: number[] = [];
-    const MAX_DAYS = 30;
+    const MAX_DAYS = 60;
     let reviewBudget = 0;
 
     for (let day = 0; day < MAX_DAYS; day++) {
@@ -495,7 +495,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     const items: QueueItem[] = queue.map((q) => ({ stability: q.stability, dueInDays: 0 }));
 
     const dailyQueueSize: number[] = [];
-    const MAX_DAYS = 30;
+    const MAX_DAYS = 60;
     let reviewBudget = 0;
     let newBudget = 0;
 
@@ -1863,15 +1863,16 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
           {showQueueForecast && (() => {
             const proj = forecastMode === "actual" ? queueProjection : queueProjectionGoals;
             if (!proj) return <p className="text-xs text-muted-foreground mt-2">No items in queue.</p>;
-            const frontSlice = proj.dailyQueueSize.slice(0, 15);
-            const backSlice = proj.dailyQueueSize.slice(15);
+            const totalDays = proj.dailyQueueSize.length;
+            const halfIdx = Math.floor(totalDays / 2);
+            const frontSlice = proj.dailyQueueSize.slice(0, halfIdx);
+            const backSlice = proj.dailyQueueSize.slice(halfIdx);
             const chartFrontAvg = frontSlice.length > 0 ? frontSlice.reduce((a, b) => a + b, 0) / frontSlice.length : 0;
             const chartBackAvg = backSlice.length > 0 ? backSlice.reduce((a, b) => a + b, 0) / backSlice.length : 0;
             const chartImproving = chartBackAvg < chartFrontAvg * 0.9;
             const chartGrowing = chartBackAvg > chartFrontAvg * 1.1;
             const lineColor = chartImproving ? "border-green-500/70" : chartGrowing ? "border-orange-400/70" : "border-amber-500/70";
             const lineLabelColor = chartImproving ? "text-green-500" : chartGrowing ? "text-orange-400" : "text-amber-500";
-            const totalDays = proj.dailyQueueSize.length;
             const crossingIdx = chartBackAvg > 0
               ? proj.dailyQueueSize.findIndex((size, i) => i > 0 && size <= chartBackAvg)
               : -1;
@@ -1921,7 +1922,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                     if (!isToday && !isCrossing && !isLast) return <div key={i} className="flex-1" />;
                     return (
                       <div key={i} className={`flex-1 text-center text-[8px] leading-tight font-medium truncate ${isCrossing ? "text-green-500" : "text-muted-foreground/50"}`}>
-                        {isToday ? "Today" : isCrossing ? `Day ${crossingIdx}` : "+30d"}
+                        {isToday ? "Today" : isCrossing ? `Day ${crossingIdx}` : `+${totalDays}d`}
                       </div>
                     );
                   })}
