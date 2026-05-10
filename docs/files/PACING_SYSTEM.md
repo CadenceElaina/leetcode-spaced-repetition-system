@@ -355,10 +355,7 @@ This is tracked as a research direction, not a near-term implementation task. Se
 4. **What happens when a user changes their time budget mid-prep?**
    Recalculate all derived constants immediately. No retroactive changes to SRS state. The forecast and recommendations update on next render.
 
-5. **Should the system optimize scheduling for a known interview date?**
-   When a user sets a target date (already in the goal system), the pacing system could work backwards from that deadline to produce a day-by-day coverage + review schedule that maximizes readiness at the specific date. This is different from the current model, which optimizes for steady-state sustainable pace. An interview-date optimizer would front-load new coverage early, taper off new problems 2–3 weeks before the date, and shift to pure review mode in the final week — mimicking how experienced candidates actually cram. The tricky part: this requires knowing both the current state (coverage gap, queue load) and the desired terminal state (coverage % and retention at interview day), then solving the schedule as an optimization problem, not a heuristic. Worth exploring once the Phase 1 time budget is in place and we have real user goal-date data to validate against.
-
-6. **Should the queue forecast extend beyond 30 days?**
+5. **Should the queue forecast extend beyond 30 days?**
    Yes — 60 days. A 30-day forecast hides the stabilization that happens when early problems graduate to mastery (stability ≥ 45 days, around week 5–8). Users see a growing queue for 30 days and think it will grow forever. A 60-day horizon shows the full cycle: ramp-up → peak review load → mastery relief → declining queue. This is especially important for Focused/Intensive users who hit peak load around week 4–5 and need to see that the pressure is temporary.
 
    **Implementation note:** The current codebase (`dashboard-client.tsx`) still uses `MAX_DAYS = 30`. Extending to 60 is Phase 2 work.

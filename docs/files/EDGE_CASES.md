@@ -165,23 +165,6 @@
 
 ---
 
-### 2.6 "Lost Minutes" Discretization
-
-**Scenario:** User has 35 minutes of daily budget remaining after clearing reviews. `newCapacity = floor(35 / AVG_NEW_SESSION_MINUTES) = floor(35 / 45) = 0`, so the recommendation says "no capacity for new problems." But the user could comfortably attempt a new Easy problem (~25 min session time).
-
-**Current behavior:** Integer floor division on new-problem capacity produces a hard 0 when remaining budget is in the 25–44 min range. The recommendation engine has no way to express "not enough for a Medium, but enough for an Easy."
-
-**Desired behavior:**
-- When `remainingMinutes >= AVG_EASY_NEW_SESSION_MINUTES (25)` but `< AVG_NEW_SESSION_MINUTES (45)`, the recommendation banner should say "You have time for an Easy (~25 min)" rather than being silent on new problems.
-- This is a one-line conditional in `computePracticeRecommendation`, not a difficulty-aware capacity overhaul.
-- Only shown when the queue is stable or light — if the queue is heavy, "no new problems" applies regardless.
-
-**Implementation note:** Requires `remainingMinutes` to be computable in the recommendation engine. This becomes natural once `dailyTimeBudgetMinutes` is wired in (Phase 1 of the pacing system). The constant `AVG_EASY_NEW_SESSION_MINUTES = 25` should be added alongside `AVG_NEW_SESSION_MINUTES` in `CONSTANTS.md` and `dashboard-client.tsx`.
-
-**Priority:** P3 — small UX improvement; the capacity math already handles all cases correctly, this just adds a helpful nudge in the boundary zone.
-
----
-
 ### 2.5 New User Cold Start
 
 **Scenario:** User signs up, has 0 problems attempted. All metrics are undefined.
@@ -355,7 +338,6 @@
 | 2.3 | Forecast divergence | P4 | Auto-updates on render |
 | 2.4 | Everything-due spike | P3 | Sort handles mechanics |
 | 2.5 | Cold start | P2 | Partially handled |
-| 2.6 | Lost Minutes discretization | P3 | Requires Phase 1 budget wiring |
 | 3.1 | No per-user calibration | Research | Deferred |
 | 3.2 | Fixed review time | P3 | Future personalization |
 | 3.3 | No forecast memory | P4 | Low impact |

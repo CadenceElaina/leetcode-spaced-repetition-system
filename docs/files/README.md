@@ -20,6 +20,8 @@ For a new contributor or a returning session, read in this order:
 
 5. **[ADAPTIVE_SRS.md](ADAPTIVE_SRS.md)** — future direction for per-user and per-category forgetting curve calibration. Not yet implemented; defines the research path.
 
+6. **[VERIFICATION_AND_MONITORING.md](VERIFICATION_AND_MONITORING.md)** — how to verify each implementation phase is correct (unit tests, UI checklists, integration checks), and how to monitor the system over time in production and the classroom pilot.
+
 ---
 
 ## Decision Records
@@ -38,11 +40,12 @@ For a new contributor or a returning session, read in this order:
 ## How These Docs Relate
 
 ```
-PACING_SYSTEM.md          ← The "what" and "why"
-  ├── CONSTANTS.md         ← The specific numbers
-  ├── EDGE_CASES.md        ← What can go wrong
-  ├── EVALUATION_PROTOCOL.md ← How to test it (includes recovery verification)
-  └── ADAPTIVE_SRS.md      ← Future: per-user tuning
+PACING_SYSTEM.md               ← The "what" and "why"
+  ├── CONSTANTS.md              ← The specific numbers
+  ├── EDGE_CASES.md             ← What can go wrong
+  ├── EVALUATION_PROTOCOL.md    ← Simulation scenarios + recovery verification
+  ├── ADAPTIVE_SRS.md           ← Future: per-user tuning
+  └── VERIFICATION_AND_MONITORING.md ← Implementation checks + production observability
 
 decisions/
   └── 2026-05-10-daily-time-budget.md  ← The ADR for the first implementation step
@@ -64,6 +67,7 @@ These sections were added or significantly revised on 2026-05-10 based on a desi
 | **EMA volatility** | ADAPTIVE_SRS.md | Documented ratio instability near retrievability floor; added research question #5 |
 | **Time-to-first-warning** | CONSTANTS.md, EVALUATION_PROTOCOL.md | Leading indicator for zone boundary calibration |
 | **60-day forecast note** | CONSTANTS.md, PACING_SYSTEM.md | Clarified that the design specifies 60 days but the code still uses 30 (Phase 2 work) |
+| **Verification & monitoring** | VERIFICATION_AND_MONITORING.md (new) | Implementation acceptance tests, production health metrics, classroom pilot monitoring, runbook |
 
 ---
 

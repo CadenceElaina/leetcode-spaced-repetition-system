@@ -26,7 +26,6 @@ LeetCode problems are about as cognitively intensive as work gets. The [Pomodoro
 |---|---|---|---|
 | `AVG_REVIEW_SESSION_MINUTES` | 25 | min | Median session time for a review: open problem, re-solve, check, breathe |
 | `AVG_NEW_SESSION_MINUTES` | 45 | min | Median session time for a new problem: read, attempt, study solution, notes |
-| `AVG_EASY_NEW_SESSION_MINUTES` | 25 | min | Session time for a new Easy problem (less overhead than Medium/Hard) |
 | `AVG_PROBLEM_SESSION_MINUTES` | 30 | min | Weighted average assuming ~60% reviews, ~40% new |
 
 These are defaults. Future versions may personalize based on observed solve times per user.
