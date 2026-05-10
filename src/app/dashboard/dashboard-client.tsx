@@ -194,6 +194,9 @@ type QueueStability = {
   acceleration: number;
   avgLoadDays: number;
   peakLoadDays: number;
+  frontAvg: number;
+  backAvg: number;
+  drainRate: number;
 };
 
 type PracticeRecommendation = {
@@ -329,6 +332,8 @@ function queueStability(projection: QueueProjection): QueueStability {
   const first14 = days.slice(0, 14);
   const firstWeek = days.slice(0, 7);
   const secondWeek = days.slice(7, 14);
+  const front15 = days.slice(0, 15);
+  const back15 = days.slice(15);
   const start = days[0] ?? 0;
   const end14 = first14[first14.length - 1] ?? start;
   const firstWeekSlope = firstWeek.length > 1 ? (firstWeek[firstWeek.length - 1] - firstWeek[0]) / (firstWeek.length - 1) : 0;
@@ -337,6 +342,8 @@ function queueStability(projection: QueueProjection): QueueStability {
   const avg14 = avg(first14);
   const max14 = Math.max(...first14, 0);
   const reviewsPerDay = Math.max(1, projection.reviewsPerDay);
+  const frontAvg = front15.length > 0 ? avg(front15) : 0;
+  const backAvg = back15.length > 0 ? avg(back15) : frontAvg;
 
   return {
     avg14,
@@ -349,6 +356,9 @@ function queueStability(projection: QueueProjection): QueueStability {
     acceleration: secondWeekSlope - firstWeekSlope,
     avgLoadDays: avg14 / reviewsPerDay,
     peakLoadDays: max14 / reviewsPerDay,
+    frontAvg,
+    backAvg,
+    drainRate: (frontAvg - backAvg) / 15,
   };
 }
 
@@ -362,21 +372,21 @@ function sustainedClearDay(sizes: number[], maxDays: number): number | null {
 }
 
 function queueForecastStatus(projection: QueueProjection): { label: string; className: string } {
-  if (projection.clearDay !== null && projection.clearDay >= 0) {
-    return {
-      label: projection.clearDay === 0 ? "Clears today" : `Clears in ~${projection.clearDay}d`,
-      className: "text-green-500",
-    };
+  if (projection.currentSize === 0) {
+    return { label: "Queue clear", className: "text-green-500" };
   }
+  const days = projection.dailyQueueSize;
+  if (days.length < 2) return { label: "No data", className: "text-muted-foreground" };
 
-  const start = projection.dailyQueueSize[0] ?? projection.currentSize;
-  const end = projection.dailyQueueSize[projection.dailyQueueSize.length - 1] ?? start;
-  const max = Math.max(...projection.dailyQueueSize, start);
-  const growing = end > start || max > start * 1.25;
+  const frontAvg = avg(days.slice(0, 15));
+  const back = days.slice(15);
+  const backAvg = back.length > 0 ? avg(back) : frontAvg;
+  const backLabel = Math.round(backAvg);
 
-  return growing
-    ? { label: "Growing", className: "text-orange-400" }
-    : { label: "No clear date in 30d", className: "text-amber-500" };
+  if (frontAvg < 1) return { label: "↓ Nearly clear", className: "text-green-500" };
+  if (backAvg < frontAvg * 0.9) return { label: `↓ Improving · ~${backLabel}/day`, className: "text-green-500" };
+  if (backAvg > frontAvg * 1.1) return { label: `↑ Growing · ~${backLabel}/day`, className: "text-orange-400" };
+  return { label: `→ Stable · ~${backLabel}/day`, className: "text-amber-500" };
 }
 
 function computePracticeRecommendation({
@@ -459,10 +469,10 @@ function computePracticeRecommendation({
       tone: "watch",
       title: "Review first",
       body: queueEasingButHeavy
-        ? "Your forecast is easing, but the peak review load is still heavy. Review what is due before adding more."
+        ? "Your forecast is easing, but the queue is still active. Review what is due before adding more."
         : "Keep new problems optional until the review forecast flattens. The goal is a sustainable queue, not an empty one.",
       reason: queueEasingButHeavy
-        ? `Peak load is about ${metrics.peakLoadDays.toFixed(1)} review-days at your recent pace.`
+        ? `Queue is trending down — averaging ~${Math.round(metrics.backAvg)}/day in the back half of the forecast.`
         : activeLoadHigh
         ? `You have ${data.learningCount} active learning problems, which is a lot for ${actualProjection.reviewsPerDay.toFixed(1)} reviews/day.`
         : retentionRisk
@@ -2161,6 +2171,18 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
             return (
               <div className="mt-2 space-y-2">
                 <div className="relative flex items-end gap-px h-36">
+                  {(() => {
+                    const back = proj.dailyQueueSize.slice(15);
+                    const backAvg = back.length > 0 ? back.reduce((a, b) => a + b, 0) / back.length : 0;
+                    if (backAvg <= 0 || forecastMaxSize <= 0) return null;
+                    const pct = Math.min(97, (backAvg / forecastMaxSize) * 100);
+                    return (
+                      <div
+                        className="absolute left-0 right-0 border-t border-dashed border-muted-foreground/30 pointer-events-none z-10"
+                        style={{ bottom: `${pct}%` }}
+                      />
+                    );
+                  })()}
                   {proj.dailyQueueSize.map((size, i) => {
                     const height = Math.max(2, (size / forecastMaxSize) * 100);
                     const isToday = i === 0;
