@@ -140,14 +140,14 @@ $$S_{\text{new}} = S_{\text{old}} \times \text{multiplier} \times \text{modifier
 
 **Modifiers** (additive bonuses):
 
-| Signal                             | Modifier |
-| ---------------------------------- | :------: |
-| Rewrote from scratch (solved only) |   +0.5   |
-| Fast solve (< 10 min, Medium only) |   +0.2   |
-| Confidence 5                       |   +0.3   |
-| Confidence 4                       |   +0.1   |
-| Confidence 2                       |   −0.2   |
-| Confidence 1                       |   −0.4   |
+| Signal                                              | Modifier |
+| --------------------------------------------------- | :------: |
+| Rewrote from scratch (solved only)                  |   +0.5   |
+| Fast solve (Easy < 5 min / Medium < 10 / Hard < 15) |   +0.2   |
+| Confidence 5                                        |   +0.3   |
+| Confidence 4                                        |   +0.1   |
+| Confidence 2                                        |   −0.2   |
+| Confidence 1                                        |   −0.4   |
 
 **Bounds:** Initial stability = `INITIAL_STABILITY_BASE (2.0) × (baseMultiplier + modifier)`. Range: typical first solve ~2–5 days. All stability clamped to [0.5, 365] days.
 
@@ -169,6 +169,8 @@ Weight factors:
 - Difficulty: Easy 0.8, Medium 1.0, Hard 1.1
 
 Problems with R < 0.5 always surface at the top (overdue). Problems with R > 0.9 are hidden unless browsed directly.
+
+> **Known gap:** `computeReviewPriority()` in `src/lib/srs.ts` implements this formula but is **never called**. The dashboard's "urgency" sort uses raw stability ascending (`a.stability - b.stability`) instead. This means Blind75 bonus, category weakness, and difficulty weighting have no effect on queue ordering. Fixing this is tracked in the deferred list below.
 
 ### Retrievability Floor
 
@@ -325,24 +327,45 @@ Only four routes appear in primary nav; the others are reachable contextually (f
 
 ## Calibration Notes & Known Limitations
 
-Findings from a full algorithm audit (2026-05-10). Each entry notes what was wrong, what was changed, and what remains deferred.
+Findings from a two-pass algorithm audit (2026-05-10). Each entry notes what was wrong, what was changed, and what remains deferred.
 
 ### Fixed
 
 | Area | Issue | Resolution |
 |---|---|---|
 | Retention threshold | Code used R > 0.5 ("at risk") as "retained"; docs specified R > 0.7 | Changed to R > 0.7 in `page.tsx` |
-| Consistency metric | Formula was `recent_attempts / (recent_attempts + currently_due)` — queue backlog size distorted the denominator, penalizing users returning from a break | Replaced with `active_days_in_window / 14` (days with ≥1 attempt) |
-| Pace window | `avgReviewPerDay` averaged over 14 days — stale after any break, slow to respond to resumed practice | Changed to 7-day window for pace metrics |
-| Fast-solve bonus | Applied only to Medium problems with a fixed 10-min threshold | Extended to all difficulties with difficulty-scaled thresholds: Easy < 5 min, Medium < 10 min, Hard < 15 min |
+| Consistency metric | Formula was `recent_attempts / (recent_attempts + currently_due)` — queue backlog size distorted the denominator, penalizing users returning from a break | Replaced with `active_days_in_window / 14` (days with ≥1 attempt in 14-day window) |
+| Pace window | `avgReviewPerDay` averaged over 14 days — stale after any break, slow to respond to resumed practice | Changed to 7-day rolling window for pace metrics |
+| Fast-solve bonus | Applied only to Medium problems with a fixed 10-min threshold | Extended to all difficulties: Easy < 5 min, Medium < 10 min, Hard < 15 min |
+| Queue forecast trend metric | Reported "days until queue reaches zero" — queue zero is not the SRS goal and the 30th day carries heavy scheduling noise | Replaced with front-half / back-half average comparison; status shows trend direction and back-half average rate |
 
-### Deferred (documented, not yet changed)
+### Deferred — Planned Fixes (tracked, queued for agent execution)
+
+These are confirmed bugs with clear resolutions that haven't been implemented yet.
+
+| # | Area | Issue | Planned Resolution |
+|---|---|---|---|
+| D1 | Review queue sort | `computeReviewPriority()` in `srs.ts` is dead code — queue sorts by raw stability ascending, ignoring Blind75, category weakness, and difficulty weighting | Wire `computeReviewPriority` into `sortedReviewQueue` urgency sort in `dashboard-client.tsx` |
+| D2 | Category balance | `categoryBalance` only averages R across *attempted* categories; unattempted categories are invisible, inflating the score for partial coverage | Include unattempted categories weighted as R = 0 so a user who has never touched Graphs sees a low category balance |
+| D3 | Queue forecast clustering | `Math.round(item.stability)` in the forecast simulation collapses fractional stabilities to the nearest integer, creating artificial spikes on round-number days | Use `item.stability` directly (fractional); distribute across the appropriate day via `Math.floor` |
+| D4 | `MASTERY_THRESHOLD` duplication | The constant 45 is hardcoded in four places: `srs.ts` (authoritative), `dashboard-client.tsx` ×2, `page.tsx` | Import `MASTERY_THRESHOLD` from `srs.ts` in both files; remove the local copies |
+| D5 | Demo data enum casing | `demo-data.ts` uses `"optimal"` / `"brute_force"` (lowercase) for `bestQuality`; the DB enum and TypeScript types use uppercase `"OPTIMAL"` / `"BRUTE_FORCE"` | Fix casing in `demo-data.ts` to match enum values |
+| D6 | Review compliance denominator | `computeReviewCompliance()` in `analytics.ts` uses `reviewedInWindow + currentlyOverdue` as denominator — same flaw as the old consistency formula; overdue backlog inflates the denominator and punishes returning users | Use `reviewsScheduledInWindow` (look back at what was actually due each day) as denominator |
+| D7 | Velocity trend small-N | `computeLearningVelocity()` fires the ±15% trend signal on windows as small as 1 vs 1 problem; single-problem windows produce noisy, meaningless trends | Require ≥ 3 problems in each window before emitting a trend; return `"stable"` when either window is under-populated |
+| D8 | Coverage projection growth constant | Daily stability growth uses `currentAvgStability * 0.15` — the 0.15 multiplier was never derived from FSRS; it is a fabricated constant | Replace with `(AVG_MULTIPLIER^(1/currentAvgStability)) - 1` so daily growth reflects the FSRS compounding rate |
+| D9 | Returning-user warm-up detection | After a practice break (e.g. finals), `computePracticeRecommendation` reads a high queue and low 7-day pace — correctly generating "review first" guidance — but the reason text uses generic phrasing rather than acknowledging the break context | Detect break ≥ 7 days and surface warm-up messaging: "You've been away X days — start with a lighter review session to rebuild momentum" |
+| D10 | `slope14` two-point fit | Queue stability `slope14` is computed from just two data points (day 1 and day 14 of the 30-day projection), making it highly sensitive to noise at either endpoint | Replace with front/back half averages: `slope = (backAvg - frontAvg) / 15`; this is already computed as `drainRate` — use it consistently |
+
+### Deferred — Low Priority / Design Decisions
+
+These are known issues where the correct fix is less clear, risk is low, or the current behavior may be defensible.
 
 | Area | Issue | Notes |
 |---|---|---|
-| Queue forecast multiplier | Simulation uses hardcoded 2.0× stability growth per review; actual multiplier varies by solve outcome | Fix requires computing historical average multiplier from recent attempts. Logged as future work. |
+| Queue forecast multiplier | Simulation uses hardcoded 2.0× stability growth per review; actual multiplier varies by solve outcome | Fix requires computing historical average multiplier from recent attempts. Low visual impact since the forecast is qualitative. |
 | `sampleWeight` / coverage | Cold-start scaling is applied to retention, category balance, and consistency — but not coverage. Inconsistent, though coverage is naturally small for new users so impact is low | Low priority; would require changing `ReadinessInput` interface |
-| Confidence penalty compounding | Low confidence on a successful independent solve reduces the stability multiplier (permanent per-review effect) rather than shortening just the next interval. Debatable — low confidence after a correct solve is a valid signal of shallow learning | Leave as-is pending evidence from real user data |
+| Confidence penalty compounding | Low confidence on a successful independent solve reduces the stability multiplier (permanent per-review effect) rather than shortening just the next interval. Debatable — low confidence after a correct solve could signal shallow learning, but it may also discourage users from honest self-reporting | Leave as-is pending evidence from real user data; revisit if retention data shows confident users over-inflate scores |
+| `avgPerDay` compounding | `avgPerDay` drives review load, coverage projection, and recommendation signals — when it reads low (e.g. after a break), pessimism compounds across all three systems simultaneously | Partially addressed by 7-day window fix. Full fix requires per-signal window calibration. |
 
 ---
 
