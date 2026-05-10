@@ -933,9 +933,9 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
       q.sort((a, b) => {
         const catAvgRA = categoryStatsMap.get(a.category)?.avgRetention ?? 0;
         const catAvgRB = categoryStatsMap.get(b.category)?.avgRetention ?? 0;
-        const priA = computeReviewPriority({ retrievability: a.retrievability, blind75: a.blind75, difficulty: a.difficulty, categoryAvgR: catAvgRA } satisfies PriorityInput);
-        const priB = computeReviewPriority({ retrievability: b.retrievability, blind75: b.blind75, difficulty: b.difficulty, categoryAvgR: catAvgRB } satisfies PriorityInput);
-        return priB - priA || b.daysOverdue - a.daysOverdue;
+        const inputA: PriorityInput = { retrievability: a.retrievability, blind75: a.blind75, difficulty: a.difficulty, categoryAvgR: catAvgRA };
+        const inputB: PriorityInput = { retrievability: b.retrievability, blind75: b.blind75, difficulty: b.difficulty, categoryAvgR: catAvgRB };
+        return computeReviewPriority(inputB) - computeReviewPriority(inputA) || b.daysOverdue - a.daysOverdue;
       });
     } else if (reviewSort === "overdue") {
       q.sort((a, b) => b.daysOverdue - a.daysOverdue || DIFF_ORDER[a.difficulty] - DIFF_ORDER[b.difficulty]);
@@ -2671,9 +2671,9 @@ function PracticeRecommendationPanel({
     danger: "border-red-600/55",
   };
   const trendLabel = recommendation.metrics
-    ? recommendation.metrics.slope14 >= 0.75
+    ? recommendation.metrics.drainRate < -0.5
       ? "Trend rising"
-      : recommendation.metrics.slope14 <= -0.5
+      : recommendation.metrics.drainRate > 0.5
         ? "Trend easing"
         : "Trend stable"
     : null;

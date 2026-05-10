@@ -3,7 +3,7 @@
 Agents and sessions pull from this file. Claim a task by adding your session ID to the Agent column.
 **Canonical task file** — root `TASKS.md` is a mirror. Edit only this one.
 
-Last updated: 2026-05-03 — all tasks complete
+Last updated: 2026-05-09 — T-019–T-022 all complete
 
 ---
 
@@ -20,20 +20,7 @@ Last updated: 2026-05-03 — all tasks complete
 
 ## Open Tasks
 
-### Algorithm
-
-| ID  | Priority | Description | Scope Hints | Acceptance Criteria |
-| --- | -------- | ----------- | ----------- | ------------------- |
-
-### UX / Feature Verification
-
-| ID  | Priority | Description | Scope Hints | Acceptance Criteria |
-| --- | -------- | ----------- | ----------- | ------------------- |
-
-### Tests / Docs
-
-| ID  | Priority | Description | Scope Hints | Acceptance Criteria |
-| --- | -------- | ----------- | ----------- | ------------------- |
+_None — all audit tasks complete._
 
 ---
 
@@ -48,6 +35,10 @@ Last updated: 2026-05-03 — all tasks complete
 
 | ID    | Completed  | Description                                                                                                                             |
 | ----- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| T-020 | 2026-05-09 | `perf(dashboard)`: problems cache TTL → 3600s; `unstable_cache` on webhook slug-map; `computeRetrievability` deduplicated to single Map; `useMemo` on top dashboard-client derived computations |
+| T-022 | 2026-05-09 | `test(api)`: attempts (POST 400×3, DELETE 401/404×2/200), review (defer/skip 401/400/200), notes (GET+PUT 401/400/200), webhook (sig/event/slug cases) — 165 tests passing |
+| T-021 | 2026-05-09 | `fix(api)`: unique index on attempts (userId, problemId, date) + 23505 catch; input length caps (repo 200, code 50k, notes 2k); CSRF documented; webhook HMAC comment block; aurora-research excluded from tsconfig |
+| T-019 | 2026-05-09 | `refactor(api)`: `rankQuality()` → `src/lib/quality.ts`; `MASTERY_THRESHOLD` → `src/lib/srs.ts`; error shapes standardized; notes 10k cap; enum casts documented as safe |
 | T-018 | 2026-05-03 | `ux`: unified demo/onboarding/sign-in flow + first-login empty-state treatment                                                          |
 | T-017 | 2026-05-03 | `docs`: CURRENT.md synced with session; CLAUDE.md updated to point to docs/TASKS.md                                                     |
 | T-001 | 2026-05-03 | `fix(dashboard)`: `pickMockProblems` always returns 2; Medium+Medium fallback when no Hards; `pickTwo` deduplication via index-swap     |

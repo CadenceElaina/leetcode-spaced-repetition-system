@@ -147,6 +147,7 @@ export default async function DashboardPage() {
         neetcodeUrl: p.neetcodeUrl,
         difficulty: p.difficulty as "Easy" | "Medium" | "Hard",
         category: p.category,
+        blind75: p.blind75,
         totalAttempts: s.totalAttempts,
         daysOverdue,
         retrievability,
@@ -162,6 +163,7 @@ export default async function DashboardPage() {
       neetcodeUrl: string | null;
       difficulty: "Easy" | "Medium" | "Hard";
       category: string;
+      blind75: boolean;
       totalAttempts: number;
       daysOverdue: number;
       retrievability: number;
@@ -295,9 +297,8 @@ export default async function DashboardPage() {
     .sort((a, b) => a.category.localeCompare(b.category));
 
   // Readiness score
-  const categoryAvgRs = categoryStats.filter((c) => c.attempted > 0);
-  const lowestCategoryAvgR = categoryAvgRs.length > 0
-    ? Math.min(...categoryAvgRs.map((c) => c.avgRetention))
+  const lowestCategoryAvgR = categoryStats.length > 0
+    ? Math.min(...categoryStats.map((c) => c.avgRetention))
     : 0;
 
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
