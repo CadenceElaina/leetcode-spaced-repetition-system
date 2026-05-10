@@ -70,13 +70,10 @@ function computeModifier(signals: AttemptSignals): number {
   else if (signals.confidence <= 1) mod -= 0.4;
   else if (signals.confidence <= 2) mod -= 0.2;
 
-  // Fast solve for mediums
-  if (
-    signals.difficulty === "Medium" &&
-    signals.solveTimeMinutes !== null &&
-    signals.solveTimeMinutes > 0 &&
-    signals.solveTimeMinutes < 10
-  ) {
+  // Fast solve bonus — difficulty-scaled threshold, applies to all difficulties.
+  // Easy < 5 min, Medium < 10 min, Hard < 15 min. Signals fluency with the pattern.
+  const fastThreshold = signals.difficulty === "Hard" ? 15 : signals.difficulty === "Medium" ? 10 : 5;
+  if (signals.solveTimeMinutes !== null && signals.solveTimeMinutes > 0 && signals.solveTimeMinutes < fastThreshold) {
     mod += 0.2;
   }
 

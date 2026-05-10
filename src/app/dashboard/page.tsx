@@ -268,7 +268,7 @@ export default async function DashboardPage() {
       category: p.category,
     }));
 
-  const retainedCount = retentions.filter((r) => r.r > 0.5).length;
+  const retainedCount = retentions.filter((r) => r.r > 0.7).length;
 
   // Category stats
   const categoryMap = new Map<string, { total: number; attempted: number; retentions: number[] }>();
@@ -301,14 +301,17 @@ export default async function DashboardPage() {
     : 0;
 
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-  const recentAttemptCount = attemptDateRows
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  // Consistency: days with ≥1 attempt in the last 14 days / 14.
+  // Previous formula used (recent_attempts / (recent_attempts + currently_due)), which
+  // confused queue backlog size with behavioral regularity — a user returning from a
+  // break with 20 overdue problems looked like 11% consistent even if they had reviewed
+  // every day before the break. Active-days is a direct behavioral signal.
+  const activeDaysInWindow = attemptDateRows
     .filter((a) => a.date >= fourteenDaysAgo.toISOString().slice(0, 10))
-    .reduce((s, a) => s + a.count, 0);
-  const scheduledInWindow = userStates.filter(
-    (s) => s.nextReviewAt && s.nextReviewAt <= now,
-  ).length;
-  const totalScheduled = recentAttemptCount + scheduledInWindow;
-  const consistencyPct = totalScheduled > 0 ? recentAttemptCount / totalScheduled : 0;
+    .length;
+  const consistencyPct = activeDaysInWindow / 14;
 
   // Scale retention/catbal/consistency by data confidence so cold-start users
   // don't score 60-70/100 on vacuously perfect components with 1-2 problems.
@@ -320,7 +323,7 @@ export default async function DashboardPage() {
     attemptedCount: userStates.length,
     retainedCount: Math.round(retainedCount * sampleWeight),
     lowestCategoryAvgR: lowestCategoryAvgR * sampleWeight,
-    reviewsCompletedPct: Math.min(1, consistencyPct) * sampleWeight,
+    reviewsCompletedPct: consistencyPct * sampleWeight,
   });
 
   // Streak calculation
@@ -328,17 +331,19 @@ export default async function DashboardPage() {
   const attemptDates = attemptDateRows.map((a) => a.date);
   const streaks = computeStreak(attemptDates, today);
 
-  // Average per day (last 14 days — consistent window for all pace stats)
-  const fourteenDayAttempts = attemptDateRows
-    .filter((a) => a.date >= fourteenDaysAgo.toISOString().slice(0, 10))
+  // Average per day — 7-day window so recent resumed practice is reflected quickly.
+  // 14 days was too slow to recover from a break: 0 reviews over 13 days + 2 yesterday
+  // gave avgReviewPerDay ≈ 0.14, making all Actual-mode forecasts near-useless.
+  const sevenDayAttempts = attemptDateRows
+    .filter((a) => a.date >= sevenDaysAgo.toISOString().slice(0, 10))
     .reduce((s, a) => s + a.count, 0);
-  const avgPerDay = fourteenDayAttempts / 14;
+  const avgPerDay = sevenDayAttempts / 7;
 
   // New problems per day (rate of progress through curriculum)
   const newProbsRecent = userStates.filter(
-    (s) => s.createdAt >= fourteenDaysAgo,
+    (s) => s.createdAt >= sevenDaysAgo,
   ).length;
-  const avgNewPerDay = newProbsRecent / 14;
+  const avgNewPerDay = newProbsRecent / 7;
   const avgReviewPerDay = Math.max(0, avgPerDay - avgNewPerDay);
 
   // Overall averages (since first attempt)
@@ -453,8 +458,8 @@ export default async function DashboardPage() {
           categoryBalance: readiness.categoryBalance,
           consistency: readiness.consistency,
         },
-        consistencyReviewed: recentAttemptCount,
-        consistencyDue: totalScheduled,
+        consistencyReviewed: activeDaysInWindow,
+        consistencyDue: 14,
         currentStreak: streaks.current,
         bestStreak: streaks.best,
         avgPerDay,

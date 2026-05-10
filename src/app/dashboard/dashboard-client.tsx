@@ -1915,7 +1915,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                     { label: "Coverage", value: data.readinessBreakdown.coverage, detail: null as string | null, tooltip: "Coverage — 30% of score. What % of the 150 problems you’ve attempted at least once." },
                     { label: "Retention", value: data.readinessBreakdown.retention, detail: null, tooltip: "Retention — 40% of score. How well you remember the problems you’ve attempted, averaged across all solved problems." },
                     { label: "Category Balance", value: data.readinessBreakdown.categoryBalance, detail: null, tooltip: "Category Balance — 20% of score. How evenly your attempts are distributed across problem categories." },
-                    { label: "Consistency", value: data.readinessBreakdown.consistency, detail: data.consistencyDue > 0 ? `${data.consistencyReviewed} of ${data.consistencyDue} reviews, 14d` : null, tooltip: "Consistency — 10% of score. % of scheduled reviews completed in the last 14 days." },
+                    { label: "Consistency", value: data.readinessBreakdown.consistency, detail: `${data.consistencyReviewed} of 14 days active`, tooltip: "Consistency — 10% of score. How many of the last 14 days you practiced at least once." },
                   ].map(({ label, value, detail, tooltip }) => (
                     <div key={label}>
                       <div className="flex items-center justify-between text-xs mb-0.5">

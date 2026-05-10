@@ -159,42 +159,43 @@ describe("computeNewStability", () => {
   });
 
   it("fast solve bonus applies for Medium < 10 min", () => {
-    const s = computeNewStability(
-      OLD,
-      signals({ difficulty: "Medium", solveTimeMinutes: 8 }),
-    );
+    const s = computeNewStability(OLD, signals({ difficulty: "Medium", solveTimeMinutes: 8 }));
     // base 2.5 + fast bonus 0.2 = 2.7
     expect(s).toBeCloseTo(OLD * 2.7, 5);
   });
 
-  it("fast solve bonus does NOT apply for Easy", () => {
-    const withBonus = computeNewStability(
-      OLD,
-      signals({ difficulty: "Easy", solveTimeMinutes: 5 }),
-    );
-    const withoutBonus = computeNewStability(
-      OLD,
-      signals({ difficulty: "Easy", solveTimeMinutes: 30 }),
-    );
-    expect(withBonus).toBeCloseTo(withoutBonus, 5);
-  });
-
-  it("fast solve bonus does NOT apply for Hard", () => {
-    const withBonus = computeNewStability(
-      OLD,
-      signals({ difficulty: "Hard", solveTimeMinutes: 5 }),
-    );
-    const withoutBonus = computeNewStability(
-      OLD,
-      signals({ difficulty: "Hard", solveTimeMinutes: 60 }),
-    );
-    expect(withBonus).toBeCloseTo(withoutBonus, 5);
-  });
-
-  it("fast solve bonus does NOT apply when solve time is exactly 10 min", () => {
+  it("fast solve bonus does NOT apply when solve time is exactly 10 min (Medium boundary)", () => {
     const at10 = computeNewStability(OLD, signals({ difficulty: "Medium", solveTimeMinutes: 10 }));
     const at30 = computeNewStability(OLD, signals({ difficulty: "Medium", solveTimeMinutes: 30 }));
     expect(at10).toBeCloseTo(at30, 5);
+  });
+
+  it("fast solve bonus applies for Easy < 5 min", () => {
+    const fast = computeNewStability(OLD, signals({ difficulty: "Easy", solveTimeMinutes: 3 }));
+    const slow = computeNewStability(OLD, signals({ difficulty: "Easy", solveTimeMinutes: 30 }));
+    // base 2.5 + fast bonus 0.2 = 2.7
+    expect(fast).toBeCloseTo(OLD * 2.7, 5);
+    expect(fast).toBeGreaterThan(slow);
+  });
+
+  it("fast solve bonus does NOT apply for Easy at exactly 5 min (boundary)", () => {
+    const at5 = computeNewStability(OLD, signals({ difficulty: "Easy", solveTimeMinutes: 5 }));
+    const at30 = computeNewStability(OLD, signals({ difficulty: "Easy", solveTimeMinutes: 30 }));
+    expect(at5).toBeCloseTo(at30, 5);
+  });
+
+  it("fast solve bonus applies for Hard < 15 min", () => {
+    const fast = computeNewStability(OLD, signals({ difficulty: "Hard", solveTimeMinutes: 10 }));
+    const slow = computeNewStability(OLD, signals({ difficulty: "Hard", solveTimeMinutes: 60 }));
+    // base 2.5 + fast bonus 0.2 = 2.7
+    expect(fast).toBeCloseTo(OLD * 2.7, 5);
+    expect(fast).toBeGreaterThan(slow);
+  });
+
+  it("fast solve bonus does NOT apply for Hard at exactly 15 min (boundary)", () => {
+    const at15 = computeNewStability(OLD, signals({ difficulty: "Hard", solveTimeMinutes: 15 }));
+    const at60 = computeNewStability(OLD, signals({ difficulty: "Hard", solveTimeMinutes: 60 }));
+    expect(at15).toBeCloseTo(at60, 5);
   });
 
   it("rewrite bonus only applies when solved independently (YES)", () => {
@@ -210,7 +211,8 @@ describe("computeNewStability", () => {
   });
 
   it("clamps to MAX_STABILITY (365) on very high multiplier", () => {
-    // stability=300, multiplier=2.5+0.5+0.3+0.2=3.5 → 1050 → clamp to 365
+    // stability=300, Medium < 10 min → fast bonus applies
+    // multiplier = 2.5 (YES:OPTIMAL) + 0.5 (rewrite) + 0.3 (conf 5) + 0.2 (fast) = 3.5 → 1050 → clamp to 365
     const s = computeNewStability(
       300,
       signals({ confidence: 5, rewroteFromScratch: "YES", solveTimeMinutes: 5 }),

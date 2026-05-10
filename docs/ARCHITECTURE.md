@@ -187,7 +187,7 @@ Weighted composite (0–100):
 | Coverage         |  30%   | % of NeetCode 150 attempted                      |
 | Retention        |  40%   | % of attempted problems with R > 0.7             |
 | Category Balance |  20%   | Lowest category average R                        |
-| Consistency      |  10%   | % of scheduled reviews completed (14-day window) |
+| Consistency      |  10%   | % of last 14 days with at least one practice attempt |
 
 ### Tiers
 
@@ -320,6 +320,29 @@ When an attempt is deleted, the server replays all remaining attempts for that p
 | Import         | `/import`                |     | Paste NeetCode activity for bulk import                        |
 
 Only four routes appear in primary nav; the others are reachable contextually (from dashboard panels, problem lists, or deep links).
+
+---
+
+## Calibration Notes & Known Limitations
+
+Findings from a full algorithm audit (2026-05-10). Each entry notes what was wrong, what was changed, and what remains deferred.
+
+### Fixed
+
+| Area | Issue | Resolution |
+|---|---|---|
+| Retention threshold | Code used R > 0.5 ("at risk") as "retained"; docs specified R > 0.7 | Changed to R > 0.7 in `page.tsx` |
+| Consistency metric | Formula was `recent_attempts / (recent_attempts + currently_due)` — queue backlog size distorted the denominator, penalizing users returning from a break | Replaced with `active_days_in_window / 14` (days with ≥1 attempt) |
+| Pace window | `avgReviewPerDay` averaged over 14 days — stale after any break, slow to respond to resumed practice | Changed to 7-day window for pace metrics |
+| Fast-solve bonus | Applied only to Medium problems with a fixed 10-min threshold | Extended to all difficulties with difficulty-scaled thresholds: Easy < 5 min, Medium < 10 min, Hard < 15 min |
+
+### Deferred (documented, not yet changed)
+
+| Area | Issue | Notes |
+|---|---|---|
+| Queue forecast multiplier | Simulation uses hardcoded 2.0× stability growth per review; actual multiplier varies by solve outcome | Fix requires computing historical average multiplier from recent attempts. Logged as future work. |
+| `sampleWeight` / coverage | Cold-start scaling is applied to retention, category balance, and consistency — but not coverage. Inconsistent, though coverage is naturally small for new users so impact is low | Low priority; would require changing `ReadinessInput` interface |
+| Confidence penalty compounding | Low confidence on a successful independent solve reduces the stability multiplier (permanent per-review effect) rather than shortening just the next interval. Debatable — low confidence after a correct solve is a valid signal of shallow learning | Leave as-is pending evidence from real user data |
 
 ---
 
