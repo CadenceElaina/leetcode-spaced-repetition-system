@@ -212,6 +212,29 @@ Day-by-day forward simulation accounting for review load growth:
 
 This captures the key dynamic: more learning → more reviews → less capacity for new → plateau → mastery frees capacity → growth resumes.
 
+### Queue Forecast
+
+30-day forward simulation of daily due-review counts. Two modes:
+
+- **Actual** — uses observed review and new-problem pace (last 14 days)
+- **Goals** — uses user-set Rev/d and New/d targets to explore hypothetical pacing
+
+**Trend metric**
+
+Queue zero is not the target for SRS — a sustainable review load is. The forecast measures *direction* rather than whether the queue reaches zero:
+
+| Metric | Definition |
+|---|---|
+| Front-half average | Mean daily due count, days 1–15 |
+| Back-half average | Mean daily due count, days 16–30 |
+| Trend | `backAvg / frontAvg < 0.9` → Improving · `> 1.1` → Growing · else Stable |
+
+The status label (e.g. `↓ Improving · ~8/day`) shows trend direction and the back-half average — where the queue is heading, not where it is. The dashed reference line on the chart marks the same back-half average as a visual anchor. Color matches trend direction (green / amber / orange).
+
+**Recommendation signal**
+
+`computePracticeRecommendation` uses 14-day slope, acceleration, and peak metrics from `queueStability()` to classify the queue and produce "review first" or "add coverage" guidance. The banner reason text uses the back-half average rather than absolute load-day counts to avoid misleading signals after a practice break.
+
 ---
 
 ## GitHub Webhook Integration

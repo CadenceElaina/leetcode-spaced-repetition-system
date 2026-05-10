@@ -2172,15 +2172,27 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
               <div className="mt-2 space-y-2">
                 <div className="relative flex items-end gap-px h-36">
                   {(() => {
+                    const front = proj.dailyQueueSize.slice(0, 15);
                     const back = proj.dailyQueueSize.slice(15);
+                    const frontAvg = front.length > 0 ? front.reduce((a, b) => a + b, 0) / front.length : 0;
                     const backAvg = back.length > 0 ? back.reduce((a, b) => a + b, 0) / back.length : 0;
                     if (backAvg <= 0 || forecastMaxSize <= 0) return null;
                     const pct = Math.min(97, (backAvg / forecastMaxSize) * 100);
+                    const improving = backAvg < frontAvg * 0.9;
+                    const growing = backAvg > frontAvg * 1.1;
+                    const lineColor = improving ? "border-green-500/70" : growing ? "border-orange-400/70" : "border-amber-500/70";
+                    const textColor = improving ? "text-green-500" : growing ? "text-orange-400" : "text-amber-500";
                     return (
                       <div
-                        className="absolute left-0 right-0 border-t border-dashed border-muted-foreground/30 pointer-events-none z-10"
+                        className="absolute left-0 right-0 flex items-center pointer-events-none z-10"
                         style={{ bottom: `${pct}%` }}
-                      />
+                        title={`Projected steady state: ~${Math.round(backAvg)} due/day (back-half average)`}
+                      >
+                        <div className={`flex-1 border-t border-dashed ${lineColor}`} />
+                        <span className={`text-[9px] font-medium ${textColor} bg-muted/90 px-1 rounded-sm leading-none shrink-0 -mt-px`}>
+                          ~{Math.round(backAvg)}/d
+                        </span>
+                      </div>
                     );
                   })()}
                   {proj.dailyQueueSize.map((size, i) => {
