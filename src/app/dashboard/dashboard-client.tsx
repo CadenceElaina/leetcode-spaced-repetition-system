@@ -135,6 +135,7 @@ type DashboardData = {
   reviewQueue: ReviewItem[];
   deferredProblems: DeferredItem[];
   autoDeferHards: boolean;
+  dailyTimeBudgetMinutes: number;
   newProblems: NewProblem[];
   totalProblems: number;
   attemptedCount: number;
@@ -175,7 +176,6 @@ type DashboardData = {
   importTodayAttemptedIds: number[];
   pendingSubmissions: PendingItem[];
   mockCandidates: MockCandidate[];
-  dailyTimeBudgetMinutes?: number;
 };
 
 type QueueProjection = {
@@ -595,6 +595,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
   const [showDeferredInline, setShowDeferredInline] = useState(false);
   const [plannedNewPerDay, setPlannedNewPerDay] = useState(1.5);
   const [plannedReviewPerDay, setPlannedReviewPerDay] = useState(5);
+  const [timeBudget, setTimeBudget] = useState(data.dailyTimeBudgetMinutes);
 
   // Mock interview state
   const [mockPhase, setMockPhase] = useState<MockPhase>("setup");
@@ -643,6 +644,8 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
 
   // Load saved settings from localStorage
   useEffect(() => {
+    // DB value always wins — overwrite any stale localStorage entry on every mount
+    localStorage.setItem("aurora_time_budget", String(data.dailyTimeBudgetMinutes));
     const saved = localStorage.getItem("srs_target");
     if (saved) {
       try {

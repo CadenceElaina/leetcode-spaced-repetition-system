@@ -288,6 +288,7 @@ export const DEMO_DASHBOARD_DATA = {
   reviewQueue,
   deferredProblems: [] as { stateId: string; problemId: number; title: string; leetcodeNumber: number | null; difficulty: "Easy" | "Medium" | "Hard"; category: string; totalAttempts: number; stability: number; deferredUntil: string | null; isAutoDeferred: boolean }[],
   autoDeferHards: false,
+  dailyTimeBudgetMinutes: 60,
   newProblems,
   completedProblems,
   totalProblems: 150,
