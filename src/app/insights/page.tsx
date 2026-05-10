@@ -46,6 +46,7 @@ export default async function InsightsPage() {
         rewroteFromScratch:     attempts.rewroteFromScratch,
         timeComplexityCorrect:  attempts.timeComplexityCorrect,
         spaceComplexityCorrect: attempts.spaceComplexityCorrect,
+        predictedR:             attempts.predictedR,
         createdAt:              attempts.createdAt,
       })
       .from(attempts)
@@ -97,6 +98,19 @@ export default async function InsightsPage() {
   const catStats    = computeCategoryStats(attemptRecords, stateRecords, now);
   const rawStuck    = detectStuckProblems(stateRecords, attemptRecords, 4, now);
 
+  // Model calibration: compare predictedR (at review time) against actual outcome.
+  // Only reviews with a prior attempt have predictedR; first-ever attempts are null.
+  const calibrationPoints = rawAttempts
+    .filter((a) => a.predictedR !== null)
+    .map((a) => ({
+      predicted: a.predictedR!,
+      actual: a.outcome === "YES" ? 1.0 : a.outcome === "PARTIAL" ? 0.5 : 0.0,
+    }));
+  const calibrationN = calibrationPoints.length;
+  const calibrationMAE = calibrationN >= 20
+    ? calibrationPoints.reduce((s, p) => s + Math.abs(p.predicted - p.actual), 0) / calibrationN
+    : null;
+
   const stuckProblems: StuckProblemDisplay[] = rawStuck.map((s) => {
     const p = problemMap.get(s.problemId);
     return {
@@ -120,6 +134,7 @@ export default async function InsightsPage() {
           categoryStats: catStats.sort((a, b) => a.avgR - b.avgR),
           totalAttempts:  attemptRecords.length,
           totalProblems:  stateRecords.length,
+          calibration: { n: calibrationN, mae: calibrationMAE },
         }}
         isDemo={false}
       />

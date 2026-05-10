@@ -22,6 +22,7 @@ export interface InsightsData {
   categoryStats: CategoryStat[];
   totalAttempts: number;
   totalProblems: number;
+  calibration: { n: number; mae: number | null };
 }
 
 export const DEMO_INSIGHTS_DATA: InsightsData = {
@@ -75,4 +76,5 @@ export const DEMO_INSIGHTS_DATA: InsightsData = {
   ],
   totalAttempts: 134,
   totalProblems: 44,
+  calibration: { n: 47, mae: 0.09 },
 };

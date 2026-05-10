@@ -151,6 +151,7 @@ export const attempts = pgTable("attempt", {
   studyTimeMinutes: integer("study_time_minutes"),
   rewroteFromScratch: rewroteEnum("rewrote_from_scratch"),
   confidence: smallint("confidence").notNull(),
+  predictedR: real("predicted_r"),
   code: text("code"),
   notes: text("notes"),
   source: attemptSourceEnum("source").notNull().default("manual"),

@@ -55,7 +55,7 @@ function StatCard({
 }
 
 export function InsightsClient({ data, isDemo }: { data: InsightsData; isDemo: boolean }) {
-  const { velocity, compliance, metacognition, stuckProblems, categoryStats, totalAttempts, totalProblems } = data;
+  const { velocity, compliance, metacognition, stuckProblems, categoryStats, totalAttempts, totalProblems, calibration } = data;
 
   const hasData = totalAttempts > 0;
 
@@ -140,6 +140,47 @@ export function InsightsClient({ data, isDemo }: { data: InsightsData; isDemo: b
               subColor={stuckProblems.length > 0 ? "text-amber-400" : "text-green-400"}
             />
           </div>
+
+          {/* Model calibration */}
+          <section>
+            <h2 className="mb-1 text-sm font-semibold text-foreground">Model Calibration</h2>
+            <p className="mb-3 text-xs text-muted-foreground">
+              How accurately the SRS algorithm predicted your retention at each review.
+              MAE (mean absolute error) closer to 0 means the model&apos;s predictions match your actual outcomes.
+            </p>
+            <div className="flex items-start gap-4 rounded-lg border border-border/60 bg-muted/30 px-5 py-4">
+              <div className="flex-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Prediction Accuracy</p>
+                {calibration.mae !== null ? (
+                  <>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                      {calibration.mae < 0.1 ? "Excellent" : calibration.mae < 0.2 ? "Good" : "Fair"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      MAE {calibration.mae.toFixed(3)} across {calibration.n} review predictions
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">—</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {calibration.n === 0
+                        ? "No reviews logged yet — predictions recorded from your first review onward"
+                        : `${calibration.n} review${calibration.n === 1 ? "" : "s"} logged — needs 20 to compute accuracy`}
+                    </p>
+                  </>
+                )}
+              </div>
+              {calibration.mae !== null && (
+                <div className="text-right">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">MAE</p>
+                  <p className={`mt-2 text-2xl font-semibold tabular-nums ${calibration.mae < 0.1 ? "text-green-500" : calibration.mae < 0.2 ? "text-amber-400" : "text-orange-400"}`}>
+                    {calibration.mae.toFixed(3)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
 
           {/* Stuck problems detail */}
           {stuckProblems.length > 0 && (

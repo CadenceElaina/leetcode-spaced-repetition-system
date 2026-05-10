@@ -6,6 +6,7 @@ import { eq, and, gte, lt } from "drizzle-orm";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { rankQuality } from "@/lib/quality";
 import {
+  computeRetrievability,
   computeNewStability,
   computeInitialStability,
   computeNextReviewDate,
@@ -154,6 +155,43 @@ export async function POST(req: NextRequest) {
     ? body.rewroteFromScratch
     : null;
 
+  // Build signals for SRS algorithm
+  // Casts are safe: VALID_SOLVED/VALID_QUALITY guards above narrow these to the same
+  // literal unions that SolvedIndependently/SolutionQuality are defined from.
+  const signals: AttemptSignals = {
+    solvedIndependently: solvedIndependently as SolvedIndependently,
+    solutionQuality: solutionQuality as SolutionQuality,
+    rewroteFromScratch: rewrote,
+    confidence,
+    solveTimeMinutes: typeof body.solveTimeMinutes === "number" ? body.solveTimeMinutes : null,
+    difficulty: problem[0].difficulty,
+  };
+
+  // Fetch existing SRS state before the insert so we can snapshot predictedR —
+  // what the model thought the user's retention was at review time. Querying
+  // first (not after) means we capture the pre-update probability, which is the
+  // value we want to compare against the actual outcome later for calibration.
+  const existing = await db
+    .select()
+    .from(userProblemStates)
+    .where(
+      and(
+        eq(userProblemStates.userId, session.user.id),
+        eq(userProblemStates.problemId, problemId),
+      ),
+    )
+    .limit(1);
+
+  const now = attemptDate ?? new Date();
+
+  // Compute predictedR: the model's estimated retrievability at the moment of this
+  // attempt. Null for first-ever attempts (no prior stability to predict from).
+  let predictedR: number | null = null;
+  if (existing[0]?.lastReviewedAt) {
+    const daysSince = (now.getTime() - existing[0].lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24);
+    predictedR = computeRetrievability(existing[0].stability, daysSince);
+  }
+
   // Insert attempt. The unique index on (user_id, problem_id, DATE(created_at)) means a
   // race between the SELECT duplicate-check above and this INSERT is still safe — the DB
   // will reject the second insert with a 23505 unique-violation, caught below.
@@ -174,6 +212,7 @@ export async function POST(req: NextRequest) {
         studyTimeMinutes: typeof body.studyTimeMinutes === "number" ? body.studyTimeMinutes : null,
         rewroteFromScratch: rewrote,
         confidence,
+        predictedR,
         code: typeof body.code === "string" ? body.code : null,
         notes: typeof body.notes === "string" ? body.notes : null,
         source: body.source === "github" ? "github" : body.source === "import" ? "import" : "manual",
@@ -203,32 +242,6 @@ export async function POST(req: NextRequest) {
         eq(pendingSubmissions.status, "pending"),
       ),
     );
-
-  // Build signals for SRS algorithm
-  // Casts are safe: VALID_SOLVED/VALID_QUALITY guards above narrow these to the same
-  // literal unions that SolvedIndependently/SolutionQuality are defined from.
-  const signals: AttemptSignals = {
-    solvedIndependently: solvedIndependently as SolvedIndependently,
-    solutionQuality: solutionQuality as SolutionQuality,
-    rewroteFromScratch: rewrote,
-    confidence,
-    solveTimeMinutes: typeof body.solveTimeMinutes === "number" ? body.solveTimeMinutes : null,
-    difficulty: problem[0].difficulty,
-  };
-
-  // Upsert user problem state
-  const existing = await db
-    .select()
-    .from(userProblemStates)
-    .where(
-      and(
-        eq(userProblemStates.userId, session.user.id),
-        eq(userProblemStates.problemId, problemId),
-      ),
-    )
-    .limit(1);
-
-  const now = attemptDate ?? new Date();
 
   // Failed or struggled attempts should come back quickly
   const isFailed = solvedIndependently === "NO";
