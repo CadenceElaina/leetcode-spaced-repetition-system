@@ -367,7 +367,12 @@ export function LogAttemptModal({ problem, onClose, onLogged, onDismissed }: Pro
           )}
           {duplicateWarning && (
             <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
-              <p className="text-xs text-amber-500">Already logged today at {duplicateWarning}.</p>
+              <p className="text-xs text-amber-500">
+                Already logged today at {duplicateWarning}.
+                {problem.attemptDate && (
+                  <span className="text-amber-500/70"> · GitHub commit at {new Date(problem.attemptDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</span>
+                )}
+              </p>
               <div className="flex gap-2 mt-1.5">
                 {problem.pendingId && (
                   <button
