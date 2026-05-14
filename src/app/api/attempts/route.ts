@@ -427,11 +427,11 @@ export async function DELETE(req: NextRequest) {
 }
 
 function isUniqueViolation(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "code" in err &&
-    (err as { code: string }).code === "23505"
-  );
+  if (typeof err !== "object" || err === null) return false;
+  // Drizzle wraps postgres-js errors in a "Failed query: ..." Error where the
+  // original PostgresError (with .code) is on .cause, not the top-level object.
+  const asRecord = err as Record<string, unknown>;
+  const code = asRecord.code ?? (asRecord.cause as Record<string, unknown> | undefined)?.code;
+  return code === "23505";
 }
 
