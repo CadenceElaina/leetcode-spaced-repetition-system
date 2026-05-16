@@ -5,9 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { ChevronRight, Download, Github, LogOut, Moon, Settings, Sun, Trash2 } from "lucide-react";
+import { ChevronRight, Download, Github, LogOut, Moon, Music2, Settings, Sun, Trash2 } from "lucide-react";
 import { SetupGuide, type SetupGuideHandle } from "@/components/setup-guide";
 import { DeleteAccountModal } from "@/components/delete-account-modal";
+import { SoundSettingsModal } from "@/components/sound-settings-modal";
 import { useTheme } from "@/components/theme";
 
 const navLinks = [
@@ -261,6 +262,7 @@ export function Nav({ isAuthenticated = false, authConfigured = true, isDemo = f
 function UserMenu({ userName, userEmail, userImage, analyticsOptOut: initialOptOut }: { userName?: string; userEmail?: string; userImage?: string; analyticsOptOut?: boolean }) {
   const [open, setOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [soundOpen, setSoundOpen] = useState(false);
   const [optOut, setOptOut] = useState(initialOptOut ?? false);
   const ref = useRef<HTMLDivElement>(null);
   const setupGuideRef = useRef<SetupGuideHandle>(null);
@@ -331,7 +333,7 @@ function UserMenu({ userName, userEmail, userImage, analyticsOptOut: initialOptO
             <button
               role="menuitem"
               onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }}
-              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
             >
               <LogOut className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <span>Sign out</span>
@@ -341,6 +343,14 @@ function UserMenu({ userName, userEmail, userImage, analyticsOptOut: initialOptO
           <div className="my-1.5 h-px bg-border/60" />
           <GitHubSyncDropdown menuItem />
           <div className="my-1.5 h-px bg-border/60" />
+          <button
+            role="menuitem"
+            onClick={() => { setOpen(false); setSoundOpen(true); }}
+            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+          >
+            <Music2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <span>Sound Effects</span>
+          </button>
           <button
             role="menuitem"
             onClick={() => { setOpen(false); setupGuideRef.current?.open(); }}
@@ -392,7 +402,7 @@ function UserMenu({ userName, userEmail, userImage, analyticsOptOut: initialOptO
           <button
             role="menuitem"
             onClick={() => { setOpen(false); setDeleteOpen(true); }}
-            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-destructive/75 transition-colors hover:bg-destructive/10 hover:text-destructive"
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-destructive/75 transition-colors hover:bg-destructive/10 hover:text-destructive"
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
             <span>Delete account</span>
@@ -401,6 +411,7 @@ function UserMenu({ userName, userEmail, userImage, analyticsOptOut: initialOptO
       )}
 
       <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} />
+      <SoundSettingsModal open={soundOpen} onClose={() => setSoundOpen(false)} />
       <SetupGuide ref={setupGuideRef} trigger={() => null} />
     </div>
   );
@@ -552,8 +563,8 @@ function GitHubSyncDropdown({ menuItem = false }: { menuItem?: boolean }) {
       <button
         onClick={() => setOpen(!open)}
         className={menuItem
-          ? "w-full rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted"
-          : "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"}
+          ? "w-full cursor-pointer rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted"
+          : "flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"}
         aria-label={status.connected ? `GitHub sync: ${status.repo}` : "GitHub sync"}
         title={status.connected ? `GitHub sync: ${status.repo}` : "GitHub sync"}
       >
@@ -595,7 +606,7 @@ function GitHubSyncDropdown({ menuItem = false }: { menuItem?: boolean }) {
                 {!confirming ? (
                   <button
                     onClick={() => setConfirming(true)}
-                    className="text-xs text-muted-foreground hover:text-foreground"
+                    className="cursor-pointer text-xs text-muted-foreground hover:text-foreground"
                   >
                     Disconnect
                   </button>
@@ -610,13 +621,13 @@ function GitHubSyncDropdown({ menuItem = false }: { menuItem?: boolean }) {
                     <button
                       onClick={handleDisconnect}
                       disabled={disconnecting}
-                      className="inline-flex h-7 items-center rounded-md bg-red-500/20 border border-red-500/40 px-3 text-xs text-red-400 font-medium hover:bg-red-500/30 disabled:opacity-50 transition-colors"
+                      className="inline-flex h-7 cursor-pointer items-center rounded-md bg-red-500/20 border border-red-500/40 px-3 text-xs text-red-400 font-medium hover:bg-red-500/30 disabled:opacity-50 transition-colors"
                     >
                       {disconnecting ? "Disconnecting…" : "Yes, disconnect"}
                     </button>
                     <button
                       onClick={() => setConfirming(false)}
-                      className="inline-flex h-7 items-center rounded-md px-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      className="inline-flex h-7 cursor-pointer items-center rounded-md px-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Cancel
                     </button>
@@ -628,7 +639,7 @@ function GitHubSyncDropdown({ menuItem = false }: { menuItem?: boolean }) {
             <div className="p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-medium">Set up GitHub sync</p>
-                <button onClick={() => { setOpen(false); setShowSetup(false); }} className="text-xs text-muted-foreground hover:text-foreground" aria-label="Close">✕</button>
+                <button onClick={() => { setOpen(false); setShowSetup(false); }} className="cursor-pointer text-xs text-muted-foreground hover:text-foreground" aria-label="Close">✕</button>
               </div>
               <p className="text-xs text-muted-foreground">
                 Auto-detect when you solve problems on NeetCode via GitHub webhook.
@@ -660,7 +671,7 @@ function GitHubSyncDropdown({ menuItem = false }: { menuItem?: boolean }) {
                       <button
                         onClick={handleConnect}
                         disabled={connecting || !repo.trim()}
-                        className="inline-flex h-7 items-center rounded-md bg-accent px-2.5 text-xs text-accent-foreground hover:opacity-90 disabled:opacity-50"
+                        className="inline-flex h-7 cursor-pointer items-center rounded-md bg-accent px-2.5 text-xs text-accent-foreground hover:opacity-90 disabled:opacity-50"
                       >
                         {connecting ? "..." : "Connect"}
                       </button>
@@ -696,7 +707,7 @@ function GitHubSyncDropdown({ menuItem = false }: { menuItem?: boolean }) {
                   </div>
                   <button
                     onClick={handleSetupDone}
-                    className="text-xs text-accent hover:underline"
+                    className="cursor-pointer text-xs text-accent hover:underline"
                   >
                     Done
                   </button>

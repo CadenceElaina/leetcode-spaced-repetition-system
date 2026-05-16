@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
+import { saveSoundSettings, DEFAULT_SOUND_SETTINGS } from "@/lib/sounds";
 
 
 
@@ -101,6 +102,7 @@ export function Onboarding({ isDemo = false, onboardingComplete = false, onPrefe
     return `${year}-09-01`;
   });
   const [deferHards, setDeferHards] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(false);
 
   const measure = useCallback(() => {
     const q = document.querySelector("[data-onboarding='queue']");
@@ -176,6 +178,9 @@ export function Onboarding({ isDemo = false, onboardingComplete = false, onPrefe
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dailyTimeBudgetMinutes: selectedTimeBudget }),
       }).catch(() => {/* ignore */});
+    }
+    if (soundEnabled) {
+      saveSoundSettings({ ...DEFAULT_SOUND_SETTINGS, sessionComplete: "wow", volume: 0.35 });
     }
     onPreferences?.({ targetCount, targetDate: selectedDate, autoDeferHards: deferHards, goalType: selectedGoal, timeBudget: selectedTimeBudget });
     setShow(false);
@@ -504,6 +509,20 @@ export function Onboarding({ isDemo = false, onboardingComplete = false, onPrefe
               <div>
                 <span className="text-sm font-medium">Defer Hard problems</span>
                 <p className="text-xs text-muted-foreground">Focus on Easy &amp; Medium first (recommended)</p>
+              </div>
+            </label>
+
+            {/* Sound opt-in */}
+            <label className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+              <input
+                type="checkbox"
+                checked={soundEnabled}
+                onChange={(e) => setSoundEnabled(e.target.checked)}
+                className="h-4 w-4 rounded border-border text-accent focus:ring-accent/50"
+              />
+              <div>
+                <span className="text-sm font-medium">Enable celebration sounds</span>
+                <p className="text-xs text-muted-foreground">Plays a sound when you finish a session. Change anytime in settings.</p>
               </div>
             </label>
           </div>

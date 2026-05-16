@@ -10,6 +10,8 @@ import { ImportClient } from "@/app/import/import-client";
 import { LogAttemptModal, type LogModalProblem, type LogModalResult } from "@/components/log-attempt-modal";
 import { Onboarding } from "@/components/onboarding";
 import { SkyCanvas } from "@/components/sky-canvas";
+import { ConfettiBurst } from "@/components/confetti-burst";
+import { useCelebration } from "@/hooks/use-celebration";
 import { InlinePatternPanel } from "./cheatsheet-drawer";
 import { CHEATSHEET_MAP, type Cheatsheet } from "@/lib/cheatsheets";
 import { MASTERY_THRESHOLD, computeReviewPriority, type PriorityInput } from "@/lib/srs";
@@ -248,6 +250,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
   const [sessionViewMode, setSessionViewMode] = useState<"session" | "queue">("session");
   const [sessionActedOn, setSessionActedOn] = useState(0);
 
+  const { confettiBurst, playSessionComplete, resetSessionFired, playProblemLog, checkInactivity, recordSubmit } = useCelebration();
 
   const activityData = useMemo(() => {
     if (activityViewMode === "monthly") return data.fullAttemptHistory;
@@ -271,6 +274,15 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
   useEffect(() => {
     setCompletedItems(data.completedProblems);
   }, [data.completedProblems]);
+
+  // Inactivity sound — runs once on mount for authenticated users
+  useEffect(() => {
+    if (isDemo) return;
+    const lastDate = data.fullAttemptHistory.length > 0
+      ? data.fullAttemptHistory.reduce((max, d) => (d.date > max ? d.date : max), "")
+      : null;
+    checkInactivity(lastDate);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load saved settings from localStorage
   useEffect(() => {
@@ -657,6 +669,18 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
 
   const sessionSize = useMemo(() => Math.max(5, Math.floor(timeBudget / 20)), [timeBudget]);
 
+  // Detect session-complete threshold crossing and fire celebration exactly once per crossing
+  const prevSessionActedOnRef = useRef(sessionActedOn);
+  useEffect(() => {
+    const wasBelow = prevSessionActedOnRef.current < sessionSize;
+    const isNowComplete = sessionActedOn >= sessionSize && sessionActedOn > 0;
+    if (wasBelow && isNowComplete && !isDemo && sessionViewMode === "session") {
+      playSessionComplete();
+    }
+    if (!isNowComplete) resetSessionFired();
+    prevSessionActedOnRef.current = sessionActedOn;
+  }, [sessionActedOn, sessionSize]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const sessionQueue = useMemo(() => {
     if (sessionViewMode !== "session") return filteredReviewQueue;
     if (sessionActedOn >= sessionSize) return filteredReviewQueue;
@@ -708,6 +732,8 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
       setPendingItems((prev) => prev.filter((p) => p.id !== problem.pendingId));
     }
     if (problem?.isReview) recordSessionAction();
+    recordSubmit();
+    playProblemLog();
     router.refresh();
   }
 
@@ -873,6 +899,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
 
   return (
     <>
+    <ConfettiBurst active={confettiBurst} />
     {/* Onboarding Walkthrough */}
     <Onboarding isDemo={isDemo} onboardingComplete={onboardingComplete} onPreferences={(prefs) => {
       if (prefs.targetCount > 0) {
@@ -1764,12 +1791,10 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
             </button>
           </div>
-          <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-xs text-foreground mb-1">Total Solve</p><p className="text-xl font-bold">{formatMinutes(data.totalSolveMinutes)}</p></div>
-              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-xs text-foreground mb-1">Total Study</p><p className="text-xl font-bold">{formatMinutes(data.totalStudyMinutes)}</p></div>
-              <div className="rounded-lg border border-border/50 bg-background/40 p-3"><p className="text-xs text-foreground mb-1">Avg Solve</p><p className="text-xl font-bold">{data.avgSolveMinutes > 0 ? `${Math.round(data.avgSolveMinutes)}m` : "—"}</p></div>
-            </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2"><p className="text-[10px] text-muted-foreground mb-0.5">Total Solve</p><p className="text-base font-bold">{formatMinutes(data.totalSolveMinutes)}</p></div>
+            <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2"><p className="text-[10px] text-muted-foreground mb-0.5">Total Study</p><p className="text-base font-bold">{formatMinutes(data.totalStudyMinutes)}</p></div>
+            <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2"><p className="text-[10px] text-muted-foreground mb-0.5">Avg Solve</p><p className="text-base font-bold">{data.avgSolveMinutes > 0 ? `${Math.round(data.avgSolveMinutes)}m` : "—"}</p></div>
           </div>
         </section>
 
@@ -1788,7 +1813,15 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
           <div className="grid grid-cols-2 gap-2 mt-2">
           <div className="rounded-md border border-border/40 bg-background/30 p-2">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-foreground">Categories</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs font-medium text-foreground">Categories</p>
+                <InfoTooltip content={
+                  <div className="space-y-1">
+                    <p><span className="font-medium">X/Y</span> = problems attempted out of total in that category.</p>
+                    <p>Bar color reflects avg retention — red is low, green is high. Hover a row to see the exact %.</p>
+                  </div>
+                } />
+              </div>
               <div className="flex gap-1">
                 <button onClick={() => setCategoryView("weak")} className={`text-[10px] px-1.5 py-0.5 rounded ${categoryView === "weak" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Weakest</button>
                 <button onClick={() => setCategoryView("all")} className={`text-[10px] px-1.5 py-0.5 rounded ${categoryView === "all" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}>All</button>
@@ -1810,7 +1843,15 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
             </div>
           </div>
           <div className="rounded-md border border-border/40 bg-background/30 p-2">
-            <p className="text-xs font-medium text-foreground mb-2">Difficulty</p>
+            <div className="flex items-center gap-1 mb-2">
+              <p className="text-xs font-medium text-foreground">Difficulty</p>
+              <InfoTooltip content={
+                <div className="space-y-1">
+                  <p><span className="font-medium">X/Y</span> = problems attempted out of total at that difficulty.</p>
+                  <p>Hover a row to see your coverage as a percentage.</p>
+                </div>
+              } />
+            </div>
             <div className="h-[96px] overflow-y-auto pr-1.5 space-y-2">
               {data.difficultyBreakdown.map((d) => {
                 const pct = d.count > 0 ? Math.round((d.attempted / d.count) * 100) : 0;
