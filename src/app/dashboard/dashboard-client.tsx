@@ -660,7 +660,10 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     );
   }, [sortedReviewQueue, queueSearch]);
 
-  const sessionSize = useMemo(() => Math.max(5, Math.floor(timeBudget / 20)), [timeBudget]);
+  const sessionSize = useMemo(() => {
+    const cap = computeCapacity(timeBudget, 0).reviewCapacity;
+    return Math.min(Math.max(2, cap + 1), Math.min(8, reviewItems.length || 2));
+  }, [timeBudget, reviewItems.length]);
 
   // Detect session-complete threshold crossing and fire celebration exactly once per crossing
   const prevSessionActedOnRef = useRef(sessionActedOn);
