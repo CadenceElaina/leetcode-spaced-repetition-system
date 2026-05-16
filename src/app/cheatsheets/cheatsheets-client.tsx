@@ -48,6 +48,12 @@ export function CheatsheetExpanded({ sheet }: { sheet: Cheatsheet }) {
         </ul>
       </div>
 
+      {/* Don't confuse with */}
+      <div className="flex gap-2 rounded-md border border-border/40 bg-muted/30 px-3 py-2.5">
+        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 pt-px">vs.</span>
+        <p className="text-xs text-foreground/70 leading-relaxed">{sheet.confusedWith}</p>
+      </div>
+
       {/* Complexity + Canonical — always visible; quick reference facts */}
       <div className="space-y-2.5 border-t border-border/40 pt-3">
         <div>
@@ -76,15 +82,17 @@ export function CheatsheetExpanded({ sheet }: { sheet: Cheatsheet }) {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className={`transition-transform ${showTemplate ? "rotate-90" : ""}`}>
             <polyline points="9 18 15 12 9 6" />
           </svg>
-          {showTemplate ? "Hide template" : "Show template"}
+          {showTemplate
+            ? "Hide template"
+            : sheet.templates.length === 1
+              ? `Show template: ${sheet.templates[0].label}`
+              : "Show templates"}
         </button>
         {showTemplate && (
           <div className="mt-2 space-y-3">
             {sheet.templates.map((t, i) => (
               <div key={i}>
-                {sheet.templates.length > 1 && (
-                  <p className="mb-1 text-xs text-muted-foreground">{t.label}</p>
-                )}
+                <p className="mb-1 text-xs text-muted-foreground">{t.label}</p>
                 <CodeBlock code={t.code} />
               </div>
             ))}

@@ -2,12 +2,12 @@ export interface Cheatsheet {
   category: string;
   triggers: string[];
   variants: string[];
-  whenToUse: string[];
   keyIdea: string;
   canonicalProblems: { name: string; note: string }[];
   templates: { label: string; code: string }[];
   complexity: string;
   watchOut: string[];
+  confusedWith: string;
 }
 
 export const CHEATSHEETS: Cheatsheet[] = [
@@ -23,11 +23,6 @@ export const CHEATSHEETS: Cheatsheet[] = [
       "Frequency map — count occurrences for top-K or majority element",
       "Complement lookup — store seen values, check target - x on each step",
       "Grouping key — sort each element or use a canonical form as the map key",
-    ],
-    whenToUse: [
-      "Need O(1) membership check, frequency count, or complement lookup",
-      "Group items by some property (anagrams → sorted key, counts → value)",
-      "Any time a nested loop scan looks O(n²) — a hash map likely fixes it",
     ],
     keyIdea:
       "Trade space for time by storing seen values or counts in a hash map/set so you never scan the array twice.",
@@ -51,6 +46,8 @@ for i, x in enumerate(nums):
       "Using a list for membership checks → accidentally O(n²)",
       "Off-by-one: store the index, not just True, when you need to return positions",
     ],
+    confusedWith:
+      "Two Pointers: prefer hashing when the array can't be sorted without losing info; use TP when it can be sorted and you need a pair.",
   },
   {
     category: "Two Pointers",
@@ -64,11 +61,6 @@ for i, x in enumerate(nums):
       "Converging — left at start, right at end; move based on comparison",
       "Same direction (slow/fast) — remove duplicates, partition arrays",
       "Three pointers — fix one element, converge the other two (3Sum)",
-    ],
-    whenToUse: [
-      "Array/string is sorted (or you can sort it without losing information)",
-      "Looking for a pair or triplet satisfying a sum/distance condition",
-      "Need to remove duplicates, partition, or compare from both ends in O(1) space",
     ],
     keyIdea:
       "Place one pointer at each end and converge based on a condition — eliminates the need for a nested loop.",
@@ -102,6 +94,8 @@ return slow + 1`,
       "Forgetting to sort first — converging only works on sorted input",
       "Loop condition: left < right for pairs, left <= right for single pointer reaching center",
     ],
+    confusedWith:
+      "Sliding Window: use TP when the array can be sorted and you're finding a pair/triplet; use SW when you need the longest/shortest contiguous subarray on unsorted data.",
   },
   {
     category: "Sliding Window",
@@ -115,11 +109,6 @@ return slow + 1`,
       "Fixed window — slide a constant-size window, O(1) update per step",
       "Variable window — expand right, shrink left when constraint is violated",
       "Counter-based — use a dict to track character counts in the window",
-    ],
-    whenToUse: [
-      "Subarray or substring problem with a contiguous constraint",
-      'Problem says "longest/shortest X" or "maximum/minimum subarray satisfying Y"',
-      "Brute force is O(n²) nested loops over subarrays — window cuts it to O(n)",
     ],
     keyIdea:
       "Expand the right edge to grow the window; shrink the left edge when a constraint is violated — each element enters and exits at most once.",
@@ -160,6 +149,8 @@ return best`,
       "Shrinking too aggressively — shrink only until the constraint is satisfied again",
       "Fixed vs. variable: decide which before writing; they use slightly different loops",
     ],
+    confusedWith:
+      "Two Pointers: SW requires contiguous subarrays and works on unsorted input; TP converges from both ends and requires the array to be sorted.",
   },
   {
     category: "Stack",
@@ -173,11 +164,6 @@ return best`,
       "Matching — push opening tokens, pop and verify on closing tokens",
       "Monotonic decreasing — tracks next-greater; pop when current value is larger",
       "Monotonic increasing — tracks next-smaller; pop when current value is smaller",
-    ],
-    whenToUse: [
-      "Need to match opening/closing pairs: brackets, tags, function calls",
-      '"Next greater/smaller element" — process each element against a stack of candidates',
-      "Expression evaluation or undo/redo operations",
     ],
     keyIdea:
       "A monotonic stack maintains a sorted invariant so that next-greater/smaller queries are answered in O(1) amortized — each element is pushed and popped at most once.",
@@ -214,6 +200,8 @@ return result`,
       "Always check stack is non-empty before stack[-1]",
       "Store indices in the stack, not values — you almost always need the position",
     ],
+    confusedWith:
+      "Deque (monotonic queue): use a deque when you need the min or max of a sliding window — a stack only gives you one end.",
   },
   {
     category: "Binary Search",
@@ -227,11 +215,6 @@ return result`,
       "Exact value — classic left ≤ right, shrink both sides",
       "Leftmost boundary — left < right, right = mid when feasible(mid)",
       "Search on answer space — define lo/hi over answer range, binary search feasibility",
-    ],
-    whenToUse: [
-      "Array is sorted, or the answer space is monotone (feasible up to a threshold, then not)",
-      "Finding first/last position satisfying a condition",
-      "Optimization: minimize the maximum or maximize the minimum",
     ],
     keyIdea:
       "Every iteration halves the search space; the key decision is whether mid itself can be the answer, which determines whether you write right = mid or right = mid - 1.",
@@ -268,6 +251,8 @@ return left`,
       "right = mid vs right = mid - 1: use mid when mid can be the answer; mid - 1 when it can't",
       "Decide upfront: exact value, leftmost, or rightmost — each template is slightly different",
     ],
+    confusedWith:
+      "Linear scan: binary search requires the search space to be sorted or monotone — if neither holds, a scan is the only option.",
   },
   {
     category: "Linked List",
@@ -281,11 +266,6 @@ return left`,
       "Dummy head — prepend a sentinel node to simplify insertions/deletions at the start",
       "Fast / slow pointers — slow moves 1 step, fast moves 2; meets at cycle or middle",
       "In-place reversal — prev/curr/nxt, re-wire .next pointers iteratively",
-    ],
-    whenToUse: [
-      "In-place reversal, cycle detection, or finding the midpoint",
-      "Merging sorted lists, removing Nth node from end",
-      'Problem asks for O(1) extra space on a list — "do it without extra memory"',
     ],
     keyIdea:
       "Almost every linked list problem uses a dummy head (eliminates edge cases at the head) or fast/slow pointers (cycle detection, midpoint).",
@@ -320,6 +300,8 @@ while fast and fast.next:
       "Save curr.next before overwriting it — the most common bug in reversal",
       "Use a dummy head when the result list's first node is unknown until the loop runs",
     ],
+    confusedWith:
+      "Array simulation: converting to an array and back is valid when O(n) space is allowed — only reach for pointer tricks when O(1) space is required.",
   },
   {
     category: "Trees",
@@ -333,11 +315,6 @@ while fast and fast.next:
       "DFS preorder — process node before children (serialization, paths from root)",
       "DFS postorder — process children first (height, diameter, any bottom-up aggregation)",
       "BFS level-order — process level by level (level averages, right side view, zigzag)",
-    ],
-    whenToUse: [
-      "Any computation on a binary tree, BST, or n-ary tree",
-      "Path sums, depth/height, LCA, serialization/deserialization",
-      "BST problems: remember inorder traversal yields sorted order",
     ],
     keyIdea:
       'Most tree problems decompose into "what do I compute at this node, what do I return to my parent?" — write that recursion and the base case (None → 0 or None → True) and you\'re done.',
@@ -372,6 +349,8 @@ while q:
       "Base case matters: returning 0 vs None vs False — be consistent across all recursive calls",
       "BFS: capture len(q) before the inner loop, not inside it",
     ],
+    confusedWith:
+      "Graphs: a tree is a connected acyclic graph with a single root — if nodes can have multiple parents or cycles, use graph traversal with a visited set.",
   },
   {
     category: "Tries",
@@ -385,11 +364,6 @@ while q:
       "Basic trie — insert + search + startsWith using dict of children",
       "Trie + DFS — word search on a grid, prune branches not in trie",
       "Compressed trie — merge single-child chains (for memory-sensitive problems)",
-    ],
-    whenToUse: [
-      "Prefix-based lookups: autocomplete, spell check, IP routing",
-      "Checking if any word in a large dictionary matches a prefix",
-      "Word search on a grid where you need to prune invalid paths early",
     ],
     keyIdea:
       "A trie gives O(L) insert and lookup regardless of dictionary size — the key distinction is search (must reach a node where is_end = True) vs. starts_with (just reach the prefix node).",
@@ -435,6 +409,8 @@ class Trie:
       "search requires is_end = True; starts_with does not — mixing them up is the #1 bug",
       "Use dict for children unless the problem guarantees lowercase only (then array of 26 is fine)",
     ],
+    confusedWith:
+      "HashMap: use a HashMap for exact-match lookups; use a Trie when you need prefix queries, wildcard matching, or early pruning across many keys.",
   },
   {
     category: "Heap / Priority Queue",
@@ -448,11 +424,6 @@ class Trie:
       "Fixed-size min-heap of K — maintains K largest seen so far",
       "Max-heap — negate values (Python's heapq is min-only)",
       "Heap with metadata — store (priority, index, value) tuples for tie-breaking",
-    ],
-    whenToUse: [
-      "K largest/smallest/most-frequent elements — any top-K problem",
-      "Streaming minimum or maximum as elements are added",
-      "Merging K sorted lists or arrays",
     ],
     keyIdea:
       "A min-heap of size K tracks the K largest elements — the heap top is always the smallest of the K largest, so you can evict it when the heap exceeds size K.",
@@ -485,6 +456,8 @@ return -heapq.heappop(heap)  # largest element`,
       "Python heapq is min-heap only — negate values for max-heap behavior",
       "K largest uses a min-heap (counterintuitive): you keep the K largest by evicting the smallest",
     ],
+    confusedWith:
+      "Sorting: sort when you need all elements ordered at once; use a heap when you only need the K-th element or a running min/max as elements arrive.",
   },
   {
     category: "Backtracking",
@@ -498,11 +471,6 @@ return -heapq.heappop(heap)  # largest element`,
       "Subsets — include or exclude each element; use start index to avoid repeats",
       "Permutations — swap elements in place or use a used[] array",
       "Constraint satisfaction — N-queens, Sudoku; check validity before recursing",
-    ],
-    whenToUse: [
-      "Enumerate all valid configurations: combinations, permutations, subsets",
-      "Constraint satisfaction: N-queens, Sudoku, word search with a dictionary",
-      '"How many ways to...?" when you need to count or return all solutions',
     ],
     keyIdea:
       "Build the solution incrementally; at each step try all valid choices, recurse into each, then undo the choice (backtrack) — copy results, never return a reference.",
@@ -533,6 +501,8 @@ backtrack(0, [])`,
       "Append path[:] not path — returning the reference means all entries point to the same list",
       "For duplicate inputs: sort first, then skip if i > start and nums[i] == nums[i-1]",
     ],
+    confusedWith:
+      "Dynamic Programming: use backtracking when you need all valid solutions or must enumerate; use DP when you only need the count or the optimal value.",
   },
   {
     category: "Graphs",
@@ -546,11 +516,6 @@ backtrack(0, [])`,
       "BFS — shortest path in unweighted graph; level-by-level expansion",
       "DFS — connectivity, cycle detection, topological sort",
       "Topological sort — BFS with in-degree (Kahn's) or DFS with post-order",
-    ],
-    whenToUse: [
-      "Connected components, path existence, flood fill, island counting",
-      "Shortest path in an unweighted graph (BFS gives optimal)",
-      "Dependency ordering: course prerequisites, build systems",
     ],
     keyIdea:
       "Represent as adjacency list; BFS for shortest path, DFS for connectivity — always mark visited before enqueuing/recursing to avoid revisiting nodes.",
@@ -594,6 +559,8 @@ for node in all_nodes:
       "Mark visited before adding to the queue — not after popping — to prevent duplicate entries",
       "Directed graphs: cycle detection needs an in_stack / gray set separate from visited",
     ],
+    confusedWith:
+      "Trees: unlike trees, graphs can have cycles and multiple paths — always maintain a visited set. BFS gives shortest path in unweighted graphs; DFS does not guarantee it.",
   },
   {
     category: "Advanced Graphs",
@@ -607,11 +574,6 @@ for node in all_nodes:
       "Dijkstra — non-negative weights, min-heap, O((V+E) log V)",
       "Bellman-Ford — negative weights ok, O(VE); detect negative cycles",
       "Kruskal / Prim — minimum spanning tree; Kruskal uses Union-Find on sorted edges",
-    ],
-    whenToUse: [
-      "Weighted shortest path: Dijkstra for non-negative weights, Bellman-Ford otherwise",
-      "Minimum spanning tree: Kruskal (sparse graphs) or Prim (dense graphs)",
-      "Strongly connected components, bridges and articulation points",
     ],
     keyIdea:
       "Dijkstra greedily expands the cheapest unvisited node using a min-heap; always skip stale heap entries with if d > dist[u]: continue.",
@@ -659,6 +621,8 @@ for u, v, w in edges:
       "Dijkstra fails with negative edge weights — use Bellman-Ford instead",
       "Always check if d > dist[u]: continue at the top of the Dijkstra loop",
     ],
+    confusedWith:
+      "Basic BFS: BFS gives shortest path in unweighted graphs in O(V+E); only reach for Dijkstra when edges have non-negative weights.",
   },
   {
     category: "1-D Dynamic Programming",
@@ -672,11 +636,6 @@ for u, v, w in edges:
       "Linear scan — dp[i] depends only on dp[i-1] (or i-1 and i-2); space reducible to O(1)",
       "Choice at each step — take or skip (knapsack-style); usually dp[i] = max of options",
       "Subsequence — dp[i] = best ending at i; O(n²) with inner scan, O(n log n) with patience sort",
-    ],
-    whenToUse: [
-      "Optimal value (max/min) over a sequence with overlapping subproblems",
-      '"How many ways to reach X" counting problems',
-      "Fibonacci-style: current answer depends on a small number of previous answers",
     ],
     keyIdea:
       "Define dp[i] precisely — e.g., 'max profit using first i items' — then write the recurrence from that definition; the rest follows.",
@@ -710,6 +669,8 @@ return prev1`,
       "Define dp[i] unambiguously before writing the recurrence — vague definitions cause off-by-one recurrences",
       "Base cases dp[0] and dp[1] must be explicit; don't rely on default 0 being correct",
     ],
+    confusedWith:
+      "Greedy: try a small counterexample first — if a locally optimal choice can be invalidated by a later element, you need DP.",
   },
   {
     category: "2-D Dynamic Programming",
@@ -723,11 +684,6 @@ return prev1`,
       "Grid DP — dp[i][j] depends on dp[i-1][j] and dp[i][j-1]",
       "Two-string DP — dp[i][j] represents prefix of s1 and s2; LCS, edit distance",
       "Knapsack — dp[i][w] = best value using first i items with capacity w",
-    ],
-    whenToUse: [
-      "Grid problems: unique paths, minimum path sum, count paths",
-      "Two-string problems: LCS, edit distance, interleaving strings",
-      "Knapsack: select items with weight/value constraints",
     ],
     keyIdea:
       "Define dp[i][j] precisely, initialize the first row/column as base cases, then fill left-to-right top-to-bottom — each cell depends only on already-computed cells.",
@@ -764,6 +720,8 @@ return dp[-1][-1]`,
       "1-indexed dp vs 0-indexed input — dp[i] corresponds to s[i-1]; be consistent",
       "Initialize the first row and column explicitly — they are the base cases",
     ],
+    confusedWith:
+      "1-D DP: use 2-D when two independently varying dimensions define the state (two strings, grid row + column) — if there's only one changing dimension, 1-D suffices.",
   },
   {
     category: "Greedy",
@@ -777,11 +735,6 @@ return dp[-1][-1]`,
       "Interval scheduling — sort by end time, always pick earliest-ending compatible interval",
       "Reach / coverage — track max reachable index as you scan left to right",
       "Balance — accumulate and reset when balance goes negative (gas station, stock profit)",
-    ],
-    whenToUse: [
-      "Interval scheduling: sort by end time and greedily pick non-overlapping intervals",
-      "Jump game-style: scan left to right tracking the furthest reachable index",
-      "When local optimality provably leads to global optimality (prove by exchange argument)",
     ],
     keyIdea:
       "Make the locally best choice at each step without revisiting — but confirm greedy is safe first; problems with 'take or leave' over a large set usually need DP.",
@@ -814,6 +767,8 @@ return count`,
       "Sort by end time for interval scheduling, not start time",
       "When unsure if greedy is safe, try a small counterexample before committing",
     ],
+    confusedWith:
+      "Dynamic Programming: greedy makes irrevocable local choices — if you can construct a counterexample where the greedy pick is wrong, the problem needs DP.",
   },
   {
     category: "Intervals",
@@ -827,11 +782,6 @@ return count`,
       "Merge — sort by start, extend end when overlap; collect into result list",
       "Count overlap — split starts/ends, scan with two pointers or use heap of end times",
       "Insert — split existing intervals into before, overlapping, after; merge overlapping group",
-    ],
-    whenToUse: [
-      "Merging overlapping ranges into a consolidated list",
-      "Finding the maximum concurrent overlap (meeting rooms, CPU load)",
-      "Inserting a new interval while maintaining sorted non-overlapping order",
     ],
     keyIdea:
       "Sort by start time; two intervals [a,b] and [c,d] overlap when c ≤ b — merge by extending b to max(b, d).",
@@ -870,6 +820,8 @@ return len(heap)`,
       "≤ vs < in the overlap check — [1,3] and [3,5] share the endpoint; decide if that counts",
       "Store intervals as lists (not tuples) when mutating merged[-1][1] in-place",
     ],
+    confusedWith:
+      "Two Pointers: use interval merging when ranges are given as explicit [start, end] pairs; use TP on a single sorted array where you're finding pairs.",
   },
   {
     category: "Bit Manipulation",
@@ -883,11 +835,6 @@ return len(heap)`,
       "XOR cancellation — a ^ a = 0; XOR all elements to isolate the unique one",
       "Bit tricks — x & (x-1) clears lowest set bit; use for counting or power-of-2 check",
       "Bitmask enumeration — iterate 0 to 2ⁿ - 1, each bit = include/exclude element",
-    ],
-    whenToUse: [
-      "Find single non-duplicate in an array of pairs (XOR all elements)",
-      "Counting set bits, checking power-of-2, toggling individual flags",
-      "Enumerate all 2ⁿ subsets in O(1) space per subset",
     ],
     keyIdea:
       "XOR is self-inverse (a ^ a = 0, a ^ 0 = a) — XOR-ing all elements cancels duplicates and leaves the unique one.",
@@ -921,6 +868,8 @@ while x:
       "Python has arbitrary-precision ints so no overflow, but in Java/C++ use long near 32/64 bits",
       "~x in Python gives -(x+1) — use x ^ ((1 << n) - 1) to flip exactly n bits",
     ],
+    confusedWith:
+      "Math / modular arithmetic: use bit ops for powers-of-2, XOR uniqueness, and subset enumeration; use standard math for GCD, prime factorization, or large-number arithmetic.",
   },
   {
     category: "Math & Geometry",
@@ -934,11 +883,6 @@ while x:
       "Number theory — GCD (Euclidean), LCM, prime sieve, modular arithmetic",
       "Matrix in-place — transpose + reverse rows (90° CW); swap boundary layers (spiral)",
       "Geometry — cross product for collinearity, Manhattan vs. Euclidean distance",
-    ],
-    whenToUse: [
-      "Prime detection or factorization problems",
-      "In-place matrix operations: rotate, transpose, spiral traversal",
-      "GCD/LCM in fraction simplification, cycle detection, scheduling",
     ],
     keyIdea:
       "Know GCD and the sieve cold; in-place matrix rotation is always transpose + reverse (direction depends on CW vs CCW).",
@@ -977,6 +921,8 @@ for row in matrix:
       "Use integer division // not / for GCD and all index math",
       "CW rotation = transpose then reverse rows; CCW = reverse rows then transpose",
     ],
+    confusedWith:
+      "DP / simulation: if you find yourself building a DP table for a math problem, look for a closed-form formula first (GCD, sieve, modular arithmetic).",
   },
 ];
 
