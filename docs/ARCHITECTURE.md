@@ -239,6 +239,53 @@ The status label (e.g. `↓ Improving · ~8/day`) shows trend direction and the 
 
 ---
 
+## Curriculum Recommendation Engine
+
+Full decision record: [decisions/2026-05-16-curriculum-recommendation.md](decisions/2026-05-16-curriculum-recommendation.md)
+
+Implementation: `src/lib/curriculum.ts` (pure, no side effects)
+
+### Purpose
+
+When a user's daily session has remaining capacity after reviewing, Aurora recommends a specific next new problem to attempt. The recommendation follows the NeetCode 150 dependency graph rather than leaving users to pick from a raw list.
+
+### Curriculum Layers
+
+```
+Layer 0   Arrays & Hashing
+Layer 1   [Two Pointers  ↔  Stack]                              fork
+Layer 2   [Binary Search ↔ Sliding Window ↔ Linked List]        fork — all three before Trees
+Layer 3   Trees
+Layer 4   [Tries | Backtracking | Heap / Priority Queue]        fork — follow one subtree
+Layer 4b  Backtracking   → Graphs → 1-D DP
+          Heap/Prio Q    → Intervals → Greedy → Advanced Graphs
+          Tries          → (leaf)
+Layer 5   [2-D DP ↔ Bit Manipulation ↔ Math & Geometry]        fork
+```
+
+Layers unlock by threshold (≥ 1 or ≥ 3 attempts in the prior layer — see ADR for exact values). Thresholds are intentionally loose; the SRS review queue handles reinforcement of skipped problems, so strict gating is unnecessary.
+
+### Fork Resolution
+
+At each `[A ↔ B]` fork the engine picks the branch with the **most attempted problems**. This respects the user's implicit choice — they've already been working there. On a tie (including the very first visit), a random pick is stored in `localStorage` as `aurora_fork_<layer>` and reused until attempt counts diverge. The recommendation switches automatically if the user ignores it and builds up attempts elsewhere.
+
+### Output
+
+`computeNextRecommendation()` returns `{ problem, category, reason } | null`:
+
+- **problem** — first un-attempted problem in the active category, sorted by `leetcodeNumber`
+- **category** — e.g. `"Binary Search"`
+- **reason** — short label for the UI: `"Continue Two Pointers"`, `"Start Sliding Window"`, etc.
+
+Returns `null` when: the session is already full (review queue fills budget), all 150 problems have been attempted, or `goalType === "blind75"` and no Blind 75 problems remain.
+
+### Filters
+
+- `autoDeferHards = true` → Hard problems excluded from recommendation (and from "complete" count)
+- `goalType = "blind75"` → only Blind 75 problems are eligible
+
+---
+
 ## GitHub Webhook Integration
 
 Optional feature for auto-detecting NeetCode submissions. See [decision record](decisions/2026-04-02-github-webhook-sync.md) for full design rationale.

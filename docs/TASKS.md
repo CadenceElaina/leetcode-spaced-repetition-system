@@ -3,7 +3,7 @@
 Agents and sessions pull from this file. Claim a task by adding your session ID to the Agent column.
 **Canonical task file** — root `TASKS.md` is a mirror. Edit only this one.
 
-Last updated: 2026-05-10 — T-024 complete
+Last updated: 2026-05-16 — T-025/T-026 planned
 
 ---
 
@@ -20,7 +20,10 @@ Last updated: 2026-05-10 — T-024 complete
 
 ## Open Tasks
 
-_None._
+| ID    | Tier | Description |
+| ----- | ---- | ----------- |
+| T-025 | 🟠 P1 | `feat(dashboard)`: Dashboard UI redesign — 3-column layout (spacer · queue · right panel), compact centered queue, new right panel (CompletionWidget with E/M/H bars + needed/day + projection, compact Readiness, goal toggle 150/Blind75), session size into settings form, new/review goals left of activity chart, activity + forecast/mastery moved below-fold. Remove categories/difficulty from dashboard. See UI redesign plan in conversation 2026-05-16. |
+| T-026 | 🟠 P1 | `feat(srs)`: Curriculum recommendation engine — `src/lib/curriculum.ts`, `computeNextRecommendation()`. NeetCode roadmap dependency DAG, fork-by-attempt-count logic, localStorage fork persistence, "Recommended next" card in Session view + New tab. Decision record: `docs/decisions/2026-05-16-curriculum-recommendation.md`. |
 
 ---
 
