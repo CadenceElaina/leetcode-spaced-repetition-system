@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { X, Volume2, Play, Upload } from "lucide-react";
 import {
   SOUND_PRESETS,
+  INACTIVITY_PRESETS,
   loadSoundSettings,
   saveSoundSettings,
   previewSound,
@@ -256,47 +257,40 @@ export function SoundSettingsModal({
           {/* Inactivity */}
           <div className="space-y-3">
             <p className="text-xs font-medium text-muted-foreground">
-              Inactivity reminder (Hell&apos;s Kitchen violin)
+              Inactivity reminder
             </p>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               Plays once when you haven&apos;t logged anything in a while. Very motivating.
             </p>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
+            <div className="flex flex-wrap gap-1.5">
+              {INACTIVITY_PRESETS.map((p) => (
                 <button
-                  role="switch"
-                  aria-checked={settings.inactivity !== "none"}
-                  onClick={() =>
-                    update("inactivity", settings.inactivity === "none" ? "hells-kitchen" : "none")
-                  }
-                  className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border transition-colors ${
-                    settings.inactivity !== "none"
-                      ? "bg-accent border-accent/80"
-                      : "bg-muted-foreground/30 border-muted-foreground/20"
+                  key={p.id}
+                  onClick={() => update("inactivity", p.id)}
+                  className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition-all ${
+                    settings.inactivity === p.id
+                      ? "border-accent bg-accent/15 text-accent"
+                      : "border-border text-muted-foreground hover:border-border/80 hover:bg-muted/50"
                   }`}
                 >
-                  <span
-                    className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform mt-0.5 ${
-                      settings.inactivity !== "none" ? "translate-x-4" : "translate-x-0.5"
-                    }`}
-                  />
+                  {p.file && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        stopCurrentSound();
+                        const a = new Audio(p.file);
+                        a.volume = settings.volume;
+                        a.play().catch(() => {});
+                      }}
+                      className="text-muted-foreground/60 hover:text-accent transition-colors"
+                      title="Preview"
+                    >
+                      <Play className="h-2.5 w-2.5" />
+                    </button>
+                  )}
+                  {p.label}
                 </button>
-                <span className="text-xs">Enable</span>
-              </label>
-              {settings.inactivity !== "none" && (
-                <button
-                  onClick={() => {
-                    stopCurrentSound();
-                    const a = new Audio("/sounds/hells-kitchen.mp3");
-                    a.volume = settings.volume;
-                    a.play().catch(() => {});
-                  }}
-                  className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:bg-muted/50 transition-colors"
-                >
-                  <Play className="h-2.5 w-2.5" />
-                  Preview
-                </button>
-              )}
+              ))}
             </div>
             {settings.inactivity !== "none" && (
               <div className="flex items-center gap-3">

@@ -65,7 +65,7 @@ export function useCelebration() {
     );
     if (daysSince >= s.inactivityDays) {
       localStorage.setItem(INACTIVITY_PLAYED_KEY, today);
-      playInactivitySound(s.volume);
+      playInactivitySound(s.inactivity, s.volume);
     }
   }, []);
 

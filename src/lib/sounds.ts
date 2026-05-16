@@ -8,7 +8,19 @@ export type SoundPreset =
   | "custom"
   | "none";
 
-export type InactivitySound = "hells-kitchen" | "none";
+export type InactivitySound = "hells-kitchen" | "fahhh" | "none";
+
+export type InactivityPresetDef = {
+  id: InactivitySound;
+  label: string;
+  file?: string;
+};
+
+export const INACTIVITY_PRESETS: InactivityPresetDef[] = [
+  { id: "none", label: "None" },
+  { id: "hells-kitchen", label: "Hell's Kitchen violin", file: "/sounds/hells-kitchen.mp3" },
+  { id: "fahhh", label: "FAHHHH!", file: "/sounds/thud.mp3" },
+];
 
 export type SoundSettings = {
   sessionComplete: SoundPreset;
@@ -111,12 +123,15 @@ export function playSound(
   });
 }
 
-export function playInactivitySound(volume: number): void {
+export function playInactivitySound(sound: InactivitySound, volume: number): void {
+  if (sound === "none") return;
+  const def = INACTIVITY_PRESETS.find((p) => p.id === sound);
+  if (!def?.file) return;
   if (currentAudio) {
     currentAudio.pause();
     currentAudio = null;
   }
-  const audio = new Audio("/sounds/hells-kitchen.mp3");
+  const audio = new Audio(def.file);
   audio.volume = Math.max(0, Math.min(1, volume));
   currentAudio = audio;
   audio.play().catch(() => {});
