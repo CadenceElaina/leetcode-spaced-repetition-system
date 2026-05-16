@@ -257,7 +257,7 @@ const learningList = [
 
 // Import problems (subset for demo — not interactive anyway)
 const importProblems = [
-  { id: 1, title: "Two Sum", leetcodeNumber: 1, difficulty: "Easy" as const, category: "Arrays & Hashing" },
+  { id: 1, title: "Two Sum", leetcodeNumber: 1, difficulty: "Easy" as const, category: "Arrays & Hashing", blind75: true },
 ];
 
 // Demo pending GitHub submissions (problemId matches DB ids from problems.json)

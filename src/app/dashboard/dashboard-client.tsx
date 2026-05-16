@@ -16,6 +16,7 @@ import { InlinePatternPanel } from "./cheatsheet-drawer";
 import { CHEATSHEET_MAP, type Cheatsheet } from "@/lib/cheatsheets";
 import { MASTERY_THRESHOLD, computeReviewPriority, type PriorityInput } from "@/lib/srs";
 import { classifyLoadZone } from "@/lib/pacing";
+import { computeNextRecommendation, type ForkChoices, type CurriculumRecommendation } from "@/lib/curriculum";
 import {
   avg,
   queueStability,
@@ -191,7 +192,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
   const [targetDate, setTargetDate] = useState(getDefaultTargetDate());
   const [targetCount, setTargetCount] = useState(150);
   const [showSettings, setShowSettings] = useState(false);
-  const [categoryView, setCategoryView] = useState<"weak" | "all">("weak");
   const [listMode, setListMode] = useState<ListMode>("review");
   const [goalType, setGoalType] = useState<"blind75" | "neetcode150" | "none">("neetcode150");
   const [reviewSort, setReviewSort] = useState<ReviewSort>("urgency");
@@ -199,7 +199,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
   const [completedSort, setCompletedSort] = useState<CompletedSort>("retention");
   const [sheetDrawerOpen, setSheetDrawerOpen] = useState(false);
   const [queueSearch, setQueueSearch] = useState("");
-  const [showStatsDetail, setShowStatsDetail] = useState(false);
   const [pendingItems, setPendingItems] = useState<PendingItem[]>(data.pendingSubmissions);
   const [logModalProblem, setLogModalProblem] = useState<LogModalProblem | null>(null);
   const [collapsedWidgets, setCollapsedWidgets] = useState<Record<string, boolean>>({ activity: isFirstLogin });
@@ -221,9 +220,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
   const [mockTimeLeft, setMockTimeLeft] = useState(45 * 60);
   const [mockSelectedProblems, setMockSelectedProblems] = useState<MockCandidate[]>([]);
   const [mockLoggedIds, setMockLoggedIds] = useState<Set<number>>(new Set());
-  const [editingPace, setEditingPace] = useState(false);
   const [reviewActionError, setReviewActionError] = useState<string | null>(null);
-  const [showQueueForecast, setShowQueueForecast] = useState(!isFirstLogin);
   const [showPracticeRecommendation, setShowPracticeRecommendation] = useState(true);
   const [forecastMode, setForecastMode] = useState<"actual" | "goals">("actual");
   const [countdownTitle, setCountdownTitle] = useState("Fall Recruiting Countdown");
@@ -242,6 +239,22 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
   });
   const [sessionViewMode, setSessionViewMode] = useState<"session" | "queue">("session");
   const [sessionActedOn, setSessionActedOn] = useState(0);
+  const [forkChoices, setForkChoices] = useState<ForkChoices>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const stored: ForkChoices = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("aurora_fork_")) {
+          const val = localStorage.getItem(key);
+          if (val) stored[key.slice("aurora_fork_".length)] = val;
+        }
+      }
+      return stored;
+    } catch { return {}; }
+  });
+  const [sessionSizeOverride, setSessionSizeOverride] = useState<number | null>(null);
+  const [forecastOrMastery, setForecastOrMastery] = useState<"forecast" | "mastery">("forecast");
 
   const { confettiBurst, playSessionComplete, resetSessionFired, playProblemLog, checkInactivity, recordSubmit } = useCelebration();
 
@@ -621,8 +634,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     return proj ? Math.max(...proj.dailyQueueSize, 1) : 1;
   }, [forecastMode, queueProjection, queueProjectionGoals]);
 
-  const displayCategories = categoryView === "weak" ? weakCategories : data.categoryStats;
-
   const sortedReviewQueue = useMemo(() => {
     const q = [...reviewItems];
     if (reviewSort === "urgency") {
@@ -665,23 +676,63 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     return Math.min(Math.max(2, cap + 1), Math.min(8, reviewItems.length || 2));
   }, [timeBudget, reviewItems.length]);
 
+  const sessionSizeEffective = sessionSizeOverride ?? sessionSize;
+
+  const blind75DifficultyBreakdown = useMemo((): DifficultyBreakdown[] => {
+    const b75 = data.importProblems.filter(p => p.blind75);
+    const attemptedSet = new Set(data.importAttemptedIds);
+    return (["Easy", "Medium", "Hard"] as const).map(d => ({
+      difficulty: d,
+      count: b75.filter(p => p.difficulty === d).length,
+      attempted: b75.filter(p => p.difficulty === d && attemptedSet.has(p.id)).length,
+    }));
+  }, [data.importProblems, data.importAttemptedIds]);
+
+  const blind75AttemptedCount = useMemo(() => {
+    const b75ids = new Set(data.importProblems.filter(p => p.blind75).map(p => p.id));
+    return data.importAttemptedIds.filter(id => b75ids.has(id)).length;
+  }, [data.importProblems, data.importAttemptedIds]);
+
+  const curriculumRec = useMemo(() => computeNextRecommendation({
+    categoryStats: data.categoryStats,
+    newProblems: newItems,
+    autoDeferHards,
+    goalType,
+    forkChoices,
+  }), [data.categoryStats, newItems, autoDeferHards, goalType, forkChoices]);
+
+  // Persist any new fork choices returned by the curriculum engine
+  const prevNewForkKeysRef = useRef<Record<string, string>>({});
+  useEffect(() => {
+    if (!curriculumRec) return;
+    const newKeys = curriculumRec.newForkKeys;
+    if (Object.keys(newKeys).length === 0) return;
+    const hasNew = Object.entries(newKeys).some(([k, v]) => prevNewForkKeysRef.current[k] !== v);
+    if (!hasNew) return;
+    prevNewForkKeysRef.current = newKeys;
+    setForkChoices(prev => ({ ...prev, ...newKeys }));
+    for (const [k, v] of Object.entries(newKeys)) {
+      localStorage.setItem(`aurora_fork_${k}`, v);
+    }
+  }, [curriculumRec]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Detect session-complete threshold crossing and fire celebration exactly once per crossing
   const prevSessionActedOnRef = useRef(sessionActedOn);
   useEffect(() => {
-    const wasBelow = prevSessionActedOnRef.current < sessionSize;
-    const isNowComplete = sessionActedOn >= sessionSize && sessionActedOn > 0;
+    const wasBelow = prevSessionActedOnRef.current < sessionSizeEffective;
+    const isNowComplete = sessionActedOn >= sessionSizeEffective && sessionActedOn > 0;
     if (wasBelow && isNowComplete && !isDemo && sessionViewMode === "session") {
       playSessionComplete();
     }
     if (!isNowComplete) resetSessionFired();
     prevSessionActedOnRef.current = sessionActedOn;
-  }, [sessionActedOn, sessionSize]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionActedOn, sessionSizeEffective]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sessionQueue = useMemo(() => {
     if (sessionViewMode !== "session") return filteredReviewQueue;
-    if (sessionActedOn >= sessionSize) return filteredReviewQueue;
-    return filteredReviewQueue.slice(0, Math.max(0, sessionSize - sessionActedOn));
-  }, [sessionViewMode, filteredReviewQueue, sessionActedOn, sessionSize]);
+    if (sessionActedOn >= sessionSizeEffective) return filteredReviewQueue;
+    return filteredReviewQueue.slice(0, Math.max(0, sessionSizeEffective - sessionActedOn));
+  }, [sessionViewMode, filteredReviewQueue, sessionActedOn, sessionSizeEffective]);
 
   const filteredNewProblems = useMemo(() => {
     if (!queueSearch.trim()) return sortedNewProblems;
@@ -919,11 +970,11 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     }} />
     <div className="relative md:h-[calc(100dvh-7.5rem)]">
     {/* Subtle ambient starfield — fixed, full-viewport, behind all content */}
-    <SkyCanvas />
+    <SkyCanvas paused={showSettings || !!logModalProblem || showDemoSignIn} />
     {/* All interactive content above the starfield */}
     <div className="relative z-[1] flex flex-col h-full lg:min-h-0">
-    {/* Demo sign-in prompt */}
-    {showDemoSignIn && (
+    {/* Demo sign-in prompt — portaled so z-[100] competes at the document root, not inside z-[1] */}
+    {showDemoSignIn && createPortal(
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowDemoSignIn(false)}>
         <div className="rounded-lg border border-border bg-muted p-6 text-center space-y-3 max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
           <p className="text-sm text-muted-foreground">Demo preview</p>
@@ -946,7 +997,8 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     )}
     {/* Log Attempt Modal */}
     {logModalProblem && !isDemo && (
@@ -1005,9 +1057,11 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
         }}
       />
     )}
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-12 md:flex-1 md:min-h-0 md:grid-rows-1">
+    <div className="flex flex-col md:flex-row gap-4 md:gap-6 lg:gap-x-10 md:flex-1 md:min-h-0">
+      {/* Spacer — pushes queue to center on large screens */}
+      <div className="hidden lg:block lg:flex-1 shrink-0" />
       {/* ── Combined Problem Queue ── */}
-      <div className="flex flex-col md:min-h-0 md:h-full md:col-span-7 lg:col-span-6" data-onboarding="queue">
+      <div className="flex flex-col min-w-0 flex-1 lg:flex-none lg:w-[560px] md:min-h-0 md:h-full" data-onboarding="queue">
         {reviewActionError && (
           <div className="mb-1 flex items-center justify-between rounded-md border border-red-500/30 bg-red-500/5 px-3 py-1.5 text-xs text-red-500">
             {reviewActionError}
@@ -1315,6 +1369,50 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                       </div>
                     );
                   })}
+                  {/* Curriculum card — appears when session has capacity for a new problem */}
+                  {sessionViewMode === "session" && reviewItems.length < sessionSizeEffective && curriculumRec && (
+                    <div className="flex items-center gap-3 px-3 py-2.5 border-t-2 border-accent/30 bg-accent/5">
+                      <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{curriculumRec.problem.leetcodeNumber}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[10px] font-semibold text-accent uppercase tracking-wide">Capacity available</span>
+                          <span className="text-[10px] text-muted-foreground truncate">· {curriculumRec.reason}</span>
+                        </div>
+                        {curriculumRec.problem.neetcodeUrl ? (
+                          <a href={curriculumRec.problem.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                            {curriculumRec.problem.title}
+                          </a>
+                        ) : (
+                          <Link href={`/problems/${curriculumRec.problem.id}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                            {curriculumRec.problem.title}
+                          </Link>
+                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs text-muted-foreground">{curriculumRec.category}</span>
+                          <DifficultyBadge difficulty={curriculumRec.problem.difficulty} />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {curriculumRec.problem.neetcodeUrl && (
+                          <a href={curriculumRec.problem.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-foreground underline">NC</a>
+                        )}
+                        <a href={curriculumRec.problem.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-foreground underline">LC</a>
+                        <button
+                          onClick={() => openLog({
+                            problemId: curriculumRec.problem.id,
+                            title: curriculumRec.problem.title,
+                            leetcodeNumber: curriculumRec.problem.leetcodeNumber,
+                            difficulty: curriculumRec.problem.difficulty,
+                            category: curriculumRec.problem.category,
+                            isReview: false,
+                          })}
+                          className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs text-accent-foreground transition-colors hover:opacity-90"
+                        >
+                          Log
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1407,6 +1505,50 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
               </div>
             ) : (
               <div className="rounded-lg border border-border overflow-hidden flex-1 flex flex-col min-h-0">
+                {/* Curriculum recommendation — pinned above the scrollable list */}
+                {curriculumRec && (
+                  <div className="flex items-center gap-3 px-3 py-2.5 border-b-2 border-accent/40 bg-accent/5 shrink-0">
+                    <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{curriculumRec.problem.leetcodeNumber}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-[10px] font-semibold text-accent uppercase tracking-wide">Recommended next</span>
+                        <span className="text-[10px] text-muted-foreground truncate">· {curriculumRec.reason}</span>
+                      </div>
+                      {curriculumRec.problem.neetcodeUrl ? (
+                        <a href={curriculumRec.problem.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                          {curriculumRec.problem.title}
+                        </a>
+                      ) : (
+                        <Link href={`/problems/${curriculumRec.problem.id}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                          {curriculumRec.problem.title}
+                        </Link>
+                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs text-muted-foreground">{curriculumRec.category}</span>
+                        <DifficultyBadge difficulty={curriculumRec.problem.difficulty} />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {curriculumRec.problem.neetcodeUrl && (
+                        <a href={curriculumRec.problem.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-foreground underline">NC</a>
+                      )}
+                      <a href={curriculumRec.problem.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-foreground underline">LC</a>
+                      <button
+                        onClick={() => openLog({
+                          problemId: curriculumRec.problem.id,
+                          title: curriculumRec.problem.title,
+                          leetcodeNumber: curriculumRec.problem.leetcodeNumber,
+                          difficulty: curriculumRec.problem.difficulty,
+                          category: curriculumRec.problem.category,
+                          isReview: false,
+                        })}
+                        className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs text-accent-foreground transition-colors hover:opacity-90"
+                      >
+                        Log
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="overflow-y-auto flex-1 min-h-0">
                   {filteredNewProblems.map((p) => (
                     <div
@@ -1570,17 +1712,16 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
       </div>
 
       {/* ── Right Column ── */}
-      <div className="flex flex-col md:col-span-5 md:min-h-0 md:h-full lg:col-span-6 overflow-hidden" data-onboarding="stats">
+      <div className="flex-none w-full md:w-[260px] flex flex-col gap-3 md:min-h-0 md:h-full overflow-y-auto overflow-x-hidden" data-onboarding="stats">
         {sheetDrawerOpen && todaySheets.length > 0 ? (
           <InlinePatternPanel sheets={todaySheets} onClose={() => setSheetDrawerOpen(false)} reviewCount={reviewItems.length} />
-        ) : null}
-        <div className={`flex flex-col gap-3 overflow-y-auto overflow-x-hidden flex-1 min-h-0 ${sheetDrawerOpen && todaySheets.length > 0 ? "hidden" : ""}`}>
-        {!showStatsDetail && (<>
-        {/* First-login getting-started card */}
-        {isFirstLogin && (
-          <section className="rounded-lg border border-accent/30 bg-accent/5 p-4 space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-foreground">Start building your queue</p>
+        ) : (
+          <>
+            {/* First-login getting-started card */}
+            {isFirstLogin && (
+              <section className="rounded-lg border border-accent/30 bg-accent/5 p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Start building your queue</p>
               <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                 Your retention curves, readiness score, and review schedule unlock after your first few logs.
               </p>
@@ -1613,524 +1754,346 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
               </li>
             </ol>
           </section>
-        )}
-        {/* Countdown */}
-        <section className="rounded-lg border border-border bg-muted p-3">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-sm font-semibold text-foreground">{countdownTitle}</p>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Edit target settings"
-                title="Edit target"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              </button>
-              <button
-                onClick={() => setShowStatsDetail(true)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="View all stats"
-                title="View all stats"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-              </button>
-            </div>
-          </div>
+            )}
 
-          {/* Main body — compact two-row layout */}
-          <div className="flex items-center gap-3 mt-1.5">
-            <div className="flex-1 min-w-0 space-y-1.5">
-              {/* Row 1: days count + date + status chips */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-2xl font-bold tabular-nums leading-none">
-                  {countdown.daysLeft}<span className="text-xs font-normal text-muted-foreground ml-0.5">d</span>
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {targetCount} by {new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                </span>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${data.attemptedCount < 5 ? "bg-muted text-muted-foreground" : countdown.onTrack ? "bg-green-500/15 text-green-500" : "bg-orange-500/15 text-orange-500"}`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${data.attemptedCount < 5 ? "bg-muted-foreground/50" : countdown.onTrack ? "bg-green-500" : "bg-orange-500"}`} />
-                  {data.attemptedCount < 5 ? "Getting started" : countdown.onTrack ? "On track" : `Need ${countdown.neededPerDay.toFixed(1)}/day`}
-                </span>
-                {data.attemptedCount >= 5 && (
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${countdown.projectedRaw >= targetCount ? "bg-green-500/15 text-green-500" : "bg-orange-500/15 text-orange-500"}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${countdown.projectedRaw >= targetCount ? "bg-green-500" : "bg-orange-500"}`} />
-                    Proj {countdown.projectedRaw}/{targetCount}
-                  </span>
-                )}
+            {/* CompletionWidget */}
+            <section className="rounded-lg border border-border bg-muted p-3">
+              {/* Goal toggle + settings gear */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex gap-0.5 rounded-md border border-border p-0.5">
+                  <button
+                    onClick={() => { setGoalType("neetcode150"); setTargetCount(150); localStorage.setItem("srs_goal_type", "neetcode150"); localStorage.setItem("srs_target", JSON.stringify({ date: targetDate, count: 150 })); }}
+                    className={`text-[11px] px-2.5 py-1 rounded transition-colors ${goalType !== "blind75" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  >NeetCode 150</button>
+                  <button
+                    onClick={() => { setGoalType("blind75"); setTargetCount(75); localStorage.setItem("srs_goal_type", "blind75"); localStorage.setItem("srs_target", JSON.stringify({ date: targetDate, count: 75 })); }}
+                    className={`text-[11px] px-2.5 py-1 rounded transition-colors ${goalType === "blind75" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  >Blind 75</button>
+                </div>
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Settings"
+                  title="Settings"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
               </div>
-              {/* Row 2: streak + best + confidence */}
-              <div className="flex items-center gap-3 text-xs">
+
+              {/* Donut ring + E/M/H bars */}
+              <SolvedDonut
+                breakdown={goalType === "blind75" ? blind75DifficultyBreakdown : data.difficultyBreakdown}
+                totalSolved={goalType === "blind75" ? blind75AttemptedCount : data.attemptedCount}
+                totalTarget={targetCount}
+              />
+
+              {/* Days left + streak */}
+              <div className="flex items-center gap-3 mt-3 text-xs">
+                <span>
+                  <span className="text-xl font-bold tabular-nums leading-none">{countdown.daysLeft}</span>
+                  <span className="text-muted-foreground ml-0.5">d left</span>
+                </span>
+                <span className="text-border">·</span>
                 <span className="flex items-center gap-1">
                   <span className="text-muted-foreground">Streak</span>
                   <span className="font-semibold tabular-nums">{data.currentStreak}</span>
                   <span className="text-sm leading-none">{data.currentStreak === 0 ? "❄️" : "🔥"}</span>
                 </span>
-                <span className="text-border">·</span>
-                <span className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Best</span>
-                  <span className="font-semibold tabular-nums">{data.bestStreak}</span>
-                </span>
-                {data.avgConfidence > 0 && (<>
-                  <span className="text-border">·</span>
-                  <span className="flex items-center gap-1">
-                    <span className="text-muted-foreground">Conf</span>
-                    <span className="font-semibold tabular-nums">{data.avgConfidence.toFixed(1)}/5</span>
-                  </span>
-                </>)}
               </div>
-            </div>
-            {/* Right: donut */}
-            <SolvedDonut breakdown={data.difficultyBreakdown} totalSolved={data.attemptedCount} totalTarget={targetCount} />
-          </div>
 
-          {/* Settings */}
-          {showSettings && (
-            <SettingsPanel
-              date={targetDate}
-              count={targetCount}
-              title={countdownTitle}
-              onSave={saveSettings}
-              onCancel={() => setShowSettings(false)}
-              autoDeferHards={autoDeferHards}
-              onToggleAutoDeferHards={(v) => demoGuard(() => handleToggleAutoDeferHards(v), "save")}
-              showPracticeRecommendation={showPracticeRecommendation}
-              onTogglePracticeRecommendation={(v) => {
-                setShowPracticeRecommendation(v);
-                localStorage.setItem("aurora_show_practice_recommendation", v ? "1" : "0");
-              }}
-              dailyTimeBudgetMinutes={timeBudget}
-              onTimeBudgetChange={(minutes) => {
-                setTimeBudget(minutes);
-                localStorage.setItem("aurora_time_budget", String(minutes));
-                if (!isDemo) {
-                  fetch("/api/user/settings", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ dailyTimeBudgetMinutes: minutes }),
-                  }).catch(() => {});
-                }
-              }}
-              queueViewDefault={sessionViewMode}
-              onQueueViewDefaultChange={setSessionViewMode}
-            />
-          )}
-        </section>
+              {/* Needed/day + projection rows */}
+              <div className="border-t border-border/40 mt-3 pt-2.5 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Needed/day</span>
+                  <span className={`font-semibold tabular-nums ${data.attemptedCount < 5 ? "text-muted-foreground" : countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>
+                    {data.attemptedCount < 5 ? "—" : countdown.neededPerDay.toFixed(1)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Projection</span>
+                  <span className={`font-semibold tabular-nums ${data.attemptedCount < 5 ? "text-muted-foreground" : countdown.projectedRaw >= targetCount ? "text-green-500" : "text-orange-500"}`}>
+                    {data.attemptedCount < 5 ? "—" : `${countdown.projectedRaw}/${targetCount}`}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Target</span>
+                  <span className="text-muted-foreground">{new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                </div>
+              </div>
 
-        {/* Readiness */}
-        <section className="rounded-lg border border-border bg-muted p-3">
-          <button
-            onClick={() => toggleWidget("readiness")}
-            className="flex items-center justify-between w-full"
-            aria-expanded={!collapsedWidgets.readiness}
-            aria-label="Toggle readiness"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-foreground">Readiness</span>
-            </div>
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.readiness ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
-          </button>
-          {!collapsedWidgets.readiness && (
-            <div className="mt-2">
+              {/* Settings panel (inline) */}
+              {showSettings && (
+                <SettingsPanel
+                  date={targetDate}
+                  count={targetCount}
+                  title={countdownTitle}
+                  onSave={saveSettings}
+                  onCancel={() => setShowSettings(false)}
+                  autoDeferHards={autoDeferHards}
+                  onToggleAutoDeferHards={(v) => demoGuard(() => handleToggleAutoDeferHards(v), "save")}
+                  showPracticeRecommendation={showPracticeRecommendation}
+                  onTogglePracticeRecommendation={(v) => {
+                    setShowPracticeRecommendation(v);
+                    localStorage.setItem("aurora_show_practice_recommendation", v ? "1" : "0");
+                  }}
+                  dailyTimeBudgetMinutes={timeBudget}
+                  onTimeBudgetChange={(minutes) => {
+                    setTimeBudget(minutes);
+                    localStorage.setItem("aurora_time_budget", String(minutes));
+                    if (!isDemo) {
+                      fetch("/api/user/settings", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ dailyTimeBudgetMinutes: minutes }),
+                      }).catch(() => {});
+                    }
+                  }}
+                  queueViewDefault={sessionViewMode}
+                  onQueueViewDefaultChange={setSessionViewMode}
+                  sessionSizeOverride={sessionSizeOverride}
+                  onSessionSizeOverrideChange={setSessionSizeOverride}
+                  recommendedSessionSize={sessionSize}
+                />
+              )}
+            </section>
+
+            {/* Compact Readiness — no collapse */}
+            <section className="rounded-lg border border-border bg-muted p-3">
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-xl font-black shrink-0 ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-bold tabular-nums">{data.readiness.score}<span className="text-xs font-normal text-muted-foreground">/100</span></span>
+                    <InfoTooltip content={
+                      <div className="space-y-1 max-w-[220px]">
+                        <p className="font-medium">Readiness Score</p>
+                        <p>Coverage 30% · Retention 40% · Category Balance 20% · Consistency 10%</p>
+                      </div>
+                    } />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Readiness</p>
+                </div>
+              </div>
               {data.attemptedCount < 5 && (
-                <p className="text-[11px] text-muted-foreground mb-2 px-0.5">Limited data — score updates as you log more attempts.</p>
+                <p className="text-[10px] text-muted-foreground mb-2">Score improves as you log more attempts.</p>
               )}
-              {/* Two-column: grade+score left (narrow) | bars right */}
-              <div className="flex gap-3 items-start">
-                {/* Left: grade badge + score only */}
-                <div className="flex flex-col items-center gap-1 shrink-0 w-14 pt-0.5">
-                  <span className={`inline-flex h-12 w-12 items-center justify-center rounded-lg text-2xl font-black ${TIER_COLORS[data.readiness.tier]}`}>{data.readiness.tier}</span>
-                  <span className="text-base font-bold tabular-nums leading-none">{data.readiness.score}<span className="text-[11px] text-muted-foreground font-normal">/100</span></span>
-                </div>
-                {/* Right: readiness bars — weight in tooltip, not label */}
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  {[
-                    { label: "Coverage", value: data.readinessBreakdown.coverage, detail: null as string | null, tooltip: "Coverage — 30% of score. What % of the 150 problems you’ve attempted at least once." },
-                    { label: "Retention", value: data.readinessBreakdown.retention, detail: null, tooltip: "Retention — 40% of score. How well you remember the problems you’ve attempted, averaged across all solved problems." },
-                    { label: "Category Balance", value: data.readinessBreakdown.categoryBalance, detail: null, tooltip: "Category Balance — 20% of score. How evenly your attempts are distributed across problem categories." },
-                    { label: "Consistency", value: data.readinessBreakdown.consistency, detail: `${data.consistencyReviewed} of 14 days active`, tooltip: "Consistency — 10% of score. How many of the last 14 days you practiced at least once." },
-                  ].map(({ label, value, detail, tooltip }) => (
-                    <div key={label}>
-                      <div className="flex items-center justify-between text-xs mb-0.5">
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          {label}
-                          <InfoTooltip content={<p className="max-w-[220px]">{tooltip}</p>} />
-                        </span>
-                        <span className="font-medium tabular-nums">
-                          {detail ? <span className="text-[10px] text-muted-foreground mr-1">{detail}</span> : null}
-                          {Math.round(value * 100)}%
-                        </span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-background overflow-hidden">
-                        <div className={`h-full rounded-full transition-[width] duration-500 ${value >= 0.7 ? "bg-green-500" : value >= 0.4 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.round(value * 100)}%` }} />
-                      </div>
+              <div className="space-y-1.5">
+                {[
+                  { label: "Coverage", value: data.readinessBreakdown.coverage, tooltip: "30% of score. % of problems attempted at least once." },
+                  { label: "Retention", value: data.readinessBreakdown.retention, tooltip: "40% of score. Avg memory strength across all solved problems." },
+                  { label: "Balance", value: data.readinessBreakdown.categoryBalance, tooltip: "20% of score. How evenly distributed your attempts are across categories." },
+                  { label: "Consistency", value: data.readinessBreakdown.consistency, tooltip: `10% of score. Active ${data.consistencyReviewed} of the last 14 days.` },
+                ].map(({ label, value, tooltip }) => (
+                  <div key={label}>
+                    <div className="flex items-center justify-between text-[11px] mb-0.5">
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        {label}
+                        <InfoTooltip content={<p className="max-w-[200px]">{tooltip}</p>} />
+                      </span>
+                      <span className="font-medium tabular-nums">{Math.round(value * 100)}%</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          )}
-        </section>
-        </>)}
-
-        {showStatsDetail && (<>
-        {/* Time */}
-        <section className="rounded-lg border border-border bg-muted p-3">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-foreground">Time</p>
-            <button onClick={() => setShowStatsDetail(false)} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Back to dashboard" title="Back to dashboard">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-            </button>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2"><p className="text-[10px] text-muted-foreground mb-0.5">Total Solve</p><p className="text-base font-bold">{formatMinutes(data.totalSolveMinutes)}</p></div>
-            <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2"><p className="text-[10px] text-muted-foreground mb-0.5">Total Study</p><p className="text-base font-bold">{formatMinutes(data.totalStudyMinutes)}</p></div>
-            <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2"><p className="text-[10px] text-muted-foreground mb-0.5">Avg Solve</p><p className="text-base font-bold">{data.avgSolveMinutes > 0 ? `${Math.round(data.avgSolveMinutes)}m` : "—"}</p></div>
-          </div>
-        </section>
-
-        {/* Category + Difficulty side by side */}
-        <section className="rounded-lg border border-border bg-muted p-3">
-          <button
-            onClick={() => toggleWidget("breakdown")}
-            className="flex items-center justify-between w-full"
-            aria-expanded={!collapsedWidgets.breakdown}
-            aria-label="Toggle categories and difficulty breakdown"
-          >
-            <p className="text-sm font-semibold text-foreground">Categories &amp; Difficulty</p>
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.breakdown ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
-          </button>
-          {!collapsedWidgets.breakdown && (
-          <div className="grid grid-cols-2 gap-2 mt-2">
-          <div className="rounded-md border border-border/40 bg-background/30 p-2">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1">
-                <p className="text-xs font-medium text-foreground">Categories</p>
-                <InfoTooltip content={
-                  <div className="space-y-1">
-                    <p><span className="font-medium">X/Y</span> = problems attempted out of total in that category.</p>
-                    <p>Bar color reflects avg retention — red is low, green is high. Hover a row to see the exact %.</p>
-                  </div>
-                } />
-              </div>
-              <div className="flex gap-1">
-                <button onClick={() => setCategoryView("weak")} className={`text-[10px] px-1.5 py-0.5 rounded ${categoryView === "weak" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Weakest</button>
-                <button onClick={() => setCategoryView("all")} className={`text-[10px] px-1.5 py-0.5 rounded ${categoryView === "all" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}>All</button>
-              </div>
-            </div>
-            <div className="h-[96px] overflow-y-auto pr-0.5 space-y-1.5">
-              {(categoryView === "all" ? displayCategories : displayCategories.slice(0, 5)).map((cat) => (
-                <Link key={cat.category} href={`/problems?category=${encodeURIComponent(cat.category)}`} className="flex items-center gap-2 group/cat cursor-pointer">
-                  <span className="text-xs w-24 shrink-0 truncate group-hover/cat:text-foreground transition-colors" title={cat.category}>{cat.category}</span>
-                  <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background group-hover/cat:h-2 transition-all duration-150">
-                    <div className={`h-full rounded-full transition-all duration-300 ${retentionBarColor(cat.avgRetention)}`} style={{ width: `${cat.total > 0 ? Math.round((cat.attempted / cat.total) * 100) : 0}%` }} />
-                  </div>
-                  <span className={`text-xs w-10 text-right shrink-0 tabular-nums transition-colors ${cat.attempted > 0 ? retentionColor(cat.avgRetention) : "text-muted-foreground"}`}>
-                    <span className="group-hover/cat:hidden">{cat.attempted}/{cat.total}</span>
-                    <span className="hidden group-hover/cat:inline">{cat.attempted > 0 ? `${Math.round(cat.avgRetention * 100)}%` : "—"}</span>
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-          <div className="rounded-md border border-border/40 bg-background/30 p-2">
-            <div className="flex items-center gap-1 mb-2">
-              <p className="text-xs font-medium text-foreground">Difficulty</p>
-              <InfoTooltip content={
-                <div className="space-y-1">
-                  <p><span className="font-medium">X/Y</span> = problems attempted out of total at that difficulty.</p>
-                  <p>Hover a row to see your coverage as a percentage.</p>
-                </div>
-              } />
-            </div>
-            <div className="h-[96px] overflow-y-auto pr-1.5 space-y-2">
-              {data.difficultyBreakdown.map((d) => {
-                const pct = d.count > 0 ? Math.round((d.attempted / d.count) * 100) : 0;
-                return (
-                  <Link key={d.difficulty} href={`/problems?difficulty=${d.difficulty}&status=Attempted`} className="flex items-center gap-2 group/diff cursor-pointer">
-                    <span className="text-xs w-12 shrink-0 group-hover/diff:text-foreground transition-colors">{d.difficulty}</span>
-                    <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background group-hover/diff:h-2 transition-all duration-150">
-                      <div className={`h-full rounded-full transition-all duration-300 ${DIFF_COLORS[d.difficulty]}`} style={{ width: `${pct}%` }} />
+                    <div className="h-1.5 rounded-full bg-background overflow-hidden">
+                      <div className={`h-full rounded-full transition-[width] duration-500 ${value >= 0.7 ? "bg-green-500" : value >= 0.4 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.round(value * 100)}%` }} />
                     </div>
-                    <span className="text-xs text-muted-foreground w-10 text-right tabular-nums">
-                      <span className="group-hover/diff:hidden">{d.attempted}/{d.count}</span>
-                      <span className="hidden group-hover/diff:inline">{pct}%</span>
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-          </div>
-          )}
-        </section>        {/* Mastery Progress */}
-        <section className="rounded-lg border border-border bg-muted p-3">
-          <button
-            onClick={() => toggleWidget("mastery")}
-            className="flex items-center justify-between w-full"
-            aria-expanded={!collapsedWidgets.mastery}
-            aria-label="Toggle mastery progress"
-          >
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold text-foreground">Mastery Progress</p>
-              <InfoTooltip
-                content={
-                  <div className="space-y-1.5">
-                    <p className="font-medium">Problem Mastery</p>
-                    <p>A problem is <span className="text-green-400 font-medium">mastered</span> when its stability reaches 45+ days — meaning the SRS won&apos;t schedule it again for at least six weeks. This typically requires 4+ successful independent solves.</p>
-                    <p><span className="text-accent font-medium">Learning</span> problems have been attempted but haven&apos;t reached that threshold yet.</p>
-                    <p className="text-[11px] text-muted-foreground pt-1">Mastered problems only need occasional confirmation to verify retention, especially before interviews.</p>
                   </div>
-                }
-              />
-            </div>
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.mastery ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
-          </button>
-          {!collapsedWidgets.mastery && (
-            <div className="mt-2">
-              <MasteryProgress
-                mastered={data.masteredCount}
-                learning={data.learningCount}
-                total={data.totalProblems}
-                masteryList={data.masteryList}
-                learningList={data.learningList}
-              />
-            </div>
-          )}
-        </section>
-
-
-        </>)}
-
-        {!showStatsDetail && (<>
-        {/* Activity Chart */}
-        <section className="rounded-lg border border-border bg-muted p-3 shrink-0">
-          <div className="flex items-center justify-between w-full">
-            <button
-              onClick={() => toggleWidget("activity")}
-              aria-expanded={!collapsedWidgets.activity}
-              aria-label="Toggle activity chart"
-            >
-              <p className="text-sm font-semibold text-foreground">Activity</p>
-            </button>
-            <div className="flex items-center gap-1.5">
-              {/* Mode toggle: 14d / Monthly / Heatmap */}
-              <div className="flex rounded-md border border-border p-0.5 gap-0.5">
-                {(["14d", "monthly", "heatmap"] as const).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => { setActivityViewMode(m); setActivityPage(0); }}
-                    className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
-                      activityViewMode === m
-                        ? "bg-accent/20 text-accent font-semibold"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {m === "14d" ? "14d" : m === "monthly" ? "Monthly" : "Heatmap"}
-                  </button>
                 ))}
               </div>
-              {/* Chevron — collapses the whole section */}
-              <button onClick={() => toggleWidget("activity")} aria-label="Toggle activity chart">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${collapsedWidgets.activity ? "rotate-180" : ""}`}><polyline points="18 15 12 9 6 15"/></svg>
-              </button>
-            </div>
-          </div>
-          {!collapsedWidgets.activity && (
-            <div className="mt-2 space-y-2">
-              {/* Pace — compact single-row (edit inline, no height change) */}
-              {editingPace ? (
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span className="text-green-500 font-medium">New</span>
-                  <input type="number" min="0" step="0.5" value={plannedNewPerDay} onChange={(e) => setPlannedNewPerDay(parseFloat(e.target.value) || 0)} aria-label="Planned new problems per day" className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-accent w-12 text-center" />
-                  <span className="text-border">·</span>
-                  <span className="text-accent font-medium">Review</span>
-                  <input type="number" min="0" step="0.5" value={plannedReviewPerDay} onChange={(e) => setPlannedReviewPerDay(parseFloat(e.target.value) || 0)} aria-label="Planned reviews per day" className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-accent w-12 text-center" />
-                  <button onClick={() => { localStorage.setItem("aurora_planned_new_per_day", String(plannedNewPerDay)); localStorage.setItem("aurora_planned_review_per_day", String(plannedReviewPerDay)); setEditingPace(false); }} className="ml-1 inline-flex h-5 items-center rounded bg-accent px-2 text-[10px] text-accent-foreground hover:opacity-90">Save</button>
-                  <button onClick={() => setEditingPace(false)} className="inline-flex h-5 items-center rounded border border-border px-2 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground">✕</button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span className="text-green-500 font-medium">New</span>
-                  <span className={`tabular-nums font-semibold ${data.avgNewPerDay >= plannedNewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgNewPerDay.toFixed(1)}</span>
-                  <span className="text-muted-foreground text-[11px]">/{plannedNewPerDay.toFixed(1)} goal</span>
-                  <span className="text-border mx-1">·</span>
-                  <span className="text-accent font-medium">Review</span>
-                  <span className={`tabular-nums font-semibold ${data.avgReviewPerDay >= plannedReviewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgReviewPerDay.toFixed(1)}</span>
-                  <span className="text-muted-foreground text-[11px]">/{plannedReviewPerDay.toFixed(1)} goal</span>
-                  <button onClick={() => setEditingPace(true)} className="ml-auto p-0.5 text-muted-foreground hover:text-foreground transition-colors" title="Edit goals">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  </button>
-                </div>
-              )}
-
-              {activityViewMode === "heatmap"
-                ? <ActivityHeatmap history={data.fullAttemptHistory} />
-                : <ActivityChart
-                    history={activityData}
-                    mode={activityViewMode === "monthly" ? "monthly" : "auto"}
-                    onPrev={activityViewMode === "14d" ? () => setActivityPage((p) => p + 1) : undefined}
-                    onNext={activityViewMode === "14d" ? () => setActivityPage((p) => Math.max(0, p - 1)) : undefined}
-                    canGoBack={activityViewMode === "14d" ? canGoBack : undefined}
-                    canGoForward={activityViewMode === "14d" ? canGoForward : undefined}
-                  />
-              }
-
-            </div>
-          )}
-        </section>
-
-        {/* Queue Forecast */}
-        <section className="rounded-lg border border-border bg-muted p-3 shrink-0">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2 min-w-0">
-              <p className="text-sm font-semibold text-foreground shrink-0">Queue Forecast</p>
-              {(() => {
-                const hProj = forecastMode === "actual" ? queueProjection : queueProjectionGoals;
-                if (!hProj) return null;
-                const status = queueForecastStatus(hProj);
-                return <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full truncate ${status.className} ${status.bgClassName}`}>{status.label}</span>;
-              })()}
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="flex rounded-md border border-border p-0.5 gap-0.5">
-                {(["actual", "goals"] as const).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => { setForecastMode(m); localStorage.setItem("aurora_forecast_mode", m); }}
-                    className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
-                      forecastMode === m
-                        ? "bg-accent/20 text-accent font-semibold"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {m === "actual" ? "Actual" : "Goals"}
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => setShowQueueForecast(v => !v)} aria-label="Toggle queue forecast" aria-expanded={showQueueForecast}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${showQueueForecast ? "" : "rotate-180"}`}><polyline points="18 15 12 9 6 15"/></svg>
-              </button>
-            </div>
-          </div>
-          {showQueueForecast && (() => {
-            const proj = forecastMode === "actual" ? queueProjection : queueProjectionGoals;
-            if (!proj) return <p className="text-xs text-muted-foreground mt-2">No items in queue.</p>;
-            const totalDays = proj.dailyQueueSize.length;
-            const halfIdx = Math.floor(totalDays / 2);
-            const frontSlice = proj.dailyQueueSize.slice(0, halfIdx);
-            const backSlice = proj.dailyQueueSize.slice(halfIdx);
-            const chartFrontAvg = frontSlice.length > 0 ? frontSlice.reduce((a, b) => a + b, 0) / frontSlice.length : 0;
-            const chartBackAvg = backSlice.length > 0 ? backSlice.reduce((a, b) => a + b, 0) / backSlice.length : 0;
-            const chartImproving = chartBackAvg < chartFrontAvg * 0.9;
-            const chartGrowing = chartBackAvg > chartFrontAvg * 1.1;
-            const lineColor = chartImproving ? "border-green-500/70" : chartGrowing ? "border-orange-400/70" : "border-amber-500/70";
-            const lineLabelColor = chartImproving ? "text-green-500" : chartGrowing ? "text-orange-400" : "text-amber-500";
-            const crossingIdx = chartBackAvg > 0
-              ? proj.dailyQueueSize.findIndex((size, i) => i > 0 && size <= chartBackAvg)
-              : -1;
-            // Suppress x-axis labels that are too close together (within 3 bars)
-            const showCrossingLabel = crossingIdx > 2 && crossingIdx < totalDays - 3;
-            const projReviewCapacity = computeCapacity(timeBudget, 0).reviewCapacity;
-            const ZONE_BAR_COLORS = { green: "bg-green-500/60", yellow: "bg-amber-400/60", amber: "bg-orange-400/60", orange: "bg-orange-500/70", red: "bg-red-500/70" } as const;
-            return (
-              <div className="mt-2 space-y-1">
-                <div className="relative flex items-end gap-px h-36">
-                  {projReviewCapacity > 0 && forecastMaxSize > 0 && (
-                    <div
-                      className="absolute left-0 right-0 flex items-center pointer-events-none z-20"
-                      style={{ bottom: `${Math.min(96, (projReviewCapacity / forecastMaxSize) * 100)}%` }}
-                      title={`Review capacity: ~${projReviewCapacity}/day`}
-                    >
-                      <div className="flex-1 border-t border-solid border-foreground/20" />
-                      <span className="text-[9px] font-medium text-muted-foreground/60 bg-muted/90 px-1 rounded-sm leading-none shrink-0 -mt-px">
-                        ~{projReviewCapacity}/d cap
-                      </span>
-                    </div>
-                  )}
-                  {chartBackAvg > 0 && forecastMaxSize > 0 && (
-                    <div
-                      className="absolute left-0 right-0 flex items-center pointer-events-none z-10"
-                      style={{ bottom: `${Math.min(97, (chartBackAvg / forecastMaxSize) * 100)}%` }}
-                      title={`Projected steady state: ~${Math.round(chartBackAvg)} due/day (back-half average)`}
-                    >
-                      <div className={`flex-1 border-t border-dashed ${lineColor}`} />
-                      <span className={`text-[9px] font-medium ${lineLabelColor} bg-muted/90 px-1 rounded-sm leading-none shrink-0 -mt-px`}>
-                        ~{Math.round(chartBackAvg)}/d
-                      </span>
-                    </div>
-                  )}
-                  {proj.dailyQueueSize.map((size, i) => {
-                    const height = Math.max(2, (size / forecastMaxSize) * 100);
-                    const isToday = i === 0;
-                    const isCrossing = i === crossingIdx;
-                    const zone = classifyLoadZone(size / projReviewCapacity);
-                    const barColor = isToday ? "bg-accent" : ZONE_BAR_COLORS[zone];
-                    return (
-                      <div key={i} className={`relative flex-1 rounded-t-sm group/bar ${barColor}`} style={{ height: `${height}%` }}>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 rounded bg-background border border-border px-2 py-1 text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover/bar:opacity-100 transition-opacity z-10 shadow-md">
-                          {(() => { const d = new Date(); d.setDate(d.getDate() + i); return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); })()} — {size} due
-                        </div>
-                        {isCrossing && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 pointer-events-none z-20 flex flex-col items-center gap-px group-hover/bar:opacity-0 transition-opacity">
-                            <span className="text-[8px] font-semibold text-green-500 bg-green-500/10 border border-green-500/30 px-1 rounded-sm leading-tight whitespace-nowrap">↓ Day {crossingIdx}</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* X-axis day labels */}
-                <div className="flex gap-px -mt-1">
-                  {proj.dailyQueueSize.map((_, i) => {
-                    const isToday = i === 0;
-                    const isCrossing = i === crossingIdx && showCrossingLabel;
-                    const isLast = i === totalDays - 1;
-                    if (!isToday && !isCrossing && !isLast) return <div key={i} className="flex-1" />;
-                    return (
-                      <div key={i} className={`flex-1 text-center text-[8px] leading-tight font-medium truncate ${isCrossing ? "text-green-500" : "text-muted-foreground/50"}`}>
-                        {isToday ? "Today" : isCrossing ? `Day ${crossingIdx}` : `+${totalDays}d`}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between items-center text-xs text-muted-foreground">
-                    <span><span className="font-medium text-foreground">{proj.currentSize}</span> due now</span>
-                    <span>{proj.reviewsPerDay} rev/d · {proj.newPerDay} new/d · <span className="text-muted-foreground/60">+{totalDays}d</span></span>
-                  </div>
-                  {forecastMode === "goals" && (
-                    <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <span className="text-muted-foreground text-xs">Rev/d</span>
-                        <button onClick={() => { const v = Math.max(1, forecastReviewPerDay - 1); setForecastReviewPerDay(v); localStorage.setItem("aurora_forecast_review_per_day", String(v)); }} className="w-5 h-5 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground text-xs leading-none">−</button>
-                        <span className="font-medium tabular-nums w-6 text-center text-xs">{forecastReviewPerDay}</span>
-                        <button onClick={() => { const v = forecastReviewPerDay + 1; setForecastReviewPerDay(v); localStorage.setItem("aurora_forecast_review_per_day", String(v)); }} className="w-5 h-5 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground text-xs leading-none">+</button>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-muted-foreground text-xs">New/d</span>
-                        <button onClick={() => { const v = Math.max(0, forecastNewPerDay - 1); setForecastNewPerDay(v); localStorage.setItem("aurora_forecast_new_per_day", String(v)); }} className="w-5 h-5 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground text-xs leading-none">−</button>
-                        <span className="font-medium tabular-nums w-6 text-center text-xs">{forecastNewPerDay}</span>
-                        <button onClick={() => { const v = forecastNewPerDay + 1; setForecastNewPerDay(v); localStorage.setItem("aurora_forecast_new_per_day", String(v)); }} className="w-5 h-5 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground text-xs leading-none">+</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-              </div>
-            );
-          })()}
-        </section>
-
-        </>)}
-
-        </div>
+            </section>
+          </>
+        )}
       </div>
     </div>
     </div>
     </div>
+    <>
+          {/* ── Below-fold: scrollable content below fixed viewport ── */}
+          <div className="relative z-[1] w-full px-4 md:px-6 pb-8 mt-4 space-y-4 max-w-5xl mx-auto">
+            {/* Activity chart with pace controls */}
+            <section className="rounded-lg border border-border bg-muted p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-foreground">Activity</p>
+                <div className="flex items-center gap-1.5">
+                  <div className="flex rounded-md border border-border p-0.5 gap-0.5">
+                    {(["14d", "monthly", "heatmap"] as const).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => { setActivityViewMode(m); setActivityPage(0); }}
+                        className={`text-[11px] px-2 py-0.5 rounded transition-colors ${activityViewMode === m ? "bg-accent/20 text-accent font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+                      >{m === "14d" ? "14d" : m === "monthly" ? "Monthly" : "Heatmap"}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                {/* Pace controls — left of chart */}
+                <div className="shrink-0 w-24 space-y-2 text-xs pt-1">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground mb-0.5">New/day</p>
+                    <div className="flex items-center gap-1">
+                      <span className={`font-semibold tabular-nums ${data.avgNewPerDay >= plannedNewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgNewPerDay.toFixed(1)}</span>
+                      <span className="text-muted-foreground">/</span>
+                      <input
+                        type="number" min="0" step="0.5" value={plannedNewPerDay}
+                        onChange={(e) => { const v = parseFloat(e.target.value) || 0; setPlannedNewPerDay(v); localStorage.setItem("aurora_planned_new_per_day", String(v)); }}
+                        aria-label="New problems per day goal"
+                        className="w-9 rounded border border-border bg-background px-1 py-0.5 text-[11px] tabular-nums text-center focus:outline-none focus:ring-1 focus:ring-accent"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground mb-0.5">Review/day</p>
+                    <div className="flex items-center gap-1">
+                      <span className={`font-semibold tabular-nums ${data.avgReviewPerDay >= plannedReviewPerDay ? "text-green-500" : "text-orange-500"}`}>{data.avgReviewPerDay.toFixed(1)}</span>
+                      <span className="text-muted-foreground">/</span>
+                      <input
+                        type="number" min="0" step="0.5" value={plannedReviewPerDay}
+                        onChange={(e) => { const v = parseFloat(e.target.value) || 0; setPlannedReviewPerDay(v); localStorage.setItem("aurora_planned_review_per_day", String(v)); }}
+                        aria-label="Reviews per day goal"
+                        className="w-9 rounded border border-border bg-background px-1 py-0.5 text-[11px] tabular-nums text-center focus:outline-none focus:ring-1 focus:ring-accent"
+                      />
+                    </div>
+                  </div>
+                </div>
+                {/* Chart */}
+                <div className="flex-1 min-w-0">
+                  {activityViewMode === "heatmap"
+                    ? <ActivityHeatmap history={data.fullAttemptHistory} />
+                    : <ActivityChart
+                        history={activityData}
+                        mode={activityViewMode === "monthly" ? "monthly" : "auto"}
+                        onPrev={activityViewMode === "14d" ? () => setActivityPage((p) => p + 1) : undefined}
+                        onNext={activityViewMode === "14d" ? () => setActivityPage((p) => Math.max(0, p - 1)) : undefined}
+                        canGoBack={activityViewMode === "14d" ? canGoBack : undefined}
+                        canGoForward={activityViewMode === "14d" ? canGoForward : undefined}
+                      />
+                  }
+                </div>
+              </div>
+            </section>
+
+            {/* Queue Forecast / Mastery Progress toggle */}
+            <section className="rounded-lg border border-border bg-muted p-3">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex gap-0.5 rounded-md border border-border p-0.5">
+                  <button onClick={() => setForecastOrMastery("forecast")} className={`text-[11px] px-2.5 py-1 rounded transition-colors ${forecastOrMastery === "forecast" ? "bg-accent/20 text-accent font-semibold" : "text-muted-foreground hover:text-foreground"}`}>Queue Forecast</button>
+                  <button onClick={() => setForecastOrMastery("mastery")} className={`text-[11px] px-2.5 py-1 rounded transition-colors ${forecastOrMastery === "mastery" ? "bg-accent/20 text-accent font-semibold" : "text-muted-foreground hover:text-foreground"}`}>Mastery Progress</button>
+                </div>
+                {forecastOrMastery === "forecast" && (
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const hProj = forecastMode === "actual" ? queueProjection : queueProjectionGoals;
+                      if (!hProj) return null;
+                      const status = queueForecastStatus(hProj);
+                      return <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${status.className} ${status.bgClassName}`}>{status.label}</span>;
+                    })()}
+                    <div className="flex rounded-md border border-border p-0.5 gap-0.5">
+                      {(["actual", "goals"] as const).map((m) => (
+                        <button key={m} onClick={() => { setForecastMode(m); localStorage.setItem("aurora_forecast_mode", m); }} className={`text-[11px] px-2 py-0.5 rounded transition-colors ${forecastMode === m ? "bg-accent/20 text-accent font-semibold" : "text-muted-foreground hover:text-foreground"}`}>
+                          {m === "actual" ? "Actual" : "Goals"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {forecastOrMastery === "mastery" ? (
+                <MasteryProgress
+                  mastered={data.masteredCount}
+                  learning={data.learningCount}
+                  total={data.totalProblems}
+                  masteryList={data.masteryList}
+                  learningList={data.learningList}
+                />
+              ) : (() => {
+                const proj = forecastMode === "actual" ? queueProjection : queueProjectionGoals;
+                if (!proj) return <p className="text-xs text-muted-foreground">No items in queue.</p>;
+                const totalDays = proj.dailyQueueSize.length;
+                const halfIdx = Math.floor(totalDays / 2);
+                const frontSlice = proj.dailyQueueSize.slice(0, halfIdx);
+                const backSlice = proj.dailyQueueSize.slice(halfIdx);
+                const chartFrontAvg = frontSlice.length > 0 ? frontSlice.reduce((a, b) => a + b, 0) / frontSlice.length : 0;
+                const chartBackAvg = backSlice.length > 0 ? backSlice.reduce((a, b) => a + b, 0) / backSlice.length : 0;
+                const chartImproving = chartBackAvg < chartFrontAvg * 0.9;
+                const chartGrowing = chartBackAvg > chartFrontAvg * 1.1;
+                const lineColor = chartImproving ? "border-green-500/70" : chartGrowing ? "border-orange-400/70" : "border-amber-500/70";
+                const lineLabelColor = chartImproving ? "text-green-500" : chartGrowing ? "text-orange-400" : "text-amber-500";
+                const crossingIdx = chartBackAvg > 0 ? proj.dailyQueueSize.findIndex((size, i) => i > 0 && size <= chartBackAvg) : -1;
+                const showCrossingLabel = crossingIdx > 2 && crossingIdx < totalDays - 3;
+                const projReviewCapacity = computeCapacity(timeBudget, 0).reviewCapacity;
+                const ZONE_BAR_COLORS = { green: "bg-green-500/60", yellow: "bg-amber-400/60", amber: "bg-orange-400/60", orange: "bg-orange-500/70", red: "bg-red-500/70" } as const;
+                return (
+                  <div className="space-y-1">
+                    <div className="relative flex items-end gap-px h-36">
+                      {projReviewCapacity > 0 && forecastMaxSize > 0 && (
+                        <div className="absolute left-0 right-0 flex items-center pointer-events-none z-20" style={{ bottom: `${Math.min(96, (projReviewCapacity / forecastMaxSize) * 100)}%` }} title={`Review capacity: ~${projReviewCapacity}/day`}>
+                          <div className="flex-1 border-t border-solid border-foreground/20" />
+                          <span className="text-[9px] font-medium text-muted-foreground/60 bg-muted/90 px-1 rounded-sm leading-none shrink-0 -mt-px">~{projReviewCapacity}/d cap</span>
+                        </div>
+                      )}
+                      {chartBackAvg > 0 && forecastMaxSize > 0 && (
+                        <div className="absolute left-0 right-0 flex items-center pointer-events-none z-10" style={{ bottom: `${Math.min(97, (chartBackAvg / forecastMaxSize) * 100)}%` }} title={`Projected steady state: ~${Math.round(chartBackAvg)} due/day`}>
+                          <div className={`flex-1 border-t border-dashed ${lineColor}`} />
+                          <span className={`text-[9px] font-medium ${lineLabelColor} bg-muted/90 px-1 rounded-sm leading-none shrink-0 -mt-px`}>~{Math.round(chartBackAvg)}/d</span>
+                        </div>
+                      )}
+                      {proj.dailyQueueSize.map((size, i) => {
+                        const height = Math.max(2, (size / forecastMaxSize) * 100);
+                        const isToday = i === 0;
+                        const isCrossing = i === crossingIdx;
+                        const zone = classifyLoadZone(size / projReviewCapacity);
+                        const barColor = isToday ? "bg-accent" : ZONE_BAR_COLORS[zone];
+                        return (
+                          <div key={i} className={`relative flex-1 rounded-t-sm group/bar ${barColor}`} style={{ height: `${height}%` }}>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 rounded bg-background border border-border px-2 py-1 text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover/bar:opacity-100 transition-opacity z-10 shadow-md">
+                              {(() => { const d = new Date(); d.setDate(d.getDate() + i); return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); })()} — {size} due
+                            </div>
+                            {isCrossing && (
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 pointer-events-none z-20 flex flex-col items-center gap-px group-hover/bar:opacity-0 transition-opacity">
+                                <span className="text-[8px] font-semibold text-green-500 bg-green-500/10 border border-green-500/30 px-1 rounded-sm leading-tight whitespace-nowrap">↓ Day {crossingIdx}</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex gap-px -mt-1">
+                      {proj.dailyQueueSize.map((_, i) => {
+                        const isToday = i === 0;
+                        const isCrossing = i === crossingIdx && showCrossingLabel;
+                        const isLast = i === totalDays - 1;
+                        if (!isToday && !isCrossing && !isLast) return <div key={i} className="flex-1" />;
+                        return <div key={i} className={`flex-1 text-center text-[8px] leading-tight font-medium truncate ${isCrossing ? "text-green-500" : "text-muted-foreground/50"}`}>{isToday ? "Today" : isCrossing ? `Day ${crossingIdx}` : `+${totalDays}d`}</div>;
+                      })}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex justify-between items-center text-xs text-muted-foreground">
+                        <span><span className="font-medium text-foreground">{proj.currentSize}</span> due now</span>
+                        <span>{proj.reviewsPerDay} rev/d · {proj.newPerDay} new/d · <span className="text-muted-foreground/60">+{totalDays}d</span></span>
+                      </div>
+                      {forecastMode === "goals" && (
+                        <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs">Rev/d</span>
+                            <button onClick={() => { const v = Math.max(1, forecastReviewPerDay - 1); setForecastReviewPerDay(v); localStorage.setItem("aurora_forecast_review_per_day", String(v)); }} className="w-5 h-5 rounded border border-border flex items-center justify-center hover:text-foreground text-xs">−</button>
+                            <span className="font-medium tabular-nums w-6 text-center text-xs">{forecastReviewPerDay}</span>
+                            <button onClick={() => { const v = forecastReviewPerDay + 1; setForecastReviewPerDay(v); localStorage.setItem("aurora_forecast_review_per_day", String(v)); }} className="w-5 h-5 rounded border border-border flex items-center justify-center hover:text-foreground text-xs">+</button>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs">New/d</span>
+                            <button onClick={() => { const v = Math.max(0, forecastNewPerDay - 1); setForecastNewPerDay(v); localStorage.setItem("aurora_forecast_new_per_day", String(v)); }} className="w-5 h-5 rounded border border-border flex items-center justify-center hover:text-foreground text-xs">−</button>
+                            <span className="font-medium tabular-nums w-6 text-center text-xs">{forecastNewPerDay}</span>
+                            <button onClick={() => { const v = forecastNewPerDay + 1; setForecastNewPerDay(v); localStorage.setItem("aurora_forecast_new_per_day", String(v)); }} className="w-5 h-5 rounded border border-border flex items-center justify-center hover:text-foreground text-xs">+</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </section>
+          </div>
+        </>
     </>
   );
 }
@@ -2609,6 +2572,9 @@ function SettingsPanel({
   onTimeBudgetChange,
   queueViewDefault,
   onQueueViewDefaultChange,
+  sessionSizeOverride,
+  onSessionSizeOverrideChange,
+  recommendedSessionSize,
 }: {
   date: string;
   count: number;
@@ -2623,6 +2589,9 @@ function SettingsPanel({
   onTimeBudgetChange: (minutes: number) => void;
   queueViewDefault: "session" | "queue";
   onQueueViewDefaultChange: (v: "session" | "queue") => void;
+  sessionSizeOverride: number | null;
+  onSessionSizeOverrideChange: (v: number | null) => void;
+  recommendedSessionSize: number;
 }) {
   const [d, setD] = useState(date);
   const [c, setC] = useState(count);
@@ -2742,6 +2711,29 @@ function SettingsPanel({
           Optional guidance based on goal pace, review load stability, and retention health
         </p>
       </div>
+      <div className="pt-1 border-t border-border">
+        <p className="text-xs text-muted-foreground mb-1.5">Problems per session</p>
+        <div className="flex flex-wrap gap-1">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
+            const isRec = n === recommendedSessionSize;
+            const isActive = (sessionSizeOverride ?? recommendedSessionSize) === n;
+            return (
+              <button
+                key={n}
+                onClick={() => onSessionSizeOverrideChange(n === recommendedSessionSize ? null : n)}
+                className={`relative w-8 h-8 rounded text-[11px] font-medium border transition-colors ${isActive ? "bg-accent text-accent-foreground border-accent" : "border-border text-muted-foreground hover:text-foreground"}`}
+                title={isRec ? `Recommended based on your ${dailyTimeBudgetMinutes}m daily budget` : undefined}
+              >
+                {n}
+                {isRec && <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-accent" />}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-muted-foreground/60 mt-1">
+          Recommended: {recommendedSessionSize} (based on {dailyTimeBudgetMinutes}m daily budget)
+        </p>
+      </div>
       <div className="flex justify-end gap-2 pt-1">
         <button
           onClick={onCancel}
@@ -2765,7 +2757,7 @@ function SettingsPanel({
 function SolvedDonut({ breakdown, totalSolved, totalTarget }: { breakdown: DifficultyBreakdown[]; totalSolved: number; totalTarget: number }) {
   const r = 27;
   const C = 2 * Math.PI * r;
-  const TOTAL_PROBLEMS = 150;
+  const denom = Math.max(1, totalTarget);
   const easy = breakdown.find(d => d.difficulty === "Easy");
   const medium = breakdown.find(d => d.difficulty === "Medium");
   const hard = breakdown.find(d => d.difficulty === "Hard");
@@ -2776,9 +2768,9 @@ function SolvedDonut({ breakdown, totalSolved, totalTarget }: { breakdown: Diffi
   const mC = medium?.count ?? 0;
   const hC = hard?.count ?? 0;
   const segs = [
-    { color: "#22c55e", len: (eA / TOTAL_PROBLEMS) * C, start: 0 },
-    { color: "#f59e0b", len: (mA / TOTAL_PROBLEMS) * C, start: (eA / TOTAL_PROBLEMS) * C },
-    { color: "#ef4444", len: (hA / TOTAL_PROBLEMS) * C, start: ((eA + mA) / TOTAL_PROBLEMS) * C },
+    { color: "#22c55e", len: (eA / denom) * C, start: 0 },
+    { color: "#f59e0b", len: (mA / denom) * C, start: (eA / denom) * C },
+    { color: "#ef4444", len: (hA / denom) * C, start: ((eA + mA) / denom) * C },
   ].filter(s => s.len > 0);
   return (
     <div className="flex items-center gap-2 shrink-0">

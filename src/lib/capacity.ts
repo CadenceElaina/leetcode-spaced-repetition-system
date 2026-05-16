@@ -151,6 +151,7 @@ export type DashboardData = {
     leetcodeNumber: number | null;
     difficulty: "Easy" | "Medium" | "Hard";
     category: string;
+    blind75: boolean;
   }[];
   importAttemptedIds: number[];
   importTodayAttemptedIds: number[];

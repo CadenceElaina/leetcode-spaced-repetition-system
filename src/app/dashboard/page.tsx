@@ -489,6 +489,7 @@ export default async function DashboardPage() {
           leetcodeNumber: p.leetcodeNumber,
           difficulty: p.difficulty as "Easy" | "Medium" | "Hard",
           category: p.category,
+          blind75: p.blind75,
         })),
         importAttemptedIds: [...attemptedIds],
         importTodayAttemptedIds: todayAttemptRows.map((a) => a.problemId),

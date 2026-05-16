@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-export function SkyCanvas() {
+export function SkyCanvas({ paused = false }: { paused?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -10,6 +10,9 @@ export function SkyCanvas() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    // Honour OS-level "reduce motion" preference and caller-driven pause
+    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     let animId: number;
     let W = 0, H = 0;
@@ -69,13 +72,24 @@ export function SkyCanvas() {
       animId = requestAnimationFrame(frame);
     }
 
+    // Pause rAF while the tab is hidden to avoid background GPU work
+    function handleVisibility() {
+      if (document.hidden) {
+        cancelAnimationFrame(animId);
+      } else {
+        animId = requestAnimationFrame(frame);
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+
     animId = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", resizeCb);
       observer.disconnect();
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, []);
+  }, [paused]);
 
   return (
     <canvas
