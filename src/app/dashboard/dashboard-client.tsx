@@ -1026,42 +1026,11 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
         window.location.reload();
       }
     }} />}
-    {!isDemo && budgetMismatch && !budgetMismatchDismissed && (
-      <div className="mb-2 flex items-start gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-600 dark:text-amber-400">
-        <div className="flex-1">
-          <span className="font-medium">Pacing note: </span>
-          {budgetMismatch.direction === "over"
-            ? `You're averaging ${budgetMismatch.observedPerDay.toFixed(1)} problems/day — that's a ${budgetMismatch.suggestedLabel} pace. Consider updating your daily budget in Settings to get more accurate recommendations.`
-            : `You're averaging ${budgetMismatch.observedPerDay.toFixed(1)} problems/day — lower than your budget suggests. Update your budget in Settings if your schedule has changed.`}
-        </div>
-        <button
-          onClick={() => {
-            setBudgetMismatchDismissed(true);
-            localStorage.setItem("aurora_budget_mismatch_dismissed", String(Date.now()));
-          }}
-          className="mt-0.5 shrink-0 text-amber-500/60 hover:text-amber-500 transition-colors"
-          aria-label="Dismiss pacing note"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      </div>
-    )}
-    {showPracticeRecommendation && (
-      <PracticeRecommendationPanel
-        recommendation={practiceRecommendation}
-        onDismiss={() => {
-          setShowPracticeRecommendation(false);
-          localStorage.setItem("aurora_show_practice_recommendation", "0");
-        }}
-      />
-    )}
-    <div className="flex flex-col md:flex-row gap-4 md:gap-6 lg:gap-x-10 md:flex-1 md:min-h-0">
+    <div className="flex flex-col md:flex-row gap-4 md:gap-6 lg:gap-x-20 md:flex-1 md:min-h-0">
       {/* Spacer — pushes queue to center on large screens */}
       <div className="hidden lg:block lg:flex-1 shrink-0" />
       {/* ── Combined Problem Queue ── */}
-      <div className="flex flex-col min-w-0 flex-1 lg:flex-none lg:w-[560px] md:min-h-0 md:h-full" data-onboarding="queue">
+      <div className="flex flex-col min-w-0 flex-1 lg:flex-none lg:w-[660px] md:min-h-0 md:h-full" data-onboarding="queue">
         {reviewActionError && (
           <div className="mb-1 flex items-center justify-between rounded-md border border-red-500/30 bg-red-500/5 px-3 py-1.5 text-xs text-red-500">
             {reviewActionError}
@@ -1100,13 +1069,46 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
             }}
           />
         )}
+        {!isDemo && budgetMismatch && !budgetMismatchDismissed && (
+          <div className="mb-2 flex items-start gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-sm text-amber-600 dark:text-amber-400 shrink-0">
+            <div className="flex-1">
+              <span className="font-medium">Pacing note: </span>
+              {budgetMismatch.direction === "over"
+                ? `You're averaging ${budgetMismatch.observedPerDay.toFixed(1)} problems/day — that's a ${budgetMismatch.suggestedLabel} pace. Consider updating your daily budget in Settings to get more accurate recommendations.`
+                : `You're averaging ${budgetMismatch.observedPerDay.toFixed(1)} problems/day — lower than your budget suggests. Update your budget in Settings if your schedule has changed.`}
+            </div>
+            <button
+              onClick={() => {
+                setBudgetMismatchDismissed(true);
+                localStorage.setItem("aurora_budget_mismatch_dismissed", String(Date.now()));
+              }}
+              className="mt-0.5 shrink-0 text-amber-500/60 hover:text-amber-500 transition-colors"
+              aria-label="Dismiss pacing note"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        )}
+        {showPracticeRecommendation && (
+          <div className="shrink-0">
+            <PracticeRecommendationPanel
+              recommendation={practiceRecommendation}
+              onDismiss={() => {
+                setShowPracticeRecommendation(false);
+                localStorage.setItem("aurora_show_practice_recommendation", "0");
+              }}
+            />
+          </div>
+        )}
         <section className="flex flex-col lg:flex-1 lg:min-h-0">
           {/* Tab header — row 1: tabs full-width; row 2: sort pills + search */}
           <div className="flex flex-col gap-2 mb-2 shrink-0">
             <div className="flex gap-0.5 rounded-md border border-border p-0.5 w-full">
                 <button
                   onClick={() => setListMode("review")}
-                  className={`flex-1 text-center text-xs sm:text-sm px-2 py-1.5 rounded transition-colors ${listMode === "review" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 text-center text-sm px-3 py-2 rounded transition-colors ${listMode === "review" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Review
                   {reviewItems.length > 0 && (
@@ -1117,7 +1119,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 </button>
                 <button
                   onClick={() => setListMode("new")}
-                  className={`flex-1 text-center text-xs sm:text-sm px-2 py-1.5 rounded transition-colors ${listMode === "new" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 text-center text-sm px-3 py-2 rounded transition-colors ${listMode === "new" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   New
                   {sortedNewProblems.length > 0 && (
@@ -1128,7 +1130,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 </button>
                 <button
                   onClick={() => setListMode("completed")}
-                  className={`flex-1 text-center text-xs sm:text-sm px-2 py-1.5 rounded transition-colors ${listMode === "completed" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 text-center text-sm px-3 py-2 rounded transition-colors ${listMode === "completed" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Completed
                   {completedItems.length > 0 && (
@@ -1141,7 +1143,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 <span className="w-px bg-border my-0.5 shrink-0" />
                 <button
                   onClick={() => setListMode("import")}
-                  className={`text-xs sm:text-sm px-2 sm:px-2.5 py-1.5 rounded transition-colors ${listMode === "import" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`text-sm px-3 py-2 rounded transition-colors ${listMode === "import" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Import
                 </button>
@@ -1153,7 +1155,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                     }
                     setListMode("mock");
                   }}
-                  className={`relative text-xs sm:text-sm px-2 sm:px-2.5 py-1.5 rounded transition-colors ${listMode === "mock" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`relative text-sm px-3 py-2 rounded transition-colors ${listMode === "mock" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Mock
                   {mockPhase === "active" && listMode !== "mock" && (
@@ -1168,7 +1170,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 <select
                   value={reviewSort}
                   onChange={(e) => setReviewSort(e.target.value as ReviewSort)}
-                  className="h-8 rounded border border-border bg-background px-2.5 text-xs text-foreground focus:outline-none shrink-0">
+                  className="h-9 rounded border border-border bg-background px-2.5 text-sm text-foreground focus:outline-none shrink-0">
                   <option value="urgency">Urgency</option>
                   <option value="overdue">Oldest</option>
                   <option value="difficulty">Hardest</option>
@@ -1179,7 +1181,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 <select
                   value={newDifficultyFilter}
                   onChange={(e) => setNewDifficultyFilter(e.target.value as NewDifficultyFilter)}
-                  className="h-8 rounded border border-border bg-background px-2.5 text-xs text-foreground focus:outline-none shrink-0">
+                  className="h-9 rounded border border-border bg-background px-2.5 text-sm text-foreground focus:outline-none shrink-0">
                   <option value="all">All difficulties</option>
                   <option value="easy">Easy only</option>
                   <option value="easy-medium">Easy &amp; Medium</option>
@@ -1191,7 +1193,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 <select
                   value={completedSort}
                   onChange={(e) => setCompletedSort(e.target.value as CompletedSort)}
-                  className="h-8 rounded border border-border bg-background px-2.5 text-xs text-foreground focus:outline-none shrink-0">
+                  className="h-9 rounded border border-border bg-background px-2.5 text-sm text-foreground focus:outline-none shrink-0">
                   <option value="retention">Weakest first</option>
                   <option value="review-date">Due soonest</option>
                   <option value="category">Category</option>
@@ -1206,7 +1208,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                   onChange={(e) => setQueueSearch(e.target.value)}
                   placeholder="Filter…"
                   aria-label="Filter queue"
-                  className="h-8 flex-1 min-w-0 rounded border border-border bg-background px-2.5 text-xs placeholder:text-muted-foreground focus:outline-none"
+                  className="h-9 flex-1 min-w-0 rounded border border-border bg-background px-2.5 text-sm placeholder:text-muted-foreground focus:outline-none"
                 />
               )}
               {/* Re-show strategy hint — only when banner was dismissed */}
@@ -1217,7 +1219,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                     localStorage.setItem("aurora_show_practice_recommendation", "1");
                   }}
                   title="Show strategy recommendation"
-                  className="h-8 shrink-0 rounded border border-border px-2.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  className="h-9 shrink-0 rounded border border-border px-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                 >
                   ↑ Hint
                 </button>
@@ -1227,7 +1229,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 <button
                   onClick={() => setSheetDrawerOpen((o) => !o)}
                   title="Pattern cheatsheets for today's review categories"
-                  className={`h-8 shrink-0 rounded border px-2.5 text-xs transition-colors ${
+                  className={`h-9 shrink-0 rounded border px-2.5 text-sm transition-colors ${
                     sheetDrawerOpen
                       ? "border-accent bg-accent/10 text-accent"
                       : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -1247,19 +1249,19 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
               <div className="flex gap-0.5 rounded-md border border-border p-0.5 w-full shrink-0">
                 <button
                   onClick={() => setSessionViewMode("session")}
-                  className={`flex-1 text-center text-xs px-2 py-1 rounded transition-colors ${sessionViewMode === "session" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 text-center text-sm px-2 py-1.5 rounded transition-colors ${sessionViewMode === "session" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Today&apos;s Session
-                  <span className={`ml-1 text-[10px] px-1 py-0.5 rounded-full ${sessionViewMode === "session" ? "bg-accent-foreground/20" : "bg-muted"}`}>
+                  <span className={`ml-1 text-xs px-1 py-0.5 rounded-full ${sessionViewMode === "session" ? "bg-accent-foreground/20" : "bg-muted"}`}>
                     {Math.max(0, sessionSize - sessionActedOn)} left
                   </span>
                 </button>
                 <button
                   onClick={() => setSessionViewMode("queue")}
-                  className={`flex-1 text-center text-xs px-2 py-1 rounded transition-colors ${sessionViewMode === "queue" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 text-center text-sm px-2 py-1.5 rounded transition-colors ${sessionViewMode === "queue" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Full Queue
-                  <span className={`ml-1 text-[10px] px-1 py-0.5 rounded-full ${sessionViewMode === "queue" ? "bg-accent-foreground/20" : "bg-muted"}`}>
+                  <span className={`ml-1 text-xs px-1 py-0.5 rounded-full ${sessionViewMode === "queue" ? "bg-accent-foreground/20" : "bg-muted"}`}>
                     {reviewItems.length}
                   </span>
                 </button>
@@ -1317,7 +1319,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                     return (
                       <div
                         key={item.stateId}
-                        className="flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-b-0 hover:bg-muted transition-colors duration-150"
+                        className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted transition-colors duration-150"
                       >
                         <StatusDot
                           color={PRIORITY_DOT[prio]}
@@ -1329,26 +1331,26 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                         />
                         <div className="min-w-0 flex-1">
                           {item.neetcodeUrl ? (
-                            <a href={item.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-foreground hover:text-accent truncate block">
-                              {item.title}{item.leetcodeNumber ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">#{item.leetcodeNumber}</span> : null}
+                            <a href={item.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-base font-medium text-foreground hover:text-accent truncate block">
+                              {item.title}{item.leetcodeNumber ? <span className="ml-1.5 text-sm font-normal text-muted-foreground">#{item.leetcodeNumber}</span> : null}
                             </a>
                           ) : (
-                            <Link href={`/problems/${item.problemId}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
-                              {item.title}{item.leetcodeNumber ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">#{item.leetcodeNumber}</span> : null}
+                            <Link href={`/problems/${item.problemId}`} className="text-base font-medium text-foreground hover:text-accent truncate block">
+                              {item.title}{item.leetcodeNumber ? <span className="ml-1.5 text-sm font-normal text-muted-foreground">#{item.leetcodeNumber}</span> : null}
                             </Link>
                           )}
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs text-muted-foreground">{item.category}</span>
+                            <span className="text-sm text-muted-foreground">{item.category}</span>
                             <DifficultyBadge difficulty={item.difficulty} />
-                            <span className="text-xs text-muted-foreground">·</span>
+                            <span className="text-sm text-muted-foreground">·</span>
                             <Link
                               href={`/problems/${item.problemId}`}
                               className="text-muted-foreground hover:text-foreground transition-colors"
                               title="View problem activity"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                             </Link>
-                            <span className="text-xs text-muted-foreground">{item.totalAttempts} attempt{item.totalAttempts !== 1 ? "s" : ""}</span>
+                            <span className="text-sm text-muted-foreground">{item.totalAttempts} attempt{item.totalAttempts !== 1 ? "s" : ""}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -1361,7 +1363,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                               category: item.category,
                               isReview: true,
                             })}
-                            className="inline-flex h-7 items-center rounded-md bg-accent px-3 text-xs text-accent-foreground transition-colors hover:opacity-90"
+                            className="inline-flex h-8 items-center rounded-md bg-accent px-4 text-sm text-accent-foreground transition-colors hover:opacity-90"
                           >
                             Log
                           </button>
@@ -1379,11 +1381,11 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                           <span className="text-[10px] text-muted-foreground truncate">· {curriculumRec.reason}</span>
                         </div>
                         {curriculumRec.problem.neetcodeUrl ? (
-                          <a href={curriculumRec.problem.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                          <a href={curriculumRec.problem.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-base font-medium text-foreground hover:text-accent truncate block">
                             {curriculumRec.problem.title}
                           </a>
                         ) : (
-                          <Link href={`/problems/${curriculumRec.problem.id}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                          <Link href={`/problems/${curriculumRec.problem.id}`} className="text-base font-medium text-foreground hover:text-accent truncate block">
                             {curriculumRec.problem.title}
                           </Link>
                         )}
@@ -1515,11 +1517,11 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                         <span className="text-[10px] text-muted-foreground truncate">· {curriculumRec.reason}</span>
                       </div>
                       {curriculumRec.problem.neetcodeUrl ? (
-                        <a href={curriculumRec.problem.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                        <a href={curriculumRec.problem.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-base font-medium text-foreground hover:text-accent truncate block">
                           {curriculumRec.problem.title}
                         </a>
                       ) : (
-                        <Link href={`/problems/${curriculumRec.problem.id}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                        <Link href={`/problems/${curriculumRec.problem.id}`} className="text-base font-medium text-foreground hover:text-accent truncate block">
                           {curriculumRec.problem.title}
                         </Link>
                       )}
@@ -1558,11 +1560,11 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                       <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{p.leetcodeNumber}</span>
                       <div className="min-w-0 flex-1">
                         {p.neetcodeUrl ? (
-                          <a href={p.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                          <a href={p.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-base font-medium text-foreground hover:text-accent truncate block">
                             {p.title}
                           </a>
                         ) : (
-                          <Link href={`/problems/${p.id}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                          <Link href={`/problems/${p.id}`} className="text-base font-medium text-foreground hover:text-accent truncate block">
                             {p.title}
                           </Link>
                         )}
@@ -1611,7 +1613,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                       <div className={`w-2 h-2 rounded-full shrink-0 ${item.bestQuality === "NONE" ? "bg-red-500" : item.stability >= 30 ? "bg-green-500" : retentionBarColor(item.retrievability)}`} />
                       <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{item.leetcodeNumber}</span>
                       <div className="min-w-0 flex-1">
-                        <Link href={`/problems/${item.problemId}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                        <Link href={`/problems/${item.problemId}`} className="text-base font-medium text-foreground hover:text-accent truncate block">
                           {item.title}
                         </Link>
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -1712,7 +1714,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
       </div>
 
       {/* ── Right Column ── */}
-      <div className="flex-none w-full md:w-[280px] flex flex-col gap-3 md:min-h-0 md:h-full overflow-y-auto overflow-x-hidden" data-onboarding="stats">
+      <div className="flex-none w-full md:w-[320px] flex flex-col gap-3 md:min-h-0 md:h-full overflow-y-auto overflow-x-hidden" data-onboarding="stats">
         {sheetDrawerOpen && todaySheets.length > 0 ? (
           <InlinePatternPanel sheets={todaySheets} onClose={() => setSheetDrawerOpen(false)} reviewCount={reviewItems.length} />
         ) : (
@@ -1788,34 +1790,34 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
               />
 
               {/* Days left + streak */}
-              <div className="flex items-center gap-3 mt-3 text-xs">
+              <div className="flex items-center gap-3 mt-3 text-sm">
                 <span>
-                  <span className="text-xl font-bold tabular-nums leading-none">{countdown.daysLeft}</span>
+                  <span className="text-2xl font-bold tabular-nums leading-none">{countdown.daysLeft}</span>
                   <span className="text-muted-foreground ml-0.5">d left</span>
                 </span>
                 <span className="text-border">·</span>
                 <span className="flex items-center gap-1">
                   <span className="text-muted-foreground">Streak</span>
                   <span className="font-semibold tabular-nums">{data.currentStreak}</span>
-                  <span className="text-sm leading-none">{data.currentStreak === 0 ? "❄️" : "🔥"}</span>
+                  <span className="text-base leading-none">{data.currentStreak === 0 ? "❄️" : "🔥"}</span>
                 </span>
               </div>
 
               {/* Needed/day + projection rows */}
-              <div className="border-t border-border/40 mt-3 pt-2.5 space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
+              <div className="border-t border-border/40 mt-3 pt-2.5 space-y-2">
+                <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Needed/day</span>
                   <span className={`font-semibold tabular-nums ${data.attemptedCount < 5 ? "text-muted-foreground" : countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>
                     {data.attemptedCount < 5 ? "—" : countdown.neededPerDay.toFixed(1)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Projection</span>
                   <span className={`font-semibold tabular-nums ${data.attemptedCount < 5 ? "text-muted-foreground" : countdown.projectedRaw >= targetCount ? "text-green-500" : "text-orange-500"}`}>
                     {data.attemptedCount < 5 ? "—" : `${countdown.projectedRaw}/${targetCount}`}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Target</span>
                   <span className="text-muted-foreground">{new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
                 </div>
@@ -1871,7 +1873,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                       </div>
                     } />
                   </div>
-                  <p className="text-xs text-muted-foreground">Readiness</p>
+                  <p className="text-sm text-muted-foreground">Readiness</p>
                 </div>
               </div>
               {data.attemptedCount < 5 && (
@@ -1885,7 +1887,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                   { label: "Consistency", value: data.readinessBreakdown.consistency, tooltip: `10% of score. Active ${data.consistencyReviewed} of the last 14 days.` },
                 ].map(({ label, value, tooltip }) => (
                   <div key={label}>
-                    <div className="flex items-center justify-between text-xs mb-0.5">
+                    <div className="flex items-center justify-between text-sm mb-0.5">
                       <span className="flex items-center gap-1 text-muted-foreground">
                         {label}
                         <InfoTooltip content={<p className="max-w-[200px]">{tooltip}</p>} />
@@ -1903,7 +1905,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
             {/* Activity */}
             <section className="rounded-lg border border-border bg-muted p-3">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-semibold text-foreground">Activity</p>
+                <p className="text-base font-semibold text-foreground">Activity</p>
                 <div className="flex rounded-md border border-border p-0.5 gap-0.5">
                   {(["14d", "monthly", "heatmap"] as const).map((m) => (
                     <button
@@ -3076,7 +3078,7 @@ function PendingBanner({
             >
               <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{item.leetcodeNumber}</span>
               <div className="min-w-0 flex-1">
-                <Link href={`/problems/${item.problemId}`} className="text-sm font-medium text-foreground hover:text-accent truncate block">
+                <Link href={`/problems/${item.problemId}`} className="text-base font-medium text-foreground hover:text-accent truncate block">
                   {item.problemTitle}
                 </Link>
                 <span className="text-xs text-muted-foreground">
