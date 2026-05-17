@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Upload, X, RotateCcw } from "lucide-react";
+import { Upload, X, RotateCcw, ExternalLink } from "lucide-react";
 import { DifficultyBadge } from "@/components/difficulty-badge";
 import { ImportClient } from "@/app/import/import-client";
 import { LogAttemptModal, type LogModalProblem, type LogModalResult } from "@/components/log-attempt-modal";
@@ -401,12 +401,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     }
   }, [searchParams, router]);
 
-  // Auto-dismiss SRS banner after 8s
-  useEffect(() => {
-    if (!srsBanner) return;
-    const timer = setTimeout(() => setSrsBanner(null), 8000);
-    return () => clearTimeout(timer);
-  }, [srsBanner]);
+  // Auto-dismiss timer lives inside SrsFeedbackBanner (hover-pauses it)
 
   function saveSettings(date: string, count: number, title: string) {
     setTargetDate(date);
@@ -1210,8 +1205,8 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 <span className="w-px bg-border my-0.5 shrink-0" />
                 <button
                   onClick={() => setListMode("import")}
-                  title="Import"
-                  className={`px-2.5 py-2 rounded transition-colors ${listMode === "import" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  title="Import from NeetCode"
+                  className={`px-2.5 py-2 rounded transition-colors ${listMode === "import" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
                 >
                   <Upload className="h-4 w-4" />
                 </button>
@@ -1312,7 +1307,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 >
                   Today&apos;s Session
                   <span className={`ml-1 text-xs px-1 py-0.5 rounded-full ${sessionViewMode === "session" ? "bg-accent-foreground/20" : "bg-muted"}`}>
-                    {Math.max(0, effectiveSessionTarget - sessionActedOn - sessionNewActedOn)} left
+                    {Math.max(0, effectiveSessionTarget - sessionActedOn - sessionNewActedOn) === 0 ? "Done" : `${Math.max(0, effectiveSessionTarget - sessionActedOn - sessionNewActedOn)} left`}
                   </span>
                 </button>
                 {reviewItems.length > 0 && (
@@ -1399,9 +1394,9 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {rec.problem.neetcodeUrl && (
-                          <a href={rec.problem.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-foreground underline">NC</a>
+                          <a href={rec.problem.neetcodeUrl} target="_blank" rel="noopener noreferrer" title="NeetCode walkthrough" className="inline-flex h-6 items-center gap-0.5 rounded border border-border px-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">NC <ExternalLink size={10} /></a>
                         )}
-                        <a href={rec.problem.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-foreground underline">LC</a>
+                        <a href={rec.problem.leetcodeUrl} target="_blank" rel="noopener noreferrer" title="LeetCode problem" className="inline-flex h-6 items-center gap-0.5 rounded border border-border px-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">LC <ExternalLink size={10} /></a>
                         <button
                           onClick={() => openLog({
                             problemId: rec.problem.id,
@@ -1467,6 +1462,9 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                             </Link>
                             <span className="text-sm text-muted-foreground">{item.totalAttempts} attempt{item.totalAttempts !== 1 ? "s" : ""}</span>
+                            {prio === "critical" && reasons.length > 0 && reasons[0] !== "Scheduled review" && (
+                              <span className="text-xs text-red-500/80">· {reasons[0]}</span>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -1503,6 +1501,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 {showDeferredInline && (
                   <div className="border-t border-border">
                     <div className="px-3 py-2 border-b border-border/50">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Add to deferred</p>
                       <div className="relative">
                         <input
                           type="text"
@@ -1539,6 +1538,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                       <p className="px-3 py-2.5 text-xs text-muted-foreground">No deferred problems.</p>
                     ) : (
                       <div className="max-h-48 overflow-y-auto">
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-3 pt-2 pb-1">Currently deferred</p>
                         {deferredItems.map((item) => (
                           <div
                             key={item.stateId}
@@ -1604,9 +1604,9 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       {curriculumRecs[0].problem.neetcodeUrl && (
-                        <a href={curriculumRecs[0].problem.neetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-foreground underline">NC</a>
+                        <a href={curriculumRecs[0].problem.neetcodeUrl} target="_blank" rel="noopener noreferrer" title="NeetCode walkthrough" className="inline-flex h-6 items-center gap-0.5 rounded border border-border px-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">NC <ExternalLink size={10} /></a>
                       )}
-                      <a href={curriculumRecs[0].problem.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-foreground underline">LC</a>
+                      <a href={curriculumRecs[0].problem.leetcodeUrl} target="_blank" rel="noopener noreferrer" title="LeetCode problem" className="inline-flex h-6 items-center gap-0.5 rounded border border-border px-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">LC <ExternalLink size={10} /></a>
                       <button
                         onClick={() => openLog({
                           problemId: curriculumRecs[0].problem.id,
@@ -2110,18 +2110,29 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                       </div>
                     </div>
                     {forecastMode === "goals" && (
-                      <div className="flex items-center justify-end gap-4 pt-2 border-t border-border/40">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-muted-foreground w-10">Rev/d</span>
-                          <button onClick={() => { const v = Math.max(1, forecastReviewPerDay - 1); setForecastReviewPerDay(v); localStorage.setItem("aurora_forecast_review_per_day", String(v)); }} className="w-6 h-6 rounded border border-border flex items-center justify-center hover:text-foreground hover:bg-background/60 transition-colors text-sm">−</button>
-                          <span className="font-semibold tabular-nums w-7 text-center text-sm text-foreground">{forecastReviewPerDay}</span>
-                          <button onClick={() => { const v = forecastReviewPerDay + 1; setForecastReviewPerDay(v); localStorage.setItem("aurora_forecast_review_per_day", String(v)); }} className="w-6 h-6 rounded border border-border flex items-center justify-center hover:text-foreground hover:bg-background/60 transition-colors text-sm">+</button>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-muted-foreground w-10">New/d</span>
-                          <button onClick={() => { const v = Math.max(0, forecastNewPerDay - 1); setForecastNewPerDay(v); localStorage.setItem("aurora_forecast_new_per_day", String(v)); }} className="w-6 h-6 rounded border border-border flex items-center justify-center hover:text-foreground hover:bg-background/60 transition-colors text-sm">−</button>
-                          <span className="font-semibold tabular-nums w-7 text-center text-sm text-foreground">{forecastNewPerDay}</span>
-                          <button onClick={() => { const v = forecastNewPerDay + 1; setForecastNewPerDay(v); localStorage.setItem("aurora_forecast_new_per_day", String(v)); }} className="w-6 h-6 rounded border border-border flex items-center justify-center hover:text-foreground hover:bg-background/60 transition-colors text-sm">+</button>
+                      <div className="pt-2 border-t border-border/40 space-y-2">
+                        <p className="text-[11px] text-center text-muted-foreground/70">
+                          {(() => {
+                            const d = sustainedClearDay(proj.dailyQueueSize, proj.dailyQueueSize.length);
+                            return d === null
+                              ? `Growing past ${proj.dailyQueueSize.length}d window at these rates`
+                              : d === 0 ? "Queue already clear"
+                              : `Clears around day ${d} at ${forecastReviewPerDay} rev/d + ${forecastNewPerDay} new/d`;
+                          })()}
+                        </p>
+                        <div className="flex items-center justify-end gap-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground w-10">Rev/d</span>
+                            <button onClick={() => { const v = Math.max(1, forecastReviewPerDay - 1); setForecastReviewPerDay(v); localStorage.setItem("aurora_forecast_review_per_day", String(v)); }} className="w-6 h-6 rounded border border-border flex items-center justify-center hover:text-foreground hover:bg-background/60 transition-colors text-sm">−</button>
+                            <span className="font-semibold tabular-nums w-7 text-center text-sm text-foreground">{forecastReviewPerDay}</span>
+                            <button onClick={() => { const v = forecastReviewPerDay + 1; setForecastReviewPerDay(v); localStorage.setItem("aurora_forecast_review_per_day", String(v)); }} className="w-6 h-6 rounded border border-border flex items-center justify-center hover:text-foreground hover:bg-background/60 transition-colors text-sm">+</button>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground w-10">New/d</span>
+                            <button onClick={() => { const v = Math.max(0, forecastNewPerDay - 1); setForecastNewPerDay(v); localStorage.setItem("aurora_forecast_new_per_day", String(v)); }} className="w-6 h-6 rounded border border-border flex items-center justify-center hover:text-foreground hover:bg-background/60 transition-colors text-sm">−</button>
+                            <span className="font-semibold tabular-nums w-7 text-center text-sm text-foreground">{forecastNewPerDay}</span>
+                            <button onClick={() => { const v = forecastNewPerDay + 1; setForecastNewPerDay(v); localStorage.setItem("aurora_forecast_new_per_day", String(v)); }} className="w-6 h-6 rounded border border-border flex items-center justify-center hover:text-foreground hover:bg-background/60 transition-colors text-sm">+</button>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -2978,7 +2989,12 @@ function ReadinessRing({
           className={`fixed z-[9999] w-[220px] rounded-lg border bg-muted p-3 shadow-xl text-xs text-foreground ${pinned ? "border-accent/60" : "border-border"}`}
           style={{ top: pos.top, left: pos.left, transform: "translateX(-50%)" }}
         >
-          <p className="font-semibold text-foreground mb-2">Readiness Breakdown</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="font-semibold text-foreground">Readiness Breakdown</p>
+            {pinned && (
+              <button onClick={() => { setPinned(false); setHovered(false); }} className="text-muted-foreground hover:text-foreground transition-colors leading-none" aria-label="Close">✕</button>
+            )}
+          </div>
           <div className="space-y-1.5">
             {([
               { label: "Coverage",    value: readinessBreakdown.coverage,        weight: "30%" },
@@ -3220,6 +3236,18 @@ function SrsFeedbackBanner({
   onDismiss: () => void;
   onUndo: () => void;
 }) {
+  const [hovered, setHovered] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (hovered) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      return;
+    }
+    timerRef.current = setTimeout(onDismiss, 8000);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [hovered, onDismiss]);
+
   const nextDate = new Date(next);
   const now = new Date();
   const diffDays = Math.round((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -3229,7 +3257,11 @@ function SrsFeedbackBanner({
   const problemLabel = pNum ? `${pNum}. ${pName}` : pName;
 
   return (
-    <div className="mb-3 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2.5 flex items-center gap-4 text-sm animate-in fade-in slide-in-from-top-2 duration-300">
+    <div
+      className="mb-3 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2.5 flex items-center gap-4 text-sm animate-in fade-in slide-in-from-top-2 duration-300"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <span className="text-foreground font-medium shrink-0">{problemLabel || "Saved"}</span>
       <span className="text-muted-foreground">
         Stability{" "}
