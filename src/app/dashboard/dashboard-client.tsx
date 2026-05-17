@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Upload, X } from "lucide-react";
+import { Upload, X, RotateCcw } from "lucide-react";
 import { DifficultyBadge } from "@/components/difficulty-badge";
 import { ImportClient } from "@/app/import/import-client";
 import { LogAttemptModal, type LogModalProblem, type LogModalResult } from "@/components/log-attempt-modal";
@@ -1264,17 +1264,23 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                   className="h-9 flex-1 min-w-0 rounded border border-border bg-background px-2.5 text-sm placeholder:text-muted-foreground focus:outline-none"
                 />
               )}
-              {/* Re-show strategy hint — only when banner was dismissed */}
-              {!showPracticeRecommendation && !isDemo && (
+              {/* Restore dismissed banners */}
+              {!isDemo && (!showPracticeRecommendation || (budgetMismatch && budgetMismatchDismissed)) && (
                 <button
                   onClick={() => {
-                    setShowPracticeRecommendation(true);
-                    localStorage.setItem("aurora_show_practice_recommendation", "1");
+                    if (!showPracticeRecommendation) {
+                      setShowPracticeRecommendation(true);
+                      localStorage.setItem("aurora_show_practice_recommendation", "1");
+                    }
+                    if (budgetMismatchDismissed) {
+                      setBudgetMismatchDismissed(false);
+                      localStorage.removeItem("aurora_budget_mismatch_dismissed");
+                    }
                   }}
-                  title="Show strategy recommendation"
-                  className="h-9 shrink-0 rounded border border-border px-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  title="Restore dismissed messages"
+                  className="h-9 w-9 shrink-0 rounded border border-border flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                 >
-                  ↑ Hint
+                  <RotateCcw size={14} strokeWidth={2} />
                 </button>
               )}
               {/* Patterns button — switches right column to pattern view */}
@@ -2901,6 +2907,7 @@ function ReadinessRing({
   readinessBreakdown: { coverage: number; retention: number; categoryBalance: number; consistency: number };
 }) {
   const [hovered, setHovered] = useState(false);
+  const [pinned, setPinned] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -2915,6 +2922,15 @@ function ReadinessRing({
       setPos({ top, left });
     }
   }, []);
+
+  useEffect(() => {
+    if (!pinned) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setPinned(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [pinned]);
 
   const r = 42;
   const C = 2 * Math.PI * r;
@@ -2940,7 +2956,8 @@ function ReadinessRing({
       ref={ref}
       className="w-full cursor-pointer"
       onMouseEnter={() => { updatePos(); setHovered(true); }}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => { if (!pinned) setHovered(false); }}
+      onClick={() => { updatePos(); setPinned(p => !p); }}
     >
       <svg viewBox="0 0 100 100" className="w-full h-auto">
         <circle cx={50} cy={50} r={r} fill="none" strokeWidth={8} style={{ stroke: "var(--border)" }} />
@@ -2956,9 +2973,9 @@ function ReadinessRing({
         <text x={50} y={44} textAnchor="middle" dominantBaseline="central" fontSize="30" fontWeight="900" style={{ fill: TIER_TEXT[tier] ?? "var(--foreground)" }}>{tier}</text>
         <text x={50} y={63} textAnchor="middle" dominantBaseline="central" fontSize="9" style={{ fill: "var(--muted-foreground)" }}>{score}/100</text>
       </svg>
-      {hovered && pos && createPortal(
+      {(hovered || pinned) && pos && createPortal(
         <div
-          className="fixed z-[9999] w-[220px] rounded-lg border border-border bg-muted p-3 shadow-xl text-xs text-foreground"
+          className={`fixed z-[9999] w-[220px] rounded-lg border bg-muted p-3 shadow-xl text-xs text-foreground ${pinned ? "border-accent/60" : "border-border"}`}
           style={{ top: pos.top, left: pos.left, transform: "translateX(-50%)" }}
         >
           <p className="font-semibold text-foreground mb-2">Readiness Breakdown</p>
@@ -2995,29 +3012,42 @@ function ReadinessRing({
 }
 
 function InfoTooltip({ content }: { content: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [pinned, setPinned] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLSpanElement>(null);
 
   const updatePos = useCallback(() => {
     if (ref.current) {
       const rect = ref.current.getBoundingClientRect();
-      const tooltipW = 256; // w-64
+      const tooltipW = 256;
       const rawLeft = rect.left + rect.width / 2;
       const left = Math.min(Math.max(rawLeft, tooltipW / 2 + 8), window.innerWidth - tooltipW / 2 - 8);
       setPos({ top: rect.bottom + 6, left });
     }
   }, []);
 
+  useEffect(() => {
+    if (!pinned) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setPinned(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [pinned]);
+
+  const open = hovered || pinned;
+
   return (
     <span
       ref={ref}
       className="relative inline-flex"
-      onMouseEnter={() => { updatePos(); setOpen(true); }}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={() => { updatePos(); setHovered(true); }}
+      onMouseLeave={() => setHovered(false)}
+      onClick={(e) => { e.stopPropagation(); updatePos(); setPinned(p => !p); }}
     >
       <span
-        className="inline-flex text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-help"
+        className={`inline-flex transition-colors cursor-pointer ${pinned ? "text-foreground" : "text-muted-foreground/50 hover:text-muted-foreground"}`}
         aria-label="More info"
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
