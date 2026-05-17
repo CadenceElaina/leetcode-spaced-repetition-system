@@ -1212,15 +1212,31 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
             <div className="flex items-center gap-2">
               {/* Sort — segmented control matching tab row style */}
               {listMode === "review" && (
-                <select
-                  value={reviewSort}
-                  onChange={(e) => setReviewSort(e.target.value as ReviewSort)}
-                  className="h-9 rounded border border-border bg-background px-2.5 text-sm text-foreground focus:outline-none shrink-0">
-                  <option value="urgency">Urgency</option>
-                  <option value="overdue">Oldest</option>
-                  <option value="difficulty">Hardest</option>
-                  <option value="category">Category</option>
-                </select>
+                <>
+                  <select
+                    value={reviewSort}
+                    onChange={(e) => setReviewSort(e.target.value as ReviewSort)}
+                    className="h-9 rounded border border-border bg-background px-2.5 text-sm text-foreground focus:outline-none shrink-0">
+                    <option value="urgency">Urgency</option>
+                    <option value="overdue">Oldest</option>
+                    <option value="difficulty">Hardest</option>
+                    <option value="category">Category</option>
+                  </select>
+                  <div className="flex h-9 shrink-0 rounded border border-border overflow-hidden text-sm">
+                    <button
+                      onClick={() => setSessionViewMode("session")}
+                      className={`px-2.5 transition-colors ${sessionViewMode === "session" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+                    >
+                      Session
+                    </button>
+                    <button
+                      onClick={() => setSessionViewMode("queue")}
+                      className={`px-2.5 border-l border-border transition-colors ${sessionViewMode === "queue" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+                    >
+                      All
+                    </button>
+                  </div>
+                </>
               )}
               {listMode === "new" && (
                 <select
@@ -1295,26 +1311,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
           {/* Review list */}
           {listMode === "review" && (
             <div className="flex flex-col flex-1 min-h-0 gap-2">
-            {/* Full queue toggle — only shown when there are more reviews than the session slice */}
-            {reviewItems.length > 0 && (
-              <div className="flex items-center justify-end shrink-0">
-                {sessionViewMode === "session" ? (
-                  <button
-                    onClick={() => setSessionViewMode("queue")}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Full queue ({reviewItems.length}) →
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setSessionViewMode("session")}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    ← Session only
-                  </button>
-                )}
-              </div>
-            )}
             {/* Session complete banner */}
             {sessionViewMode === "session" && (sessionActedOn + sessionNewActedOn) >= effectiveSessionTarget && (sessionActedOn + sessionNewActedOn) > 0 && (
               <div className="flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 shrink-0">
