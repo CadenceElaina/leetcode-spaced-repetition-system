@@ -344,7 +344,7 @@
       "leetcodeNumber": 22,
       "title": "Generate Parentheses",
       "difficulty": "Medium",
-      "category": "Stack",
+      "category": "Backtracking",
       "leetcodeUrl": "https://leetcode.com/problems/generate-parentheses/",
       "neetcodeUrl": "https://neetcode.io/problems/generate-parentheses",
       "videoId": "s9fokUqJ76A",
