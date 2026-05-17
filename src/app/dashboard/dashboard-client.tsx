@@ -310,14 +310,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     }
     const savedTab = localStorage.getItem("aurora_tab_mode");
     if (savedTab && ["review", "new", "completed", "import"].includes(savedTab)) {
-      // Don't restore "review" when queue is empty — drop new users on "new" tab
-      if (savedTab === "review" && reviewItems.length === 0) {
-        setListMode("new");
-      } else {
-        setListMode(savedTab as ListMode);
-      }
-    } else if (reviewItems.length === 0) {
-      setListMode("new");
+      setListMode(savedTab as ListMode);
     }
     const savedTitle = localStorage.getItem("aurora_countdown_title");
     if (savedTitle) setCountdownTitle(savedTitle);
@@ -1029,6 +1022,10 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
       localStorage.setItem("aurora_new_per_session", String(prefs.newPerSession));
       setAdvisoryThreshold(prefs.advisoryThreshold);
       localStorage.setItem("aurora_advisory_threshold", prefs.advisoryThreshold);
+      if (prefs.countdownTitle) {
+        setCountdownTitle(prefs.countdownTitle);
+        localStorage.setItem("aurora_countdown_title", prefs.countdownTitle);
+      }
     }} />
     <div className="relative md:h-[calc(100dvh-7.5rem)]">
     {/* Subtle ambient starfield — fixed, full-viewport, behind all content */}
@@ -1172,7 +1169,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                   onClick={() => setListMode("review")}
                   className={`flex-1 text-center text-sm px-3 py-2 rounded transition-colors ${listMode === "review" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  Review
+                  Today&apos;s Session
                   {reviewItems.length > 0 && (
                     <span className={`hidden sm:inline ml-1 text-xs px-1.5 py-0.5 rounded-full ${listMode === "review" ? "bg-accent-foreground/20" : "bg-muted"}`}>
                       {reviewItems.length}
@@ -1298,27 +1295,22 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
           {/* Review list */}
           {listMode === "review" && (
             <div className="flex flex-col flex-1 min-h-0 gap-2">
-            {/* Session / Queue inner tab bar — visible when reviews exist OR overflow created new-problem slots */}
-            {(reviewItems.length > 0 || effectiveNewSlots > 0) && (
-              <div className="flex gap-0.5 rounded-md border border-border p-0.5 w-full shrink-0">
-                <button
-                  onClick={() => setSessionViewMode("session")}
-                  className={`flex-1 text-center text-sm px-2 py-1.5 rounded transition-colors ${sessionViewMode === "session" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  Today&apos;s Session
-                  <span className={`ml-1 text-xs px-1 py-0.5 rounded-full ${sessionViewMode === "session" ? "bg-accent-foreground/20" : "bg-muted"}`}>
-                    {Math.max(0, effectiveSessionTarget - sessionActedOn - sessionNewActedOn) === 0 ? "Done" : `${Math.max(0, effectiveSessionTarget - sessionActedOn - sessionNewActedOn)} left`}
-                  </span>
-                </button>
-                {reviewItems.length > 0 && (
+            {/* Full queue toggle — only shown when there are more reviews than the session slice */}
+            {reviewItems.length > 0 && (
+              <div className="flex items-center justify-end shrink-0">
+                {sessionViewMode === "session" ? (
                   <button
                     onClick={() => setSessionViewMode("queue")}
-                    className={`flex-1 text-center text-sm px-2 py-1.5 rounded transition-colors ${sessionViewMode === "queue" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Full Queue
-                    <span className={`ml-1 text-xs px-1 py-0.5 rounded-full ${sessionViewMode === "queue" ? "bg-accent-foreground/20" : "bg-muted"}`}>
-                      {reviewItems.length}
-                    </span>
+                    Full queue ({reviewItems.length}) →
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setSessionViewMode("session")}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    ← Session only
                   </button>
                 )}
               </div>
@@ -2777,7 +2769,7 @@ function SettingsPanel({
           }
           return (
             <>
-              <p className="text-xs text-muted-foreground mb-1.5">New problems per session</p>
+              <p className="text-xs text-muted-foreground mb-1.5">Minimum new problems per session</p>
               <div className="flex gap-1 mb-1">
                 {[0, 1, 2, 3].map((n) => (
                   <button
