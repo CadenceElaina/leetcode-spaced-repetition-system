@@ -1020,7 +1020,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
         window.location.reload();
       }
     }} />}
-    <div className="flex flex-col md:flex-row gap-4 md:gap-6 lg:gap-x-20 md:flex-1 md:min-h-0">
+    <div className="flex flex-col md:flex-row gap-4 md:gap-6 lg:gap-x-8 md:flex-1 md:min-h-0">
       {/* Spacer — pushes queue to center on large screens */}
       <div className="hidden lg:block lg:flex-1 shrink-0" />
       {/* ── Combined Problem Queue ── */}
@@ -1708,7 +1708,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
       </div>
 
       {/* ── Right Column ── */}
-      <div className="flex-none w-full md:w-[360px] flex flex-col gap-3 md:min-h-0 md:h-full overflow-y-auto overflow-x-hidden" data-onboarding="stats">
+      <div className="flex-none w-full md:w-[440px] flex flex-col gap-3 md:min-h-0 md:h-full overflow-y-auto overflow-x-hidden" data-onboarding="stats">
         {sheetDrawerOpen && todaySheets.length > 0 ? (
           <InlinePatternPanel sheets={todaySheets} onClose={() => setSheetDrawerOpen(false)} reviewCount={reviewItems.length} />
         ) : (
@@ -1754,11 +1754,13 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
 
             {/* CompletionWidget */}
             <section className="rounded-lg border border-border bg-muted p-3">
-              {/* Settings gear */}
-              <div className="flex items-center justify-end mb-2">
+              {/* Title row: name + target date + gear */}
+              <div className="flex items-center gap-2 mb-2.5">
+                <p className="text-sm font-semibold text-foreground flex-1 min-w-0 truncate">{countdownTitle}</p>
+                <span className="text-xs text-muted-foreground shrink-0">{new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
                 <button
                   onClick={() => setShowSettings(!showSettings)}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Settings"
                   title="Settings"
                 >
@@ -1782,18 +1784,16 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 </div>
               </div>
 
-              {/* Days left + streak */}
-              <div className="flex items-center gap-3 mt-3 text-sm">
-                <span>
-                  <span className="text-2xl font-bold tabular-nums leading-none">{countdown.daysLeft}</span>
-                  <span className="text-muted-foreground ml-0.5">d left</span>
-                </span>
-                <span className="text-border">·</span>
-                <span className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Streak</span>
-                  <span className="font-semibold tabular-nums">{data.currentStreak}</span>
-                  <span className="text-base leading-none">{data.currentStreak === 0 ? "❄️" : "🔥"}</span>
-                </span>
+              {/* Days left subheading + streak sub-subheading */}
+              <div className="mt-3">
+                <p className="text-2xl font-bold tabular-nums leading-none">
+                  {countdown.daysLeft}<span className="text-base font-normal text-muted-foreground ml-1">d left</span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                  Streak
+                  <span className="font-semibold text-foreground tabular-nums">{data.currentStreak}</span>
+                  <span>{data.currentStreak === 0 ? "❄️" : "🔥"}</span>
+                </p>
               </div>
 
               {/* Needed/day + projection rows */}
@@ -1809,10 +1809,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                   <span className={`font-semibold tabular-nums ${data.attemptedCount < 5 ? "text-muted-foreground" : countdown.projectedRaw >= targetCount ? "text-green-500" : "text-orange-500"}`}>
                     {data.attemptedCount < 5 ? "—" : `${countdown.projectedRaw}/${targetCount}`}
                   </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Target</span>
-                  <span className="text-muted-foreground">{new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
                 </div>
               </div>
 
@@ -1858,43 +1854,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                   }}
                 />
               )}
-            </section>
-
-            {/* Readiness breakdown */}
-            <section className="rounded-lg border border-border bg-muted p-3">
-              <div className="flex items-center gap-1 mb-2.5">
-                <p className="text-sm font-semibold text-foreground">Breakdown</p>
-                <InfoTooltip content={
-                  <div className="space-y-1 max-w-[220px]">
-                    <p className="font-medium">Readiness Score</p>
-                    <p>Coverage 30% · Retention 40% · Category Balance 20% · Consistency 10%</p>
-                  </div>
-                } />
-              </div>
-              {data.attemptedCount < 5 && (
-                <p className="text-xs text-muted-foreground mb-2">Score improves as you log more attempts.</p>
-              )}
-              <div className="space-y-1.5">
-                {[
-                  { label: "Coverage", value: data.readinessBreakdown.coverage, tooltip: "30% of score. % of problems attempted at least once." },
-                  { label: "Retention", value: data.readinessBreakdown.retention, tooltip: "40% of score. Avg memory strength across all solved problems." },
-                  { label: "Balance", value: data.readinessBreakdown.categoryBalance, tooltip: "20% of score. How evenly distributed your attempts are across categories." },
-                  { label: "Consistency", value: data.readinessBreakdown.consistency, tooltip: `10% of score. Active ${data.consistencyReviewed} of the last 14 days.` },
-                ].map(({ label, value, tooltip }) => (
-                  <div key={label}>
-                    <div className="flex items-center justify-between text-sm mb-0.5">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        {label}
-                        <InfoTooltip content={<p className="max-w-[200px]">{tooltip}</p>} />
-                      </span>
-                      <span className="font-medium tabular-nums">{Math.round(value * 100)}%</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-background overflow-hidden">
-                      <div className={`h-full rounded-full transition-[width] duration-500 ${value >= 0.7 ? "bg-green-500" : value >= 0.4 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.round(value * 100)}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
             </section>
 
             {/* Activity */}

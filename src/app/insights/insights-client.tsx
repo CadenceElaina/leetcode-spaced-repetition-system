@@ -55,8 +55,16 @@ function StatCard({
   );
 }
 
+const TIER_COLORS: Record<string, string> = {
+  S: "bg-violet-500/20 text-violet-400",
+  A: "bg-green-500/20 text-green-400",
+  B: "bg-blue-500/20 text-blue-400",
+  C: "bg-amber-500/20 text-amber-400",
+  D: "bg-red-500/20 text-red-400",
+};
+
 export function InsightsClient({ data, isDemo }: { data: InsightsData; isDemo: boolean }) {
-  const { velocity, compliance, metacognition, stuckProblems, categoryStats, totalAttempts, totalProblems, calibration } = data;
+  const { velocity, compliance, metacognition, stuckProblems, categoryStats, totalAttempts, totalProblems, calibration, readiness, readinessBreakdown, consistencyReviewed } = data;
 
   const hasData = totalAttempts > 0;
 
@@ -141,6 +149,43 @@ export function InsightsClient({ data, isDemo }: { data: InsightsData; isDemo: b
               subColor={stuckProblems.length > 0 ? "text-amber-400" : "text-green-400"}
             />
           </div>
+
+          {/* Readiness Score */}
+          <section>
+            <h2 className="text-sm font-semibold text-foreground mb-2">Readiness Score</h2>
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+              <div className="flex items-center gap-4 mb-4">
+                <span className={`inline-flex h-12 w-12 items-center justify-center rounded-lg text-3xl font-black shrink-0 ${TIER_COLORS[readiness.tier]}`}>
+                  {readiness.tier}
+                </span>
+                <div>
+                  <p className="text-2xl font-bold tabular-nums text-foreground leading-none">{readiness.score}<span className="text-sm font-normal text-muted-foreground">/100</span></p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Active {consistencyReviewed} of last 14 days</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {[
+                  { label: "Coverage", value: readinessBreakdown.coverage, weight: "30%", tooltip: "% of problems attempted at least once" },
+                  { label: "Retention", value: readinessBreakdown.retention, weight: "40%", tooltip: "Avg memory strength across solved problems" },
+                  { label: "Balance", value: readinessBreakdown.categoryBalance, weight: "20%", tooltip: "Lowest avg retention across attempted categories" },
+                  { label: "Consistency", value: readinessBreakdown.consistency, weight: "10%", tooltip: `Active days in last 14` },
+                ].map(({ label, value, weight }) => (
+                  <div key={label}>
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="text-muted-foreground">{label} <span className="text-[10px] opacity-60">{weight}</span></span>
+                      <span className="font-medium tabular-nums">{Math.round(value * 100)}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-background overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-[width] duration-500 ${value >= 0.7 ? "bg-green-500" : value >= 0.4 ? "bg-amber-500" : "bg-red-500"}`}
+                        style={{ width: `${Math.round(value * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
 
           {/* Calibration + Metacognition row */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

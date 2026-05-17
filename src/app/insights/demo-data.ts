@@ -24,6 +24,9 @@ export interface InsightsData {
   totalAttempts: number;
   totalProblems: number;
   calibration: { n: number; mae: number | null; buckets: CalibrationBucket[] };
+  readiness: { score: number; tier: "S" | "A" | "B" | "C" | "D" };
+  readinessBreakdown: { coverage: number; retention: number; categoryBalance: number; consistency: number };
+  consistencyReviewed: number;
 }
 
 export const DEMO_INSIGHTS_DATA: InsightsData = {
@@ -88,4 +91,7 @@ export const DEMO_INSIGHTS_DATA: InsightsData = {
       { rRange: [0.9,  1.01], predictedMidpoint: 0.955, actualSuccessRate: 0.93, count:  6 },
     ],
   },
+  readiness: { score: 23, tier: "D" },
+  readinessBreakdown: { coverage: 0.23, retention: 0.20, categoryBalance: 0.30, consistency: 0.21 },
+  consistencyReviewed: 3,
 };

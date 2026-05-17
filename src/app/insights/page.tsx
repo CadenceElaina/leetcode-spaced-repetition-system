@@ -14,6 +14,7 @@ import {
   type StateRecord,
   type ReviewPoint,
 } from "@/lib/analytics";
+import { computeReadiness, MASTERY_THRESHOLD } from "@/lib/srs";
 import { InsightsClient } from "./insights-client";
 import { DEMO_INSIGHTS_DATA } from "./demo-data";
 import type { StuckProblemDisplay } from "./demo-data";
@@ -130,6 +131,29 @@ export default async function InsightsPage() {
     };
   });
 
+  // Readiness score — mirror the dashboard page computation
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+  const attemptedCategories = catStats.filter((c) => c.attemptedProblems > 0);
+  const lowestCategoryAvgR = attemptedCategories.length > 0
+    ? Math.min(...attemptedCategories.map((c) => c.avgR))
+    : 0;
+  const activeDates = new Set(
+    rawAttempts
+      .filter((a) => new Date(a.createdAt) >= fourteenDaysAgo)
+      .map((a) => new Date(a.createdAt).toISOString().slice(0, 10))
+  );
+  const activeDaysInWindow = activeDates.size;
+  const consistencyPct = activeDaysInWindow / 14;
+  const sampleWeight = Math.min(1, rawStates.length / 10);
+  const retainedCount = rawStates.filter((s) => (s.stability ?? 0) >= MASTERY_THRESHOLD).length;
+  const readiness = computeReadiness({
+    totalProblems:       allProblems.length,
+    attemptedCount:      rawStates.length,
+    retainedCount:       Math.round(retainedCount * sampleWeight),
+    lowestCategoryAvgR:  lowestCategoryAvgR * sampleWeight,
+    reviewsCompletedPct: consistencyPct * sampleWeight,
+  });
+
   return (
     <Suspense>
       <InsightsClient
@@ -142,6 +166,14 @@ export default async function InsightsPage() {
           totalAttempts:  attemptRecords.length,
           totalProblems:  stateRecords.length,
           calibration: { n: calibrationN, mae: calibrationMAE, buckets: calibrationBuckets },
+          readiness: { score: readiness.score, tier: readiness.tier },
+          readinessBreakdown: {
+            coverage:        readiness.coverage,
+            retention:       readiness.retention,
+            categoryBalance: readiness.categoryBalance,
+            consistency:     readiness.consistency,
+          },
+          consistencyReviewed: activeDaysInWindow,
         }}
         isDemo={false}
       />
