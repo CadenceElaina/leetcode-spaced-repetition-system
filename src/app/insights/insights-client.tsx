@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import type { InsightsData } from "./demo-data";
 import type { CalibrationBucket } from "@/lib/analytics";
+import { MASTERY_THRESHOLD } from "@/lib/srs";
 
 const TREND_LABEL: Record<string, string> = {
   improving:        "Improving",
@@ -64,7 +66,7 @@ const TIER_COLORS: Record<string, string> = {
 };
 
 export function InsightsClient({ data, isDemo }: { data: InsightsData; isDemo: boolean }) {
-  const { velocity, compliance, metacognition, stuckProblems, categoryStats, totalAttempts, totalProblems, calibration, readiness, readinessBreakdown, consistencyReviewed } = data;
+  const { velocity, compliance, metacognition, stuckProblems, categoryStats, totalAttempts, totalProblems, calibration, readiness, readinessBreakdown, consistencyReviewed, masteredCount, learningCount, masteryList, learningList } = data;
 
   const hasData = totalAttempts > 0;
 
@@ -295,6 +297,20 @@ export function InsightsClient({ data, isDemo }: { data: InsightsData; isDemo: b
             </section>
           )}
 
+          {/* Mastery Progress */}
+          <section>
+            <h2 className="text-sm font-semibold text-foreground mb-2">Mastery Progress</h2>
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+              <MasteryProgress
+                mastered={masteredCount}
+                learning={learningCount}
+                total={totalProblems}
+                masteryList={masteryList}
+                learningList={learningList}
+              />
+            </div>
+          </section>
+
           {/* Category breakdown */}
           {categoryStats.length > 0 && (
             <section>
@@ -464,6 +480,102 @@ function CalibrationChart({ buckets }: { buckets: CalibrationBucket[] }) {
         Predicted R at review time
       </text>
     </svg>
+    </div>
+  );
+}
+
+import type { MasteryItem } from "@/lib/capacity";
+
+function MasteryProgress({
+  mastered,
+  learning,
+  total,
+  masteryList,
+  learningList,
+}: {
+  mastered: number;
+  learning: number;
+  total: number;
+  masteryList: MasteryItem[];
+  learningList: MasteryItem[];
+}) {
+  const [learningPage, setLearningPage] = useState(0);
+  const PAGE_SIZE = 10;
+  const newCount = total - mastered - learning;
+  const masteredPct = total > 0 ? (mastered / total) * 100 : 0;
+  const learningPct = total > 0 ? (learning / total) * 100 : 0;
+  const totalPages = Math.ceil(learningList.length / PAGE_SIZE);
+  const displayLearning = learningList.slice(learningPage * PAGE_SIZE, (learningPage + 1) * PAGE_SIZE);
+
+  return (
+    <div className="space-y-3">
+      {/* Stacked bar */}
+      <div className="flex h-3 overflow-hidden rounded-full bg-background group/mastery cursor-default">
+        {masteredPct > 0 && (
+          <div className="bg-green-500 transition-all duration-300 group-hover/mastery:brightness-125" style={{ width: `${masteredPct}%` }} />
+        )}
+        {learningPct > 0 && (
+          <div className="bg-accent transition-all duration-300 group-hover/mastery:brightness-125" style={{ width: `${learningPct}%` }} />
+        )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />{mastered} Mastered ({masteredPct.toFixed(0)}%)</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-accent shrink-0" />{learning} Learning</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-border shrink-0" />{newCount} New</span>
+      </div>
+
+      {/* Recently mastered */}
+      {masteryList.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Recently mastered</p>
+          <div className="rounded-md border border-border/40 bg-background/30 divide-y divide-border/30">
+            {masteryList.slice(0, 5).map((item) => (
+              <Link key={item.problemId} href={`/problems/${item.problemId}`} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/40 transition-colors">
+                <span className="text-green-500 shrink-0">✓</span>
+                <span className="text-muted-foreground tabular-nums w-6 shrink-0">{item.leetcodeNumber}</span>
+                <span className="flex-1 truncate">{item.title}</span>
+                <span className="text-muted-foreground tabular-nums shrink-0">{Math.round(item.stability)}d</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Learning problems */}
+      {learningList.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Learning — stability toward {MASTERY_THRESHOLD}d</p>
+          <div className="rounded-md border border-border/40 bg-background/30 divide-y divide-border/30">
+            {displayLearning.map((item) => {
+              const pct = Math.min(100, (item.stability / MASTERY_THRESHOLD) * 100);
+              return (
+                <Link key={item.problemId} href={`/problems/${item.problemId}`} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/40 transition-colors group/learn">
+                  <span className="text-muted-foreground tabular-nums w-6 shrink-0">{item.leetcodeNumber}</span>
+                  <span className="w-40 shrink-0 truncate group-hover/learn:text-foreground transition-colors">{item.title}</span>
+                  <div className="flex-1 h-1.5 rounded-full bg-background overflow-hidden">
+                    <div className="h-full rounded-full bg-accent transition-all duration-300" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-muted-foreground tabular-nums w-10 text-right shrink-0">{item.stability.toFixed(1)}d</span>
+                </Link>
+              );
+            })}
+          </div>
+          {learningList.length > PAGE_SIZE && (
+            <nav className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+              <span>{learningPage * PAGE_SIZE + 1}–{Math.min((learningPage + 1) * PAGE_SIZE, learningList.length)} of {learningList.length}</span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setLearningPage(p => Math.max(0, p - 1))} disabled={learningPage === 0} className="px-2 py-0.5 rounded border border-border hover:bg-muted/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Prev</button>
+                {Array.from({ length: totalPages }, (_, i) => i).map((i) => (
+                  <button key={i} onClick={() => setLearningPage(i)} className={`px-2 py-0.5 rounded border transition-colors ${i === learningPage ? "border-accent bg-accent/20 text-accent font-semibold" : "border-border hover:bg-muted/40"}`}>{i + 1}</button>
+                ))}
+                <button onClick={() => setLearningPage(p => Math.min(totalPages - 1, p + 1))} disabled={learningPage === totalPages - 1} className="px-2 py-0.5 rounded border border-border hover:bg-muted/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Next</button>
+              </div>
+            </nav>
+          )}
+        </div>
+      )}
     </div>
   );
 }
