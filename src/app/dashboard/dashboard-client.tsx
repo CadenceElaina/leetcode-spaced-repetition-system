@@ -219,7 +219,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
   const [mockSelectedProblems, setMockSelectedProblems] = useState<MockCandidate[]>([]);
   const [mockLoggedIds, setMockLoggedIds] = useState<Set<number>>(new Set());
   const [reviewActionError, setReviewActionError] = useState<string | null>(null);
-  const [showPracticeRecommendation, setShowPracticeRecommendation] = useState(true);
   const [forecastMode, setForecastMode] = useState<"actual" | "goals">("actual");
   const [countdownTitle, setCountdownTitle] = useState("Fall Recruiting Countdown");
   const [forecastReviewPerDay, setForecastReviewPerDay] = useState(2);
@@ -229,12 +228,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
   const [showDemoSignIn, setShowDemoSignIn] = useState(false);
   const [demoCtaReason, setDemoCtaReason] = useState<DemoCtaReason>("generic");
   const [demoSessionChanged, setDemoSessionChanged] = useState(false);
-  const [budgetMismatchDismissed, setBudgetMismatchDismissed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const ts = localStorage.getItem("aurora_budget_mismatch_dismissed");
-    if (!ts) return false;
-    return Date.now() - parseInt(ts) < 14 * 24 * 60 * 60 * 1000;
-  });
   const [sessionViewMode, setSessionViewMode] = useState<"session" | "queue">("session");
   const [sessionActedOn, setSessionActedOn] = useState(0);
   const [sessionNewActedOn, setSessionNewActedOn] = useState(0);
@@ -325,8 +318,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     } else if (reviewItems.length === 0) {
       setForecastMode("goals");
     }
-    const savedRecommendation = localStorage.getItem("aurora_show_practice_recommendation");
-    if (savedRecommendation === "0") setShowPracticeRecommendation(false);
     const savedQueueView = localStorage.getItem("aurora_queue_view_mode");
     if (savedQueueView === "session" || savedQueueView === "queue") setSessionViewMode(savedQueueView);
     const savedSessionProgress = localStorage.getItem("aurora_session_progress");
@@ -1126,39 +1117,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
             }}
           />
         )}
-        {!isDemo && budgetMismatch && !budgetMismatchDismissed && (
-          <div className="mb-2 flex items-start gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-sm text-amber-600 dark:text-amber-400 shrink-0">
-            <div className="flex-1">
-              <span className="font-medium">Pacing note: </span>
-              {budgetMismatch.direction === "over"
-                ? `You're averaging ${budgetMismatch.observedPerDay.toFixed(1)} problems/day — that's a ${budgetMismatch.suggestedLabel} pace. Consider updating your daily budget in Settings to get more accurate recommendations.`
-                : `You're averaging ${budgetMismatch.observedPerDay.toFixed(1)} problems/day — lower than your budget suggests. Update your budget in Settings if your schedule has changed.`}
-            </div>
-            <button
-              onClick={() => {
-                setBudgetMismatchDismissed(true);
-                localStorage.setItem("aurora_budget_mismatch_dismissed", String(Date.now()));
-              }}
-              className="mt-0.5 shrink-0 text-amber-500/60 hover:text-amber-500 transition-colors"
-              aria-label="Dismiss pacing note"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-        )}
-        {showPracticeRecommendation && (
-          <div className="shrink-0">
-            <PracticeRecommendationPanel
-              recommendation={practiceRecommendation}
-              onDismiss={() => {
-                setShowPracticeRecommendation(false);
-                localStorage.setItem("aurora_show_practice_recommendation", "0");
-              }}
-            />
-          </div>
-        )}
         <section className="flex flex-col lg:flex-1 lg:min-h-0">
           {/* Tab header — row 1: tabs full-width; row 2: sort pills + search */}
           <div className="flex flex-col gap-2 mb-2 shrink-0">
@@ -1269,25 +1227,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                   aria-label="Filter queue"
                   className="h-9 flex-1 min-w-0 rounded border border-border bg-background px-2.5 text-sm placeholder:text-muted-foreground focus:outline-none"
                 />
-              )}
-              {/* Restore dismissed banners */}
-              {!isDemo && (!showPracticeRecommendation || (budgetMismatch && budgetMismatchDismissed)) && (
-                <button
-                  onClick={() => {
-                    if (!showPracticeRecommendation) {
-                      setShowPracticeRecommendation(true);
-                      localStorage.setItem("aurora_show_practice_recommendation", "1");
-                    }
-                    if (budgetMismatchDismissed) {
-                      setBudgetMismatchDismissed(false);
-                      localStorage.removeItem("aurora_budget_mismatch_dismissed");
-                    }
-                  }}
-                  title="Restore dismissed messages"
-                  className="h-9 w-9 shrink-0 rounded border border-border flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                >
-                  <RotateCcw size={14} strokeWidth={2} />
-                </button>
               )}
               {/* Patterns button — switches right column to pattern view */}
               {todaySheets.length > 0 && (
@@ -1835,11 +1774,14 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 <p className="text-sm font-semibold text-foreground flex-1 min-w-0 truncate">{countdownTitle}</p>
                 <button
                   onClick={() => setShowSettings(!showSettings)}
-                  className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                  className="relative shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Settings"
-                  title="Settings"
+                  title={budgetMismatch ? "Settings — pacing mismatch detected" : "Settings"}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  {!isDemo && budgetMismatch && (
+                    <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                  )}
                 </button>
               </div>
 
@@ -1910,11 +1852,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                   onCancel={() => setShowSettings(false)}
                   autoDeferHards={autoDeferHards}
                   onToggleAutoDeferHards={(v) => demoGuard(() => handleToggleAutoDeferHards(v), "save")}
-                  showPracticeRecommendation={showPracticeRecommendation}
-                  onTogglePracticeRecommendation={(v) => {
-                    setShowPracticeRecommendation(v);
-                    localStorage.setItem("aurora_show_practice_recommendation", v ? "1" : "0");
-                  }}
                   dailyTimeBudgetMinutes={timeBudget}
                   onTimeBudgetChange={(minutes) => {
                     setTimeBudget(minutes);
@@ -2604,8 +2541,6 @@ function SettingsPanel({
   onCancel,
   autoDeferHards,
   onToggleAutoDeferHards,
-  showPracticeRecommendation,
-  onTogglePracticeRecommendation,
   dailyTimeBudgetMinutes,
   onTimeBudgetChange,
   queueViewDefault,
@@ -2627,8 +2562,6 @@ function SettingsPanel({
   onCancel: () => void;
   autoDeferHards: boolean;
   onToggleAutoDeferHards: (enabled: boolean) => void;
-  showPracticeRecommendation: boolean;
-  onTogglePracticeRecommendation: (enabled: boolean) => void;
   dailyTimeBudgetMinutes: number;
   onTimeBudgetChange: (minutes: number) => void;
   queueViewDefault: "session" | "queue";
@@ -2788,20 +2721,6 @@ function SettingsPanel({
         </label>
         <p className="text-[10px] text-muted-foreground/60 mt-0.5 ml-5">
           Hards are excluded from reviews until you master the easier problems in each category
-        </p>
-      </div>
-      <div className="pt-1 border-t border-border">
-        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showPracticeRecommendation}
-            onChange={(e) => onTogglePracticeRecommendation(e.target.checked)}
-            className="rounded border-border"
-          />
-          Show strategy recommendation
-        </label>
-        <p className="text-[10px] text-muted-foreground/60 mt-0.5 ml-5">
-          Optional guidance based on goal pace, review load stability, and retention health
         </p>
       </div>
       <div className="flex justify-end gap-2 pt-1">
