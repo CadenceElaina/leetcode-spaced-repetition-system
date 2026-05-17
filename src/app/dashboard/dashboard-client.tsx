@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Upload, X, RotateCcw, ExternalLink } from "lucide-react";
+import { Upload, X, ExternalLink } from "lucide-react";
 import { DifficultyBadge } from "@/components/difficulty-badge";
 import { ImportClient } from "@/app/import/import-client";
 import { LogAttemptModal, type LogModalProblem, type LogModalResult } from "@/components/log-attempt-modal";
@@ -22,7 +22,6 @@ import {
   queueStability,
   computeCapacity,
   AVG_PROBLEM_SESSION_MINUTES,
-  computePracticeRecommendation,
   type ListMode,
   type ReviewItem,
   type CompletedItem,
@@ -37,7 +36,6 @@ import {
   type DashboardData,
   type QueueProjection,
   type QueueStability,
-  type PracticeRecommendation,
   type AdvisoryThreshold,
 } from "@/lib/capacity";
 
@@ -567,15 +565,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
         .filter((s): s is Cheatsheet => s !== undefined),
     [reviewItems],
   );
-
-  const practiceRecommendation = useMemo(() => computePracticeRecommendation({
-    data,
-    countdown,
-    goalType,
-    actualProjection: queueProjection,
-    dailyTimeBudgetMinutes: timeBudget,
-    advisoryThreshold,
-  }), [data, countdown, goalType, queueProjection, timeBudget, advisoryThreshold]);
 
   const budgetMismatch = useMemo(() => {
     if (isDemo || data.attemptedCount < 5) return null;
@@ -2446,80 +2435,6 @@ function StatusDot({
         </div>,
         document.body,
       )}
-    </div>
-  );
-}
-
-/* ── Practice Recommendation ── */
-
-function PracticeRecommendationPanel({
-  recommendation,
-  onDismiss,
-}: {
-  recommendation: PracticeRecommendation;
-  onDismiss: () => void;
-}) {
-  const toneLabel: Record<PracticeRecommendation["tone"], string> = {
-    neutral: "Getting started",
-    good: "On track",
-    watch: "Review first",
-    danger: "Priority",
-  };
-  const toneClass: Record<PracticeRecommendation["tone"], string> = {
-    neutral: "border-accent/20 bg-accent/10 text-accent",
-    good: "border-green-600/30 bg-green-500/10 text-green-600",
-    watch: "border-amber-600/35 bg-amber-500/10 text-amber-600",
-    danger: "border-red-600/35 bg-red-500/10 text-red-600",
-  };
-  const toneBannerClass: Record<PracticeRecommendation["tone"], string> = {
-    neutral: "border-accent/50",
-    good: "border-green-600/50",
-    watch: "border-amber-600/55",
-    danger: "border-red-600/55",
-  };
-  const trendLabel = recommendation.metrics
-    ? recommendation.metrics.drainRate < -0.5
-      ? "Trend rising"
-      : recommendation.metrics.drainRate > 0.5
-        ? "Trend easing"
-        : "Trend stable"
-    : null;
-
-  return (
-    <div className={`mb-3 flex items-center gap-2 rounded-lg border bg-muted/80 px-3 py-2 ${toneBannerClass[recommendation.tone]}`} role="status" aria-label="Practice recommendation">
-      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${toneClass[recommendation.tone]}`}>
-        {toneLabel[recommendation.tone]}
-      </span>
-      <p className="flex-1 min-w-0 truncate text-xs text-muted-foreground">{recommendation.reason || recommendation.body}</p>
-      <InfoTooltip
-        content={
-          <div className="space-y-2 max-w-[260px]">
-            <p className="font-medium text-foreground">{recommendation.title}</p>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">{recommendation.body}</p>
-            {recommendation.reason && <p className="text-[11px] text-muted-foreground/80 leading-relaxed">{recommendation.reason}</p>}
-            {recommendation.metrics && (
-              <div className="border-t border-border/60 pt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
-                <span className="text-muted-foreground">Avg due</span>
-                <span className="text-right tabular-nums">{recommendation.metrics.avg14.toFixed(1)}</span>
-                <span className="text-muted-foreground">Peak due</span>
-                <span className="text-right tabular-nums">{recommendation.metrics.max14.toFixed(0)}</span>
-                <span className="text-muted-foreground">Trend</span>
-                <span className="text-right">{trendLabel}</span>
-                <span className="text-muted-foreground">Peak load</span>
-                <span className="text-right tabular-nums">{recommendation.metrics.peakLoadDays.toFixed(1)}d</span>
-              </div>
-            )}
-            <p className="border-t border-border/60 pt-1 text-[10px] text-muted-foreground/60 leading-relaxed">Aurora flags when the queue grows faster than your recent review pace can absorb.</p>
-          </div>
-        }
-      />
-      <button
-        onClick={onDismiss}
-        className="shrink-0 flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
-        aria-label="Hide recommendation"
-      >
-        <X size={12} strokeWidth={2} aria-hidden="true" />
-      </button>
     </div>
   );
 }
