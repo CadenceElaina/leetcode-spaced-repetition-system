@@ -1776,16 +1776,24 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 </button>
               </div>
 
+              {/* Days left — below title, above 3-col body */}
+              <div className="mb-2.5">
+                <p className="text-2xl font-bold tabular-nums leading-none">
+                  {countdown.daysLeft}
+                  <span className="text-sm font-normal text-muted-foreground ml-1.5">
+                    days left until {new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </span>
+                </p>
+              </div>
+
               {/* 3-column body: [stats left] · [ring center] · [bars right] */}
               <div className="flex items-center gap-3">
-                {/* Left: countdown stats */}
+                {/* Left: pace + streak */}
                 <div className="flex flex-col shrink-0 gap-0.5 w-[82px]">
-                  <p className="text-3xl font-bold tabular-nums leading-none">{countdown.daysLeft}</p>
-                  <p className="text-[11px] text-muted-foreground leading-none mb-1">days left</p>
                   <p className={`text-base font-bold tabular-nums leading-none ${data.attemptedCount < 5 ? "text-muted-foreground" : countdown.onTrack ? "text-green-500" : "text-orange-500"}`}>
                     {data.attemptedCount < 5 ? "—" : countdown.neededPerDay.toFixed(1)}
                   </p>
-                  <p className="text-[10px] text-muted-foreground leading-none mb-1">new/day needed</p>
+                  <p className="text-[10px] text-muted-foreground leading-none mb-2">new/day needed</p>
                   <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                     streak <span className="font-semibold text-foreground tabular-nums">{data.currentStreak}</span>
                     <span className="leading-none">{data.currentStreak === 0 ? "❄️" : "🔥"}</span>
@@ -2829,7 +2837,7 @@ function ReadinessRing({
       </svg>
       {hovered && pos && createPortal(
         <div
-          className="fixed z-[9999] w-[220px] rounded-lg border border-border bg-popover p-3 shadow-lg text-xs"
+          className="fixed z-[9999] w-[220px] rounded-lg border border-border bg-muted p-3 shadow-xl text-xs text-foreground"
           style={{ top: pos.top, left: pos.left, transform: "translateX(-50%)" }}
         >
           <p className="font-semibold text-foreground mb-2">Readiness Breakdown</p>
