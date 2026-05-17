@@ -31,7 +31,6 @@ import {
   type DifficultyBreakdown,
   type AttemptDay,
   type ReadinessResult,
-  type MasteryItem,
   type PendingItem,
   type DeferredItem,
   type MockCandidate,
@@ -256,7 +255,6 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
     } catch { return {}; }
   });
   const [sessionSizeOverride, setSessionSizeOverride] = useState<number | null>(null);
-  const [forecastOrMastery, setForecastOrMastery] = useState<"forecast" | "mastery">("forecast");
 
   const { confettiBurst, playSessionComplete, resetSessionFired, playProblemLog, checkInactivity, recordSubmit } = useCelebration();
 
@@ -1359,7 +1357,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 <div className="overflow-y-auto flex-1 min-h-0">
                   {/* Curriculum slots — shown when user has reserved new-problem slots in settings */}
                   {sessionViewMode === "session" && sessionCurriculumRecs.map((rec) => (
-                    <div key={rec.problem.id} className="flex items-center gap-3 px-3 py-2.5 border-b-2 border-accent/30 bg-accent/5">
+                    <div key={rec.problem.id} className="flex items-center gap-3 px-4 py-3 border-b-2 border-accent/30 bg-accent/5">
                       <span className="text-xs text-muted-foreground w-8 shrink-0 tabular-nums">{rec.problem.leetcodeNumber}</span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline gap-1.5 min-w-0">
@@ -1971,12 +1969,12 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                     <span className="flex items-center gap-1.5">
                       <span className="inline-block w-2 h-2 rounded-sm bg-green-500 shrink-0" />
                       <span className="font-semibold tabular-nums text-foreground">{data.avgNewPerDay.toFixed(1)}</span>
-                      <span>new/d</span>
+                      <span>new/day</span>
                     </span>
                     <span className="flex items-center gap-1.5">
                       <span className="inline-block w-2 h-2 rounded-sm bg-accent shrink-0" />
                       <span className="font-semibold tabular-nums text-foreground">{data.avgReviewPerDay.toFixed(1)}</span>
-                      <span>rev/d</span>
+                      <span>rev/day</span>
                     </span>
                   </div>
                 </div>
@@ -2004,14 +2002,11 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
               }
             </section>
 
-            {/* Queue Forecast / Mastery Progress */}
+            {/* Queue Forecast */}
             <section className="rounded-lg border border-border bg-muted p-3 flex flex-col flex-1 min-h-0">
               <div className="flex items-center justify-between mb-3 shrink-0">
-                <div className="flex gap-0.5 rounded-md border border-border p-0.5">
-                  <button onClick={() => setForecastOrMastery("forecast")} className={`text-xs px-2.5 py-1 rounded transition-colors ${forecastOrMastery === "forecast" ? "bg-accent/20 text-accent font-semibold" : "text-muted-foreground hover:text-foreground"}`}>Queue Forecast</button>
-                  <button onClick={() => setForecastOrMastery("mastery")} className={`text-xs px-2.5 py-1 rounded transition-colors ${forecastOrMastery === "mastery" ? "bg-accent/20 text-accent font-semibold" : "text-muted-foreground hover:text-foreground"}`}>Mastery Progress</button>
-                </div>
-                {forecastOrMastery === "forecast" && (() => {
+                <p className="text-sm font-semibold text-foreground">Queue Forecast</p>
+                {(() => {
                   const hProj = forecastMode === "actual" ? queueProjection : queueProjectionGoals;
                   if (!hProj) return null;
                   const status = queueForecastStatus(hProj);
@@ -2019,17 +2014,7 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                 })()}
               </div>
 
-              {forecastOrMastery === "mastery" ? (
-                <div className="flex-1 min-h-0 overflow-y-auto">
-                  <MasteryProgress
-                    mastered={data.masteredCount}
-                    learning={data.learningCount}
-                    total={data.totalProblems}
-                    masteryList={data.masteryList}
-                    learningList={data.learningList}
-                  />
-                </div>
-              ) : (() => {
+              {(() => {
                 const proj = forecastMode === "actual" ? queueProjection : queueProjectionGoals;
                 if (!proj) return <p className="text-xs text-muted-foreground">No items in queue.</p>;
                 const totalDays = proj.dailyQueueSize.length;
@@ -2081,19 +2066,15 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                         );
                       })}
                     </div>
-                    <div className="flex gap-px shrink-0">
-                      {proj.dailyQueueSize.map((_, i) => {
-                        const isToday = i === 0;
-                        const isCrossing = i === crossingIdx && showCrossingLabel;
-                        const isLast = i === totalDays - 1;
-                        if (!isToday && !isCrossing && !isLast) return <div key={i} className="flex-1" />;
-                        return <div key={i} className={`flex-1 text-center text-[9px] leading-tight font-medium truncate ${isCrossing ? "text-green-500" : "text-muted-foreground/60"}`}>{isToday ? "Today" : isCrossing ? `Day ${crossingIdx}` : `+${totalDays}d`}</div>;
-                      })}
+                    <div className="flex items-center justify-between shrink-0 px-0.5 text-[9px] leading-tight font-medium text-muted-foreground/60">
+                      <span>Today</span>
+                      {showCrossingLabel && <span className="text-green-500">Day {crossingIdx} ↓</span>}
+                      <span>+{totalDays} days</span>
                     </div>
                     <div className="flex items-center justify-between pt-0.5 text-xs text-muted-foreground shrink-0">
                       <span><span className="font-semibold tabular-nums text-foreground">{proj.currentSize}</span> due now</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground/70 tabular-nums">{proj.reviewsPerDay} rev/d · {proj.newPerDay} new/d</span>
+                        <span className="text-muted-foreground/70 tabular-nums">{proj.reviewsPerDay} rev/day · {proj.newPerDay} new/day</span>
                         <div className="flex rounded-md border border-border p-0.5 gap-0.5">
                           {(["actual", "goals"] as const).map((m) => (
                             <button key={m} onClick={() => { setForecastMode(m); localStorage.setItem("aurora_forecast_mode", m); }} className={`text-xs px-2 py-0.5 rounded transition-colors ${forecastMode === m ? "bg-accent/20 text-accent font-semibold" : "text-muted-foreground hover:text-foreground"}`}>
@@ -2105,24 +2086,27 @@ export function DashboardClient({ data, isDemo = false, userId, onboardingComple
                     </div>
                     {forecastMode === "goals" && (
                       <div className="pt-2 border-t border-border/40 space-y-2 shrink-0">
-                        <p className="text-[11px] text-center text-muted-foreground/70">
-                          {(() => {
-                            const d = sustainedClearDay(proj.dailyQueueSize, proj.dailyQueueSize.length);
-                            return d === null
-                              ? `Growing past ${proj.dailyQueueSize.length}d window at these rates`
-                              : d === 0 ? "Queue already clear"
-                              : `Clears around day ${d} at ${forecastReviewPerDay} rev/d + ${forecastNewPerDay} new/d`;
-                          })()}
-                        </p>
+                        {(() => {
+                          const d = sustainedClearDay(proj.dailyQueueSize, proj.dailyQueueSize.length);
+                          if (d === null) return (
+                            <p className="text-[11px] text-center text-amber-500/90">⚠ Queue won&apos;t clear within {proj.dailyQueueSize.length} days — try increasing Rev/day</p>
+                          );
+                          if (d === 0) return (
+                            <p className="text-[11px] text-center text-green-500">Queue already clear</p>
+                          );
+                          return (
+                            <p className="text-[11px] text-center text-green-500/80">Clears around day {d} at {forecastReviewPerDay} rev/day + {forecastNewPerDay} new/day</p>
+                          );
+                        })()}
                         <div className="flex items-center justify-end gap-4">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-muted-foreground w-10">Rev/d</span>
+                            <span className="text-xs text-muted-foreground w-14">Rev/day</span>
                             <button onClick={() => { const v = Math.max(1, forecastReviewPerDay - 1); setForecastReviewPerDay(v); localStorage.setItem("aurora_forecast_review_per_day", String(v)); }} className="w-6 h-6 rounded border border-border flex items-center justify-center hover:text-foreground hover:bg-background/60 transition-colors text-sm">−</button>
                             <span className="font-semibold tabular-nums w-7 text-center text-sm text-foreground">{forecastReviewPerDay}</span>
                             <button onClick={() => { const v = forecastReviewPerDay + 1; setForecastReviewPerDay(v); localStorage.setItem("aurora_forecast_review_per_day", String(v)); }} className="w-6 h-6 rounded border border-border flex items-center justify-center hover:text-foreground hover:bg-background/60 transition-colors text-sm">+</button>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-muted-foreground w-10">New/d</span>
+                            <span className="text-xs text-muted-foreground w-14">New/day</span>
                             <button onClick={() => { const v = Math.max(0, forecastNewPerDay - 1); setForecastNewPerDay(v); localStorage.setItem("aurora_forecast_new_per_day", String(v)); }} className="w-6 h-6 rounded border border-border flex items-center justify-center hover:text-foreground hover:bg-background/60 transition-colors text-sm">−</button>
                             <span className="font-semibold tabular-nums w-7 text-center text-sm text-foreground">{forecastNewPerDay}</span>
                             <button onClick={() => { const v = forecastNewPerDay + 1; setForecastNewPerDay(v); localStorage.setItem("aurora_forecast_new_per_day", String(v)); }} className="w-6 h-6 rounded border border-border flex items-center justify-center hover:text-foreground hover:bg-background/60 transition-colors text-sm">+</button>
@@ -3075,133 +3059,6 @@ function InfoTooltip({ content }: { content: React.ReactNode }) {
         document.body,
       )}
     </span>
-  );
-}
-
-/* ── Mastery Progress ── */
-
-
-function MasteryProgress({
-  mastered,
-  learning,
-  total,
-  masteryList,
-  learningList,
-}: {
-  mastered: number;
-  learning: number;
-  total: number;
-  masteryList: MasteryItem[];
-  learningList: MasteryItem[];
-}) {
-  const [learningPage, setLearningPage] = useState(0);
-  const PAGE_SIZE = 10;
-  const newCount = total - mastered - learning;
-  const masteredPct = total > 0 ? (mastered / total) * 100 : 0;
-  const learningPct = total > 0 ? (learning / total) * 100 : 0;
-  const totalPages = Math.ceil(learningList.length / PAGE_SIZE);
-  const displayLearning = learningList.slice(learningPage * PAGE_SIZE, (learningPage + 1) * PAGE_SIZE);
-
-  return (
-    <div>
-      {/* Stacked bar */}
-      <div className="flex h-2.5 overflow-hidden rounded-full bg-background group/mastery cursor-default">
-        {masteredPct > 0 && (
-          <div className="bg-green-500 transition-all duration-300 group-hover/mastery:brightness-125" style={{ width: `${masteredPct}%` }} />
-        )}
-        {learningPct > 0 && (
-          <div className="bg-accent transition-all duration-300 group-hover/mastery:brightness-125" style={{ width: `${learningPct}%` }} />
-        )}
-      </div>
-
-      {/* Legend */}
-      <div className="flex gap-3 mt-1.5">
-        <div className="flex items-center gap-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-          <span className="text-[11px] text-muted-foreground">{mastered} Mastered <span className="text-foreground/50">({masteredPct.toFixed(0)}%)</span></span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-          <span className="text-[11px] text-muted-foreground">{learning} Learning</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-border" />
-          <span className="text-[11px] text-muted-foreground">{newCount} New</span>
-        </div>
-      </div>
-
-      {/* Recently mastered list */}
-      {masteryList.length > 0 && (
-        <div className="mt-2 rounded-md border border-border/40 bg-background/30 p-2">
-          <p className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-1.5">Recently mastered</p>
-          <div className="space-y-0.5">
-            {masteryList.slice(0, 5).map((item) => (
-              <Link key={item.leetcodeNumber ?? item.title} href={`/problems/${item.problemId}`} className="flex items-center gap-1.5 text-xs hover:bg-background/50 rounded px-1 -mx-1 transition-colors">
-                <span className="text-green-500">✓</span>
-                <span className="text-muted-foreground tabular-nums w-6 shrink-0">{item.leetcodeNumber}</span>
-                <span className="truncate">{item.title}</span>
-                <span className="ml-auto text-muted-foreground text-[11px]">{Math.round(item.stability)}d</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Learning problems — stability progress toward 45d */}
-      {learningList.length > 0 && (
-        <div className="mt-2 rounded-md border border-border/40 bg-background/30 p-2">
-          <p className="text-[11px] font-semibold text-foreground uppercase tracking-wider mb-1.5">Learning — stability toward 45d</p>
-          <div className="space-y-1">
-            {displayLearning.map((item) => {
-              const pct = Math.min(100, (item.stability / MASTERY_THRESHOLD) * 100);
-              return (
-                <Link key={item.leetcodeNumber ?? item.title} href={`/problems/${item.problemId}`} className="flex items-center gap-1.5 text-xs group/learn hover:bg-background/50 rounded px-1 -mx-1 transition-colors">
-                  <span className="text-muted-foreground tabular-nums w-6 shrink-0">{item.leetcodeNumber}</span>
-                  <span className="w-32 shrink-0 truncate group-hover/learn:text-foreground transition-colors" title={item.title}>{item.title}</span>
-                  <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-background group-hover/learn:h-2 transition-all duration-150">
-                    <div
-                      className="h-full rounded-full bg-accent transition-all duration-300"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <span className="text-muted-foreground text-[11px] tabular-nums w-10 text-right shrink-0">{item.stability.toFixed(1)}d</span>
-                </Link>
-              );
-            })}
-          </div>
-          {learningList.length > PAGE_SIZE && (
-            <nav className="flex flex-wrap items-center justify-between gap-2 mt-2 border-t border-border pt-2">
-              <p className="text-[11px] text-muted-foreground">
-                {learningPage * PAGE_SIZE + 1}–{Math.min((learningPage + 1) * PAGE_SIZE, learningList.length)} of {learningList.length}
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setLearningPage(p => Math.max(0, p - 1))}
-                  disabled={learningPage === 0}
-                  className="inline-flex h-6 min-w-[2rem] items-center justify-center rounded border border-border px-2 text-[11px] text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >Prev</button>
-                {Array.from({ length: totalPages }, (_, i) => i).map((i) => (
-                  <button
-                    key={i}
-                    onClick={() => setLearningPage(i)}
-                    className={`inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded px-1.5 text-[11px] transition-colors ${
-                      i === learningPage
-                        ? "bg-accent text-accent-foreground font-semibold"
-                        : "border border-border text-muted-foreground hover:bg-background hover:text-foreground"
-                    }`}
-                  >{i + 1}</button>
-                ))}
-                <button
-                  onClick={() => setLearningPage(p => Math.min(totalPages - 1, p + 1))}
-                  disabled={learningPage === totalPages - 1}
-                  className="inline-flex h-6 min-w-[2rem] items-center justify-center rounded border border-border px-2 text-[11px] text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >Next</button>
-              </div>
-            </nav>
-          )}
-        </div>
-      )}
-    </div>
   );
 }
 

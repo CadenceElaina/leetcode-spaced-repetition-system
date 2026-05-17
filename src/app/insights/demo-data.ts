@@ -5,6 +5,7 @@ import type {
   CategoryStat,
   CalibrationBucket,
 } from "@/lib/analytics";
+import type { MasteryItem } from "@/lib/capacity";
 
 export interface StuckProblemDisplay {
   problemId: number;
@@ -27,6 +28,10 @@ export interface InsightsData {
   readiness: { score: number; tier: "S" | "A" | "B" | "C" | "D" };
   readinessBreakdown: { coverage: number; retention: number; categoryBalance: number; consistency: number };
   consistencyReviewed: number;
+  masteredCount: number;
+  learningCount: number;
+  masteryList: MasteryItem[];
+  learningList: MasteryItem[];
 }
 
 export const DEMO_INSIGHTS_DATA: InsightsData = {
@@ -94,4 +99,19 @@ export const DEMO_INSIGHTS_DATA: InsightsData = {
   readiness: { score: 23, tier: "D" },
   readinessBreakdown: { coverage: 0.23, retention: 0.20, categoryBalance: 0.30, consistency: 0.21 },
   consistencyReviewed: 3,
+  masteredCount: 5,
+  learningCount: 30,
+  masteryList: [
+    { problemId: 1,   title: "Two Sum",           leetcodeNumber: 1,   stability: 365, category: "Arrays & Hashing" },
+    { problemId: 242, title: "Valid Anagram",      leetcodeNumber: 242, stability: 365, category: "Arrays & Hashing" },
+    { problemId: 49,  title: "Group Anagrams",     leetcodeNumber: 49,  stability: 365, category: "Arrays & Hashing" },
+    { problemId: 125, title: "Valid Palindrome",   leetcodeNumber: 125, stability: 310, category: "Two Pointers" },
+    { problemId: 20,  title: "Valid Parentheses",  leetcodeNumber: 20,  stability: 280, category: "Stack" },
+  ],
+  learningList: [
+    { problemId: 150, title: "Evaluate Reverse Polish Notation", leetcodeNumber: 150, stability: 25.7, category: "Stack" },
+    { problemId: 238, title: "Product of Array Except Self",     leetcodeNumber: 238, stability: 28.5, category: "Arrays & Hashing" },
+    { problemId: 125, title: "Valid Palindrome",                 leetcodeNumber: 125, stability: 28.8, category: "Two Pointers" },
+    { problemId: 20,  title: "Valid Parentheses",                leetcodeNumber: 20,  stability: 30.7, category: "Stack" },
+  ],
 };

@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { attempts, userProblemStates, problems } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, desc } from "drizzle-orm";
+import type { MasteryItem } from "@/lib/capacity";
 import {
   computeLearningVelocity,
   detectStuckProblems,
@@ -67,7 +68,7 @@ export default async function InsightsPage() {
       })
       .from(userProblemStates)
       .where(eq(userProblemStates.userId, userId)),
-    db.select({ id: problems.id, title: problems.title, difficulty: problems.difficulty }).from(problems),
+    db.select({ id: problems.id, title: problems.title, difficulty: problems.difficulty, leetcodeNumber: problems.leetcodeNumber, category: problems.category }).from(problems),
   ]);
 
   const attemptRecords: AttemptRecord[] = rawAttempts.map((a) => ({
@@ -145,7 +146,25 @@ export default async function InsightsPage() {
   const activeDaysInWindow = activeDates.size;
   const consistencyPct = activeDaysInWindow / 14;
   const sampleWeight = Math.min(1, rawStates.length / 10);
-  const retainedCount = rawStates.filter((s) => (s.stability ?? 0) >= MASTERY_THRESHOLD).length;
+  const masteredStates = rawStates.filter((s) => (s.stability ?? 0) >= MASTERY_THRESHOLD);
+  const retainedCount = masteredStates.length;
+  const masteredCount = retainedCount;
+  const learningCount = rawStates.length - masteredCount;
+
+  const masteryList: MasteryItem[] = masteredStates
+    .sort((a, b) => b.stability - a.stability)
+    .map((s) => {
+      const p = problemMap.get(s.problemId);
+      return { problemId: s.problemId, title: p?.title ?? `Problem ${s.problemId}`, leetcodeNumber: p?.leetcodeNumber ?? null, stability: s.stability, category: p?.category ?? "" };
+    });
+
+  const learningList: MasteryItem[] = rawStates
+    .filter((s) => (s.stability ?? 0) < MASTERY_THRESHOLD && s.totalAttempts > 0)
+    .sort((a, b) => b.stability - a.stability)
+    .map((s) => {
+      const p = problemMap.get(s.problemId);
+      return { problemId: s.problemId, title: p?.title ?? `Problem ${s.problemId}`, leetcodeNumber: p?.leetcodeNumber ?? null, stability: s.stability, category: p?.category ?? "" };
+    });
   const readiness = computeReadiness({
     totalProblems:       allProblems.length,
     attemptedCount:      rawStates.length,
@@ -174,6 +193,10 @@ export default async function InsightsPage() {
             consistency:     readiness.consistency,
           },
           consistencyReviewed: activeDaysInWindow,
+          masteredCount,
+          learningCount,
+          masteryList,
+          learningList,
         }}
         isDemo={false}
       />
